@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Property, PropertyStatus, ScheduledInspection, BlockedUser, TenantRequest } from '../types/property';
+import { Property, PropertyStatus, ScheduledInspection, BlockedUser, TenantRequest, AppUser } from '../types/property';
 import { DropdownCategory, UtilityOptionDefinition } from '../data/dropdownOptions';
 import { DropdownManager } from './DropdownManager';
+import { AdminRoleManagement } from './AdminRoleManagement';
 import { SettingsIcon, VerifiedUserIcon } from './FlutterIcons';
 import { validateEgyptianPhone, normalizeEgyptianPhone } from '../utils/phoneValidator';
 import { 
@@ -10,10 +11,12 @@ import {
 import { 
   ShieldCheck, CheckCircle2, XCircle, Trash2, Eye, Lock, 
   UserX, Ban, AlertTriangle, Calendar, Plus, Search,
-  Edit3, MessageSquare
+  Edit3, MessageSquare, Users, UserCheck
 } from 'lucide-react';
+import { UserManagement } from './UserManagement';
 
 interface AdminPanelProps {
+  currentUser?: AppUser | null;
   properties: Property[];
   onUpdatePropertyStatus: (propertyId: string, newStatus: PropertyStatus, note?: string) => void;
   onOpenDetails: (property: Property) => void;
@@ -46,6 +49,7 @@ interface AdminPanelProps {
  *        - مراجعة الإعلانات (الموافقات والرفض)، حظر المستخدمين (البلوكات)، وإدارة المعاينات
  */
 export const AdminPanel: React.FC<AdminPanelProps> = ({
+  currentUser,
   properties,
   onUpdatePropertyStatus,
   onOpenDetails,
@@ -68,8 +72,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onRemoveBlockedUser,
   onUpdateInspectionStatus,
 }) => {
-  // Main Top Tab (0: Filters & UI, 1: Moderations, Blocks, Inspections)
-  const [adminTab, setAdminTab] = useState<0 | 1>(0);
+  // Main Top Tab (0: Filters & UI, 1: Moderations, Blocks, Inspections, 2: Admins & Activity Logs, 3: User Management)
+  const [adminTab, setAdminTab] = useState<0 | 1 | 2 | 3>(0);
 
   // Sub-tabs inside Tab 0
   const [filterSubTab, setFilterSubTab] = useState<'dropdowns' | 'analytics'>('dropdowns');
@@ -235,37 +239,63 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         )}
       </div>
 
-      {/* Two Top Tabs matching Flutter DefaultTabController length: 2 */}
+      {/* Four Top Tabs: 0: Settings & Filters, 1: Moderations & Blocks, 2: Admins & Activity Logs, 3: User Management */}
       <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-xs">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {/* Tab 0: التحكم بالواجهة والفلاتر */}
           <button
             onClick={() => setAdminTab(0)}
-            className={`py-3 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all border-b-3 ${
+            className={`py-3 px-2 sm:px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all border-b-3 cursor-pointer ${
               adminTab === 0
                 ? 'bg-[#002B49] text-[#FFB300] border-[#FFB300] shadow-sm font-black'
                 : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent'
             }`}
           >
-            <SettingsIcon className={`w-5 h-5 ${adminTab === 0 ? 'text-[#FFB300]' : 'text-slate-500'}`} />
-            <span>التحكم بالواجهة والفلاتر</span>
+            <SettingsIcon className={`w-4.5 h-4.5 shrink-0 ${adminTab === 0 ? 'text-[#FFB300]' : 'text-slate-500'}`} />
+            <span className="truncate">الواجهة والفلاتر</span>
           </button>
 
           {/* Tab 1: الموافقات والبلوكات المعاينات */}
           <button
             onClick={() => setAdminTab(1)}
-            className={`py-3 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all border-b-3 ${
+            className={`py-3 px-2 sm:px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all border-b-3 cursor-pointer ${
               adminTab === 1
                 ? 'bg-[#002B49] text-[#FFB300] border-[#FFB300] shadow-sm font-black'
                 : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent'
             }`}
           >
-            <VerifiedUserIcon className={`w-5 h-5 ${adminTab === 1 ? 'text-[#FFB300]' : 'text-slate-500'}`} />
-            <span>الموافقات والبلوكات المعاينات</span>
+            <VerifiedUserIcon className={`w-4.5 h-4.5 shrink-0 ${adminTab === 1 ? 'text-[#FFB300]' : 'text-slate-500'}`} />
+            <span className="truncate">الموافقات والمعاينات</span>
             {(properties.filter((p) => p.status === 'pending').length > 0 ||
               inspections.filter((i) => i.status === 'pending').length > 0) && (
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
             )}
+          </button>
+
+          {/* Tab 2: إدارة المدراء والأنشطة (Admin Management & Logs) */}
+          <button
+            onClick={() => setAdminTab(2)}
+            className={`py-3 px-2 sm:px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all border-b-3 cursor-pointer ${
+              adminTab === 2
+                ? 'bg-[#002B49] text-[#FFB300] border-[#FFB300] shadow-sm font-black'
+                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent'
+            }`}
+          >
+            <Users className={`w-4.5 h-4.5 shrink-0 ${adminTab === 2 ? 'text-[#FFB300]' : 'text-slate-500'}`} />
+            <span className="truncate">المدراء والأنشطة</span>
+          </button>
+
+          {/* Tab 3: إدارة المستخدمين (User Management) */}
+          <button
+            onClick={() => setAdminTab(3)}
+            className={`py-3 px-2 sm:px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all border-b-3 cursor-pointer ${
+              adminTab === 3
+                ? 'bg-[#002B49] text-[#FFB300] border-[#FFB300] shadow-sm font-black'
+                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent'
+            }`}
+          >
+            <UserCheck className={`w-4.5 h-4.5 shrink-0 ${adminTab === 3 ? 'text-[#FFB300]' : 'text-slate-500'}`} />
+            <span className="truncate">إدارة المستخدمين</span>
           </button>
         </div>
       </div>
@@ -1247,6 +1277,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* القسم الثالث: إدارة المدراء والأنشطة (TAB 2) */}
+      {/* ========================================================================= */}
+      {adminTab === 2 && (
+        <div className="animate-in fade-in duration-150">
+          <AdminRoleManagement currentUser={currentUser} />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* القسم الرابع: إدارة المستخدمين والحسابات (TAB 3) */}
+      {/* ========================================================================= */}
+      {adminTab === 3 && (
+        <div className="animate-in fade-in duration-150">
+          <UserManagement currentUser={currentUser} />
         </div>
       )}
     </div>

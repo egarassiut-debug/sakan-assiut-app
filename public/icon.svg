@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#002B49" />
+      <stop offset="50%" stop-color="#001D33" />
+      <stop offset="100%" stop-color="#001424" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE082" />
+      <stop offset="50%" stop-color="#FFB300" />
+      <stop offset="100%" stop-color="#FFA000" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Background Base with Rounded Corners -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Subtle Inner Border -->
+  <rect x="8" y="8" width="496" height="496" rx="104" fill="none" stroke="#FFB300" stroke-width="4" stroke-opacity="0.35" />
+
+  <!-- Decorative Accent Glow Circle -->
+  <circle cx="256" cy="230" r="140" fill="#FFB300" fill-opacity="0.08" />
+
+  <!-- Central Real Estate Building Icon -->
+  <g filter="url(#shadow)" transform="translate(106, 85)">
+    <!-- Main Tower -->
+    <path d="M70 240 V100 H170 V240 Z" fill="url(#goldGrad)" />
+    <!-- Secondary Tower Left -->
+    <path d="M10 240 V150 H70 V240 Z" fill="#FFE082" fill-opacity="0.9" />
+    <!-- Secondary Tower Right -->
+    <path d="M170 240 V130 H230 V240 Z" fill="#FFA000" />
+    
+    <!-- Roof Triangular Pediment -->
+    <polygon points="120,40 60,100 180,100" fill="url(#goldGrad)" />
+    
+    <!-- Windows Main Tower -->
+    <rect x="90" y="120" width="22" height="24" rx="4" fill="#002B49" />
+    <rect x="128" y="120" width="22" height="24" rx="4" fill="#002B49" />
+    
+    <rect x="90" y="160" width="22" height="24" rx="4" fill="#002B49" />
+    <rect x="128" y="160" width="22" height="24" rx="4" fill="#002B49" />
+    
+    <!-- Left Windows -->
+    <rect x="25" y="170" width="20" height="22" rx="3" fill="#002B49" />
+    <rect x="25" y="205" width="20" height="22" rx="3" fill="#002B49" />
+
+    <!-- Right Windows -->
+    <rect x="185" y="150" width="20" height="22" rx="3" fill="#002B49" />
+    <rect x="185" y="185" width="20" height="22" rx="3" fill="#002B49" />
+
+    <!-- Main Entrance Door Arch -->
+    <path d="M102 240 V200 C102 190, 138 190, 138 200 V240 Z" fill="#002B49" />
+  </g>
+
+  <!-- Assiut Badge at Bottom -->
+  <g transform="translate(156, 365)">
+    <rect width="200" height="52" rx="26" fill="#FFB300" filter="url(#shadow)" />
+    <text x="100" y="34" font-family="'Cairo', sans-serif" font-size="24" font-weight="900" fill="#002B49" text-anchor="middle">
+      أسيوط
+    </text>
+  </g>
+</svg>

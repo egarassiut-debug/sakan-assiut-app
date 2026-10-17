@@ -7,6 +7,9 @@ export interface AppUser {
   pin: string; // 4-digit PIN (e.g. '1234')
   role: 'user' | 'admin';
   createdAt: string;
+  isBlocked?: boolean;
+  blockedReason?: string;
+  blockedAt?: string;
 }
 
 export type PropertyStatus = 'pending' | 'pending_approval' | 'approved' | 'rejected' | 'rented' | 'sold' | 'needs_completion' | 'archived';

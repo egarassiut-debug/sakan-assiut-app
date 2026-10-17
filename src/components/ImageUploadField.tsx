@@ -14,7 +14,6 @@ import {
   processMultipleImageFiles,
   getDataUrlSizeBytes,
   formatBytes,
-  MAX_COMPRESSED_IMAGE_SIZE_BYTES,
 } from '../utils/imageCompressor';
 
 interface ImageUploadFieldProps {

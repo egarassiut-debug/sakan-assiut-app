@@ -12,8 +12,7 @@ import {
   Plus, 
   Search, 
   Clock, 
-  Sparkles,
-  ArrowRight
+  Sparkles
 } from 'lucide-react';
 
 interface SavedSearchModalProps {
@@ -45,7 +44,6 @@ export const SavedSearchModal: React.FC<SavedSearchModalProps> = ({
 }) => {
   const [customTitle, setCustomTitle] = useState('');
   const [showSaveForm, setShowSaveForm] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -82,12 +80,6 @@ export const SavedSearchModal: React.FC<SavedSearchModalProps> = ({
     setCustomTitle('');
     setShowSaveForm(false);
   };
-
-  const hasActiveFilters = 
-    currentCriteria.district !== 'all' || 
-    currentCriteria.propertyType !== 'all' || 
-    Boolean(currentCriteria.minPrice) || 
-    Boolean(currentCriteria.maxPrice);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">

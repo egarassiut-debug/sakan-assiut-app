@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { InAppPushNotification } from '../types/property';
 import { 
   Bell, CheckCircle2, XCircle, Sparkles, AlertTriangle, 
-  Trash2, CheckCheck, X, ChevronLeft, Send, Volume2, Eye
+  Trash2, CheckCheck, X, ChevronLeft, Send, Volume2, Eye, Archive
 } from 'lucide-react';
 import { playPushChime } from '../utils/pushSound';
 
@@ -49,6 +49,10 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         return <AlertTriangle className="w-4 h-4 text-amber-500" />;
       case 'welcome':
         return <Sparkles className="w-4 h-4 text-amber-500" />;
+      case 'archive_warning':
+        return <Archive className="w-4 h-4 text-amber-600" />;
+      case 'archive_extended':
+        return <CheckCircle2 className="w-4 h-4 text-teal-600" />;
       default:
         return <Bell className="w-4 h-4 text-cyan-500" />;
     }
@@ -67,6 +71,10 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         return <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">استكمال بيانات</span>;
       case 'welcome':
         return <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">ترحيب</span>;
+      case 'archive_warning':
+        return <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2 py-0.5 rounded-full">تنبيه أرشفة ⚠️</span>;
+      case 'archive_extended':
+        return <span className="text-[10px] bg-teal-100 text-teal-800 border border-teal-300 font-bold px-2 py-0.5 rounded-full">تمديد معتمد ✅</span>;
       default:
         return <span className="text-[10px] bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-full">إشعار</span>;
     }

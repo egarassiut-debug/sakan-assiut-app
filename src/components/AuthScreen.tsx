@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { AppUser } from '../types/property';
 import { 
-  Building2, User, ShieldCheck, Lock, Phone, 
-  CheckCircle2, AlertCircle, Eye, EyeOff, UserPlus, LogIn, KeyRound 
+  Building2, User, Lock, Phone, 
+  CheckCircle2, AlertCircle, Eye, EyeOff, UserPlus, LogIn, MessageCircle 
 } from 'lucide-react';
 import { verifyAdminPasskey, saveSecureSession } from '../utils/security';
 import { validateEgyptianPhone, normalizeEgyptianPhone, isValidEgyptianPhone } from '../utils/phoneValidator';
+import { isAuthorizedAdminPhone, findAdminByPhone } from '../utils/adminManager';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: AppUser) => void;
 }
 
-// Default demonstration users
+// Default Demonstration Users with preconfigured accounts
 const DEFAULT_USERS: AppUser[] = [
   {
     id: 'user-regular-default',
@@ -21,26 +23,59 @@ const DEFAULT_USERS: AppUser[] = [
     role: 'user',
     createdAt: '2026-10-10',
   },
+  {
+    id: 'admin-sec-1',
+    name: 'مسؤول المنظومة',
+    phone: '01002345678',
+    pin: '1234',
+    role: 'admin',
+    createdAt: '2026-10-10',
+  },
+  {
+    id: 'admin-sec-2',
+    name: 'المشرف العام',
+    phone: '01000000000',
+    pin: '1234',
+    role: 'admin',
+    createdAt: '2026-10-10',
+  },
+  {
+    id: 'admin-sec-3',
+    name: 'مسؤول العمليات',
+    phone: '01011112222',
+    pin: '1234',
+    role: 'admin',
+    createdAt: '2026-10-10',
+  },
+  {
+    id: 'admin-sec-4',
+    name: 'مسؤول المعاينات',
+    phone: '01122334455',
+    pin: '1234',
+    role: 'admin',
+    createdAt: '2026-10-10',
+  },
+  {
+    id: 'admin-sec-5',
+    name: 'مسؤول التدقيق',
+    phone: '01223344556',
+    pin: '1234',
+    role: 'admin',
+    createdAt: '2026-10-10',
+  },
 ];
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
-  // Navigation mode: 'login' | 'register' | 'admin'
-  const [authMode, setAuthMode] = useState<'login' | 'register' | 'admin'>('login');
+  // Navigation mode: 'login' | 'register' (Clean 2-mode UI)
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   
-  // Standard user state
+  // Input fields
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [pin, setPin] = useState('');
-  const [role, setRole] = useState<'user' | 'admin'>('user');
-  const [adminSecurityCode, setAdminSecurityCode] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPin, setShowPin] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Dedicated admin portal state
-  const [adminIdentifier, setAdminIdentifier] = useState('admin');
-  const [adminPasskey, setAdminPasskey] = useState('');
-  const [showAdminPasskey, setShowAdminPasskey] = useState(false);
 
   // Initialize and load saved credentials or user db
   useEffect(() => {
@@ -49,6 +84,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       const existingDb = localStorage.getItem('ardaw_users_db');
       if (!existingDb) {
         localStorage.setItem('ardaw_users_db', JSON.stringify(DEFAULT_USERS));
+      } else {
+        // Ensure admin accounts are populated in db if missing
+        try {
+          const parsed: AppUser[] = JSON.parse(existingDb);
+          let modified = false;
+          DEFAULT_USERS.forEach((defUser) => {
+            if (!parsed.some((u) => u.phone === defUser.phone)) {
+              parsed.push(defUser);
+              modified = true;
+            }
+          });
+          if (modified) {
+            localStorage.setItem('ardaw_users_db', JSON.stringify(parsed));
+          }
+        } catch {
+          // ignore parsing error
+        }
       }
 
       // 2. Load saved credentials if available
@@ -82,10 +134,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  // Standard Login / Registration Handler
+  // Form Submission Handler: Single unified login and registration
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    const normalizedPhone = normalizeEgyptianPhone(phone);
+
+    // 1. Strict Egyptian Mobile Validation (11 digits starting with 010, 011, 012, 015)
+    const phoneError = validateEgyptianPhone(phone, 'رقم الموبايل');
+    if (phoneError) {
+      setErrorMessage(phoneError);
+      return;
+    }
+
+    // 2. PIN Validation (4 digits)
+    if (pin.length !== 4) {
+      setErrorMessage('كلمة المرور يجب أن تتكون من 4 أرقام بالضبط (مثال: 1234).');
+      return;
+    }
 
     let usersDb: AppUser[] = DEFAULT_USERS;
     try {
@@ -95,46 +162,32 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       usersDb = DEFAULT_USERS;
     }
 
-    if (authMode === 'register') {
-      // 1. Strict Egyptian Mobile Validation (11 digits, 010/011/012/015)
-      const phoneError = validateEgyptianPhone(phone, 'رقم الموبايل');
-      if (phoneError) {
-        setErrorMessage(phoneError);
-        return;
-      }
+    // Check if the phone belongs to the authorized admins list
+    const isAuthorizedAdmin = isAuthorizedAdminPhone(phone) || isAuthorizedAdminPhone(normalizedPhone);
 
-      if (pin.length !== 4) {
-        setErrorMessage('كلمة المرور يجب أن تتكون من 4 أرقام بالضبط (مثال: 1234).');
-        return;
-      }
+    if (authMode === 'register') {
       if (!name.trim()) {
         setErrorMessage('برجاء إدخال الاسم بالكامل.');
         return;
       }
 
-      // If registering as admin, securely verify passkey against cryptographic hash
-      if (role === 'admin') {
-        const isAllowed = await verifyAdminPasskey(adminSecurityCode);
-        if (!isAllowed) {
-          setErrorMessage('رمز التحقق الإداري السري غير صحيح أو غير مصرح به.');
-          return;
-        }
-      }
-
-      // Check if phone already exists
-      const existingUser = usersDb.find((u) => u.phone === phone);
+      // Check if phone already registered
+      const existingUser = usersDb.find((u) => u.phone === phone || u.phone === normalizedPhone);
       if (existingUser) {
         setErrorMessage(`رقم الهاتف (${phone}) مسجل بالفعل لدينا. يمكنك تسجيل الدخول مباشرة.`);
         setAuthMode('login');
         return;
       }
 
+      // Role is determined strictly by the phone number
+      const assignedRole: 'user' | 'admin' = isAuthorizedAdmin ? 'admin' : 'user';
+
       const newUser: AppUser = {
-        id: `user-${Date.now()}`,
+        id: isAuthorizedAdmin ? `admin-${Date.now()}` : `user-${Date.now()}`,
         name: name.trim(),
         phone,
         pin,
-        role,
+        role: assignedRole,
         createdAt: new Date().toISOString().split('T')[0],
       };
 
@@ -148,41 +201,54 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       await saveSecureSession(newUser);
       onLoginSuccess(newUser);
     } else {
-      // Login Mode: validate phone format if not using admin username
-      if (phone !== 'admin' && phone !== '01000000000') {
-        const phoneError = validateEgyptianPhone(phone, 'رقم الموبايل');
-        if (phoneError) {
-          setErrorMessage(phoneError);
-          return;
-        }
-      }
+      // Login Mode
+      let foundUser = usersDb.find(
+        (u) => (u.phone === phone || u.phone === normalizedPhone) && u.pin === pin
+      );
 
-      if (pin.length !== 4) {
-        setErrorMessage('كلمة المرور يجب أن تتكون من 4 أرقام بالضبط (مثال: 1234).');
-        return;
-      }
-
-      // Credential check
-      let foundUser = usersDb.find((u) => u.phone === phone && u.pin === pin);
-
-      // Support entering admin passkey directly in standard login
-      if (!foundUser) {
-        const isAdminPass = await verifyAdminPasskey(pin);
-        if (isAdminPass && (phone === 'admin' || phone === '01000000000' || usersDb.some((u) => u.phone === phone && u.role === 'admin'))) {
-          foundUser = usersDb.find((u) => u.role === 'admin') || {
-            id: 'admin-master',
-            name: 'مدير المنظومة',
-            phone: phone === 'admin' ? '01000000000' : phone,
-            pin: '••••',
+      // Support fallback for approved admin numbers with their registered PIN, default PIN '1234', or admin passkey
+      if (!foundUser && isAuthorizedAdmin) {
+        const matchingAdmin = findAdminByPhone(phone) || findAdminByPhone(normalizedPhone);
+        const isPasskeyMatch = await verifyAdminPasskey(pin);
+        if ((matchingAdmin && matchingAdmin.pin === pin) || pin === '1234' || isPasskeyMatch) {
+          foundUser = {
+            id: matchingAdmin ? matchingAdmin.id : `admin-${phone}`,
+            name: matchingAdmin ? matchingAdmin.name : 'مشرف المنظومة',
+            phone,
+            pin,
             role: 'admin',
-            createdAt: new Date().toISOString().split('T')[0],
+            createdAt: matchingAdmin ? matchingAdmin.createdAt : new Date().toISOString().split('T')[0],
           };
+          const updatedDb = [foundUser, ...usersDb.filter((u) => u.phone !== phone)];
+          localStorage.setItem('ardaw_users_db', JSON.stringify(updatedDb));
         }
+      }
+
+      // Support fallback for demo regular user with PIN '1234'
+      if (!foundUser && phone === '01012345678' && pin === '1234') {
+        foundUser = DEFAULT_USERS[0];
       }
 
       if (!foundUser) {
         setErrorMessage('رقم الهاتف أو كلمة المرور غير صحيحة! تأكد من صحة البيانات.');
         return;
+      }
+
+      // Check if user is blocked by administration
+      if (foundUser.isBlocked) {
+        setErrorMessage(
+          `هذا الحساب محظور حالياً من قِبل إدارة المنظومة ${
+            foundUser.blockedReason ? `(السبب: ${foundUser.blockedReason})` : ''
+          }. برجاء التواصل مع الإدارة عبر الواتساب لإعادة تفعيل الحساب.`
+        );
+        return;
+      }
+
+      // Hidden role enforcement: The 5 approved admin phone numbers always get 'admin' role
+      if (isAuthorizedAdmin) {
+        foundUser.role = 'admin';
+      } else {
+        foundUser.role = 'user';
       }
 
       if (rememberMe) {
@@ -194,77 +260,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       await saveSecureSession(foundUser);
       onLoginSuccess(foundUser);
     }
-  };
-
-  // Dedicated Admin Portal Login Handler
-  const handleAdminPortalLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-
-    const passkey = adminPasskey.trim();
-    if (!passkey) {
-      setErrorMessage('برجاء إدخال كلمة مرور أو رمز الإدارة السري.');
-      return;
-    }
-
-    // Cryptographic SHA-256 verification against authorized hashes
-    const isValid = await verifyAdminPasskey(passkey);
-    if (!isValid) {
-      setErrorMessage('رمز المرور الإداري غير صحيح أو غير مصرح به.');
-      return;
-    }
-
-    let usersDb: AppUser[] = [];
-    try {
-      const stored = localStorage.getItem('ardaw_users_db');
-      if (stored) usersDb = JSON.parse(stored);
-    } catch {
-      usersDb = [];
-    }
-
-    const identifier = adminIdentifier.trim() || 'admin';
-    if (identifier !== 'admin' && /\d/.test(identifier)) {
-      const phoneError = validateEgyptianPhone(identifier, 'رقم هاتف الإدارة');
-      if (phoneError) {
-        setErrorMessage(phoneError);
-        return;
-      }
-    }
-
-    const existingAdmin = usersDb.find((u) => u.role === 'admin');
-    const adminUser: AppUser = existingAdmin || {
-      id: 'admin-master',
-      name: identifier === 'admin' ? 'مدير المنظومة' : identifier,
-      phone: identifier === 'admin' ? '01000000000' : identifier,
-      pin: '••••',
-      role: 'admin',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-
-    // Store admin in users list if new
-    if (!existingAdmin) {
-      localStorage.setItem('ardaw_users_db', JSON.stringify([adminUser, ...usersDb]));
-    }
-
-    if (rememberMe) {
-      localStorage.setItem('ardaw_saved_credentials', JSON.stringify({ phone: adminUser.phone, pin: '••••' }));
-    }
-
-    // Generate cryptographic signed session
-    await saveSecureSession(adminUser);
-
-    // Direct routing to Admin Dashboard
-    onLoginSuccess(adminUser);
-  };
-
-  // Quick Demo Login Handler (Regular User only)
-  const handleQuickDemoLogin = async () => {
-    const user = DEFAULT_USERS[0];
-    if (rememberMe) {
-      localStorage.setItem('ardaw_saved_credentials', JSON.stringify({ phone: user.phone, pin: user.pin }));
-    }
-    await saveSecureSession(user);
-    onLoginSuccess(user);
   };
 
   return (
@@ -284,28 +279,29 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             المنظومة العقارية المعتمدة لعروض وطلبات العقارات بأسيوط
           </p>
 
-          <div className="absolute top-4 left-4">
+          <div className="absolute top-4 left-4 flex items-center gap-2">
+            <PWAInstallButton />
             <span className="text-[10px] bg-[#FFB300] text-[#002B49] font-black px-2 py-0.5 rounded-full shadow-xs">
               أسيوط
             </span>
           </div>
         </div>
 
-        {/* Tab Switcher: تسجيل الدخول vs حساب جديد vs دخول الإدارة */}
-        <div className="flex border-b border-slate-200 bg-slate-50 p-1.5 gap-1 text-[11px] font-bold">
+        {/* Tab Switcher: Only 2 options (تسجيل الدخول / حساب جديد) without any admin references */}
+        <div className="flex border-b border-slate-200 bg-slate-50 p-1.5 gap-1.5 text-xs font-bold">
           <button
             type="button"
             onClick={() => {
               setAuthMode('login');
               setErrorMessage(null);
             }}
-            className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+            className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               authMode === 'login'
                 ? 'bg-[#002B49] text-[#FFB300] shadow-xs font-black'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <LogIn className="w-3.5 h-3.5" />
+            <LogIn className="w-4 h-4" />
             <span>تسجيل الدخول</span>
           </button>
 
@@ -315,30 +311,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
               setAuthMode('register');
               setErrorMessage(null);
             }}
-            className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+            className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               authMode === 'register'
                 ? 'bg-[#002B49] text-[#FFB300] shadow-xs font-black'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <UserPlus className="w-3.5 h-3.5" />
+            <UserPlus className="w-4 h-4" />
             <span>حساب جديد</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setAuthMode('admin');
-              setErrorMessage(null);
-            }}
-            className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-              authMode === 'admin'
-                ? 'bg-amber-500 text-[#002B49] shadow-xs font-black ring-1 ring-amber-600'
-                : 'text-amber-900 bg-amber-50/70 hover:bg-amber-100 border border-amber-200/80 font-bold'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
-            <span>دخول الإدارة 🛡️</span>
           </button>
         </div>
 
@@ -353,339 +333,172 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             </div>
           )}
 
-          {/* 1. DEDICATED ADMIN PORTAL TAB */}
-          {authMode === 'admin' ? (
-            <form onSubmit={handleAdminPortalLogin} className="space-y-4 animate-in fade-in duration-150">
-              <div className="p-3.5 bg-gradient-to-r from-amber-50 via-amber-50/60 to-white border border-amber-300 rounded-2xl flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500 text-[#002B49] flex items-center justify-center shrink-0 shadow-xs">
-                  <ShieldCheck className="w-5 h-5 font-bold" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-black text-amber-950">بوابة تسجيل دخول مدير المنظومة</h3>
-                  <p className="text-[10px] text-amber-800/90 font-medium mt-0.5">
-                    مخصصة للإدارة المعتمدة للتحكم الكامل في العروض والطلبات والاعتمادات
-                  </p>
-                </div>
-              </div>
-
-              {/* Admin Username / Phone */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            
+            {/* Full Name (Only shown when creating a new account) */}
+            {authMode === 'register' && (
               <div>
                 <label className="block text-xs font-black text-slate-800 mb-1">
-                  اسم المستخدم أو هاتف الإدارة <span className="text-rose-500">*</span>
+                  الاسم بالكامل <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
-                    value={adminIdentifier}
-                    onChange={(e) => setAdminIdentifier(e.target.value)}
-                    placeholder="admin أو 01000000000"
-                    className="w-full pr-10 pl-3 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-amber-500 font-bold"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="مثال: أحمد عبد الرحيم"
+                    className="w-full pr-10 pl-3 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-medium"
                   />
                 </div>
               </div>
+            )}
 
-              {/* Admin Passkey */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                    <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                    <span>رمز المرور الإداري السري</span>
-                    <span className="text-rose-500">*</span>
-                  </label>
-                  <span className="text-[10px] text-amber-900 font-bold bg-amber-100/80 px-2 py-0.5 rounded border border-amber-300">
-                    تشفير SHA-256
+            {/* Phone Number */}
+            <div>
+              <label className="block text-xs font-black text-slate-800 mb-1">
+                رقم الموبايل <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="tel"
+                  dir="ltr"
+                  required
+                  value={phone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  placeholder="01012345678"
+                  className="w-full pr-10 pl-16 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-mono font-bold text-right"
+                />
+                {isValidEgyptianPhone(phone) ? (
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    صحيح
                   </span>
-                </div>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type={showAdminPasskey ? 'text' : 'password'}
-                    required
-                    value={adminPasskey}
-                    onChange={(e) => setAdminPasskey(e.target.value)}
-                    placeholder="أدخل رمز مرور الإدارة (1234 أو admin1234)"
-                    className="w-full pr-10 pl-10 py-2.5 text-center text-xs tracking-wider bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-amber-500 font-mono font-bold"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowAdminPasskey(!showAdminPasskey)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    {showAdminPasskey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <div className="mt-1.5 p-2 bg-slate-50 rounded-xl border border-slate-200 text-[10px] text-slate-600 space-y-0.5">
-                  <div>
-                    🔑 <span className="font-bold">الرمز الافتراضي المعتمد للإدارة:</span>{' '}
-                    <span className="font-mono font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded">1234</span>{' '}
-                    أو{' '}
-                    <span className="font-mono font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded">admin1234</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Remember Admin Session */}
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded text-[#002B49] focus:ring-[#002B49] w-4 h-4 cursor-pointer"
-                  />
-                  <span>تذكر جلسة الإدارة الآمنة على هذا الجهاز</span>
-                </label>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#002B49] via-[#00223B] to-[#001D33] hover:from-[#001D33] hover:to-[#001424] text-[#FFB300] font-black text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-amber-400/40"
-              >
-                <ShieldCheck className="w-4 h-4 text-[#FFB300]" />
-                <span>دخول لوحة التحكم الإدارية (Admin Dashboard)</span>
-              </button>
-            </form>
-          ) : (
-            /* 2. STANDARD USER / REGISTRATION FORM */
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              
-              {/* Full Name (Registration only) */}
-              {authMode === 'register' && (
-                <div>
-                  <label className="block text-xs font-black text-slate-800 mb-1">
-                    الاسم بالكامل <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="مثال: أحمد عبد الرحيم"
-                      className="w-full pr-10 pl-3 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-medium"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Phone Number (Username) */}
-              <div>
-                <label className="block text-xs font-black text-slate-800 mb-1">
-                  رقم الموبايل (اسم المستخدم) <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="tel"
-                    dir="ltr"
-                    required
-                    value={phone}
-                    onChange={(e) => handlePhoneChange(e.target.value)}
-                    placeholder="01012345678"
-                    className="w-full pr-10 pl-16 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-mono font-bold text-right"
-                  />
-                  {isValidEgyptianPhone(phone) ? (
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                      صحيح
-                    </span>
-                  ) : phone.length > 0 ? (
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono font-bold">
-                      {phone.length}/11
-                    </span>
-                  ) : null}
-                </div>
-                <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
-                  <span>11 رقماً يبدأ بـ (010، 011، 012، 015)</span>
-                  {phone.length >= 3 && (
-                    <span className={`font-bold ${['010','011','012','015'].includes(phone.substring(0,3)) ? 'text-emerald-700' : 'text-rose-600'}`}>
-                      {phone.startsWith('010') ? 'فودافون' : phone.startsWith('011') ? 'اتصالات' : phone.startsWith('012') ? 'أورنج' : phone.startsWith('015') ? 'وي' : 'بادئة غير صحيحة'}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* 4-Digit Password / PIN */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-black text-slate-800">
-                    كلمة المرور (4 أرقام) <span className="text-rose-500">*</span>
-                  </label>
-                  <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                    {pin.length}/4 أرقام
+                ) : phone.length > 0 ? (
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono font-bold">
+                    {phone.length}/11
                   </span>
-                </div>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type={showPin ? 'text' : 'password'}
-                    inputMode="numeric"
-                    dir="ltr"
-                    maxLength={4}
-                    required
-                    value={pin}
-                    onChange={(e) => handlePinChange(e.target.value)}
-                    placeholder="••••"
-                    className="w-full pr-10 pl-10 py-2.5 text-center text-sm tracking-widest bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-mono font-bold"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPin(!showPin)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
+                ) : null}
               </div>
-
-              {/* Account Type Selection (Registration only) */}
-              {authMode === 'register' && (
-                <div className="space-y-1.5 pt-1">
-                  <label className="block text-xs font-black text-slate-800">
-                    نوع الحساب <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setRole('user')}
-                      className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between ${
-                        role === 'user'
-                          ? 'border-[#002B49] bg-blue-50/70 text-[#002B49] shadow-xs'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <User className={`w-4 h-4 ${role === 'user' ? 'text-[#002B49]' : 'text-slate-400'}`} />
-                        {role === 'user' && <CheckCircle2 className="w-3.5 h-3.5 text-[#002B49]" />}
-                      </div>
-                      <div className="mt-2">
-                        <div className="font-black text-xs">مستخدم عادي</div>
-                        <div className="text-[10px] text-slate-500">باحث / مستأجر / مالك</div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRole('admin')}
-                      className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between ${
-                        role === 'admin'
-                          ? 'border-amber-500 bg-amber-50/80 text-amber-950 shadow-xs'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <ShieldCheck className={`w-4 h-4 ${role === 'admin' ? 'text-amber-600' : 'text-slate-400'}`} />
-                        {role === 'admin' && <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />}
-                      </div>
-                      <div className="mt-2">
-                        <div className="font-black text-xs">مدير النظام (أدمن)</div>
-                        <div className="text-[10px] text-slate-500">صلاحيات الإدارة الكاملة</div>
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* Admin Verification Code field if admin is selected */}
-                  {role === 'admin' && (
-                    <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl space-y-1 animate-in fade-in">
-                      <label className="block text-[11px] font-black text-amber-950">
-                        كود التحقق الإداري السري <span className="text-rose-600">*</span>
-                      </label>
-                      <input
-                        type="password"
-                        value={adminSecurityCode}
-                        onChange={(e) => setAdminSecurityCode(e.target.value)}
-                        placeholder="أدخل رمز التحقق الإداري السري (1234)"
-                        className="w-full p-2 text-xs bg-white border border-amber-300 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-amber-500 font-mono text-center font-bold"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Remember Me Option */}
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded text-[#002B49] focus:ring-[#002B49] w-4 h-4 cursor-pointer"
-                  />
-                  <span>تذكر بيانات الدخول على هذا الجهاز</span>
-                </label>
-
-                {authMode === 'login' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode('register');
-                      setErrorMessage(null);
-                    }}
-                    className="text-xs text-[#002B49] font-black hover:underline"
-                  >
-                    حساب جديد؟
-                  </button>
+              <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                <span>11 رقماً يبدأ بـ (010، 011، 012، 015)</span>
+                {phone.length >= 3 && (
+                  <span className={`font-bold ${['010','011','012','015'].includes(phone.substring(0,3)) ? 'text-emerald-700' : 'text-rose-600'}`}>
+                    {phone.startsWith('010') ? 'فودافون' : phone.startsWith('011') ? 'اتصالات' : phone.startsWith('012') ? 'أورنج' : phone.startsWith('015') ? 'وي' : 'بادئة غير صحيحة'}
+                  </span>
                 )}
               </div>
-
-              {/* Primary Action Button */}
-              <button
-                type="submit"
-                className="w-full py-3 px-4 rounded-xl bg-[#002B49] hover:bg-[#001D33] text-[#FFB300] font-black text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer mt-2"
-              >
-                {authMode === 'register' ? (
-                  <>
-                    <UserPlus className="w-4 h-4" />
-                    <span>إنشاء الحساب وبدء الاستخدام</span>
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="w-4 h-4" />
-                    <span>تسجيل الدخول للمنظومة</span>
-                  </>
-                )}
-              </button>
-
-              {/* Quick switch to Admin Login */}
-              {authMode === 'login' && (
-                <div className="text-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode('admin');
-                      setErrorMessage(null);
-                    }}
-                    className="text-xs text-amber-800 hover:text-amber-950 font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                    <span>هل أنت مدير المنظومة؟ اضغط هنا للدخول الإداري 🛡️</span>
-                  </button>
-                </div>
-              )}
-            </form>
-          )}
-
-          {/* Quick Demo Preview Button (Regular User only) */}
-          <div className="pt-3 border-t border-slate-200 space-y-2">
-            <span className="text-[11px] font-bold text-slate-400 block text-center">
-              دخول سريع وتجربة فورية (للمعاينة):
-            </span>
-            <div className="w-full">
-              <button
-                type="button"
-                onClick={handleQuickDemoLogin}
-                className="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-slate-200 cursor-pointer"
-              >
-                <User className="w-4 h-4 text-blue-600" />
-                <span>دخول سريع لحساب مستخدم عادي (استعراض العروض والطلبات)</span>
-              </button>
             </div>
-          </div>
 
+            {/* 4-Digit Password / PIN */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-black text-slate-800">
+                  كلمة المرور (4 أرقام) <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                  {pin.length}/4 أرقام
+                </span>
+              </div>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type={showPin ? 'text' : 'password'}
+                  inputMode="numeric"
+                  dir="ltr"
+                  maxLength={4}
+                  required
+                  value={pin}
+                  onChange={(e) => handlePinChange(e.target.value)}
+                  placeholder="••••"
+                  className="w-full pr-10 pl-10 py-2.5 text-center text-sm tracking-widest bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-mono font-bold"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {/* رابط استعادة كلمة المرور عبر الواتساب */}
+              {authMode === 'login' && (
+                <div className="flex justify-end mt-1.5">
+                  <a
+                    href={`https://wa.me/201002345678?text=${encodeURIComponent(
+                      `السلام عليكم ورحمة الله، أود استعادة أو إعادة تعيين كلمة المرور (رمز PIN) لحسابي على منصة عرض وطلب أسيوط${
+                        phone ? ` (رقم هاتفي المسجل: ${phone})` : ''
+                      }.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 hover:underline transition-colors cursor-pointer"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>نسيت كلمة المرور؟ تواصل مع الإدارة عبر الواتساب</span>
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Remember Me Option */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded text-[#002B49] focus:ring-[#002B49] w-4 h-4 cursor-pointer"
+                />
+                <span>تذكر بيانات الدخول</span>
+              </label>
+
+              {authMode === 'login' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('register');
+                    setErrorMessage(null);
+                  }}
+                  className="text-xs text-[#002B49] font-black hover:underline cursor-pointer"
+                >
+                  حساب جديد؟
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setErrorMessage(null);
+                  }}
+                  className="text-xs text-[#002B49] font-black hover:underline cursor-pointer"
+                >
+                  لديك حساب؟ تسجيل الدخول
+                </button>
+              )}
+            </div>
+
+            {/* Single Large Action Button */}
+            <button
+              type="submit"
+              className="w-full py-3.5 px-4 rounded-xl bg-[#002B49] hover:bg-[#001D33] text-[#FFB300] font-black text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer mt-3"
+            >
+              {authMode === 'register' ? (
+                <>
+                  <UserPlus className="w-4.5 h-4.5" />
+                  <span>إنشاء حساب جديد</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-4.5 h-4.5" />
+                  <span>تسجيل الدخول</span>
+                </>
+              )}
+            </button>
+          </form>
         </div>
 
       </div>

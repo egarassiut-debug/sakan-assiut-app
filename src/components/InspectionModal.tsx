@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Property, ScheduledInspection } from '../types/property';
-import { X, Calendar, CheckCircle2, MessageSquare, AlertCircle, Phone } from 'lucide-react';
+import { X, Calendar, CheckCircle2, MessageSquare, AlertCircle } from 'lucide-react';
 import { validateEgyptianPhone, normalizeEgyptianPhone, isValidEgyptianPhone } from '../utils/phoneValidator';
 
 interface InspectionModalProps {

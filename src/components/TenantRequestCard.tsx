@@ -2,7 +2,7 @@ import React from 'react';
 import { TenantRequest } from '../types/property';
 import { 
   ShieldCheck, MessageSquare, MapPin, Building, Calendar, 
-  Maximize2, Bed, Bath, ArrowUpRight, Edit3, AlertTriangle, Sparkles 
+  Maximize2, Bed, Bath, ArrowUpRight, Edit3, AlertTriangle 
 } from 'lucide-react';
 
 interface TenantRequestCardProps {

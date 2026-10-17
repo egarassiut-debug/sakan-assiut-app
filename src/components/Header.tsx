@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppUser } from '../types/property';
 import { LogOut, User, ShieldCheck, Bell, Building2, Heart } from 'lucide-react';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export interface HeaderProps {
   currentUser?: AppUser | null;
@@ -83,6 +84,9 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Zone 3 (Left): Independent Action Toolbar (Dashboard, Bell, Logout) */}
         {/* ================================================================= */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap">
+          {/* PWA Install Button */}
+          <PWAInstallButton />
+
           {/* Admin Dashboard shortcut for Admins */}
           {isAdmin && onSelectTab && (
             <button

@@ -2,18 +2,57 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230F766E'><path d='M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z'/></svg>" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    
+    <!-- Primary PWA Theme & Color -->
+    <meta name="theme-color" content="#002B49" />
+    <meta name="msapplication-navbutton-color" content="#002B49" />
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Application Identity & SEO -->
     <title>عرض وطلب - أسيوط</title>
     <meta name="description" content="تطبيق عرض وطلب - أسيوط: عروض الإيجار المتاحة، طلبات الإيجار المطلوبة، المعاينات الميدانية ولوحة التحكم الإدارية." />
     <meta property="og:title" content="عرض وطلب - أسيوط" />
     <meta property="og:description" content="تطبيق عرض وطلب - أسيوط: عروض الإيجار المتاحة، طلبات الإيجار المطلوبة، المعاينات الميدانية ولوحة التحكم الإدارية." />
+    <meta property="og:image" content="/icons/icon-512x512.png" />
+    <meta property="og:type" content="website" />
+
+    <!-- Brand Icons -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="alternate icon" type="image/png" href="/icons/icon-192x192.png" />
+
+    <!-- iOS Safari PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="عرض وطلب" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Google Fonts Preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-teal-600 selection:text-white">
+  <body class="bg-[#F5F7FA] text-slate-800 font-sans antialiased selection:bg-[#FFB300] selection:text-[#002B49]">
     <div id="root"></div>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(function(registration) {
+              console.log('✅ PWA ServiceWorker active with scope:', registration.scope);
+            })
+            .catch(function(error) {
+              console.warn('⚠️ PWA ServiceWorker registration failed:', error);
+            });
+        });
+      }
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

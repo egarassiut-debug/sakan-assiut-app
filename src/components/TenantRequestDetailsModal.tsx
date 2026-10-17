@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { TenantRequest } from '../types/property';
 import { 
-  X, Copy, Check, MapPin, Building, Calendar, 
-  MessageCircle, ShieldCheck, CheckCircle2, User, Phone,
-  Sparkles, Layers, DollarSign
+  X, Copy, Check, MapPin, Building, 
+  MessageCircle, ShieldCheck, CheckCircle2, 
+  Layers, DollarSign
 } from 'lucide-react';
 
 interface TenantRequestDetailsModalProps {

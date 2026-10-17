@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Property, PropertyRating, ScheduledInspection, AppUser } from '../types/property';
 import { 
-  X, Star, ShieldCheck, AlertCircle, CheckCircle2, MessageSquare, 
+  X, Star, ShieldCheck, AlertCircle, CheckCircle2, 
   Calendar, Lock, Sparkles, UserCheck, Clock, ThumbsUp 
 } from 'lucide-react';
 import { normalizeEgyptianPhone } from '../utils/phoneValidator';

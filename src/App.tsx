@@ -63,10 +63,7 @@ import {
   MapPin, 
   Building, 
   DollarSign, 
-  Filter,
-  Check,
-  Heart,
-  Plus
+  Heart
 } from 'lucide-react';
 
 /**
@@ -84,8 +81,8 @@ import {
  *    - Admin account with security verification.
  *    - Bottom Navigation:
  *      * عروض الإيجار (Tab 0)
- *      * إضافة إعلان لصالح الغير (Tab 1)
- *      * طلبات الإيجار (Tab 2)
+ *      * طلبات الإيجار (Tab 1)
+ *      * زر الإضافة (+) الأوسط (تنبثق منه واجهتا طلب عقار وعرض عقار)
  *      * لوحة التحكم (Tab 3)
  */
 export function App() {
@@ -104,7 +101,7 @@ export function App() {
 
   // Navigation Tab Index initialized with secure route check
   // For Regular User: 0 = عروض الإيجار, 1 = طلبات الإيجار, 2 = إعلاناتي
-  // For Admin: 0 = عروض الإيجار, 1 = إضافة إعلان لصالح الغير, 2 = طلبات الإيجار, 3 = لوحة التحكم
+  // For Admin: 0 = عروض الإيجار, 1 = طلبات الإيجار, 3 = لوحة التحكم
   const [navIndex, setNavIndex] = useState<NavTabIndex>(() => {
     if (typeof window !== 'undefined' && window.location.pathname === '/admin') {
       try {
@@ -1563,7 +1560,7 @@ export function App() {
                 recipientName: user.name,
                 type: 'welcome',
                 title: `مرحباً بك يا ${user.name}! 👋`,
-                body: `يسعدنا انضمامك إلى منصة عرض وطلب أسيوط (${user.role === 'admin' ? 'حساب مدير النظام' : 'حساب مستخدم عادي'}). يمكنك الآن نشر ومتابعة إعلاناتك بكل سهولة.`,
+                body: `يسعدنا انضمامك إلى منصة عرض وطلب أسيوط. يمكنك الآن نشر ومتابعة إعلاناتك بكل سهولة.`,
               });
             }, 450);
           }}
@@ -2115,95 +2112,10 @@ export function App() {
                 ))}
               </div>
             )}
-
-            {/* Floating Action Button (FAB) - زر عائم لإضافة عقار جديد بسرعة في صفحة عروض الإيجار */}
-            {overlayScreen === 'none' && (
-              <aside 
-                aria-label="إضافة عقار جديد" 
-                className="fixed bottom-20 left-4 sm:left-6 z-30 animate-in fade-in slide-in-from-bottom-4 duration-300"
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingProperty(null);
-                    setEditingTenantRequest(null);
-                    setOverlayScreen('form_entry_offer');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="group flex items-center gap-2.5 px-4 py-2.5 sm:py-3 rounded-full bg-[#002B49] hover:bg-[#001D33] text-white border-2 border-[#FFB300] shadow-[0_8px_25px_rgba(0,43,73,0.45)] hover:shadow-[0_12px_30px_rgba(255,179,0,0.4)] transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer select-none"
-                  title="إضافة عقار جديد مباشرة - فتح نموذج الإدخال"
-                  aria-label="إضافة عقار جديد مباشرة"
-                >
-                  <div className="w-8 h-8 rounded-full bg-[#FFB300] text-[#002B49] flex items-center justify-center font-black shadow-inner group-hover:rotate-90 transition-transform duration-300">
-                    <Plus className="w-5 h-5 stroke-[3]" />
-                  </div>
-                  <div className="flex flex-col text-right leading-tight">
-                    <span className="text-xs font-black text-white tracking-wide group-hover:text-[#FFB300] transition-colors">
-                      أضف عقارك الآن
-                    </span>
-                    <span className="text-[10px] text-teal-200 font-semibold">
-                      نموذج إدخال مباشر
-                    </span>
-                  </div>
-                </button>
-              </aside>
-            )}
           </div>
-        ) : isAdmin && navIndex === 1 ? (
+        ) : (navIndex === 1 || (isAdmin && navIndex === 2)) ? (
           /* ========================================================================= */
-          /* 2. شاشة إضافة إعلان لصالح الغير (للأدمن فقط) - Index 1 */
-          /* ========================================================================= */
-          <div className="space-y-5 animate-in fade-in duration-150">
-            <div className="bg-[#002B49] text-white rounded-3xl p-6 shadow-md border border-[#001D33] text-center space-y-3">
-              <div className="w-16 h-16 rounded-2xl bg-amber-400 text-[#002B49] flex items-center justify-center mx-auto shadow-md">
-                <Building2 className="w-9 h-9" />
-              </div>
-              <h2 className="text-xl font-black text-white">إضافة إعلان عقاري لصالح الغير</h2>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto">
-                بصفتك مدير النظام، يمكنك نشر عروض عقارية معتمدة مباشرة لصالح الملاك والمكاتب العقارية برقم كود فوري واعتماد رسمي بدون انتظار.
-              </p>
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingProperty(null);
-                    setEditingTenantRequest(null);
-                    setOverlayScreen('form_entry_offer');
-                  }}
-                  className="px-6 py-3 rounded-2xl bg-[#FFB300] hover:bg-[#FFA000] text-black font-black text-sm shadow-lg transition-all active:scale-95 cursor-pointer inline-flex items-center gap-2"
-                >
-                  <PlusCircle className="w-5 h-5 text-black" />
-                  <span>بدء إضافة إعلان عقاري جديد</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Admin Stats for Announcements on Behalf of Others */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-2xs">
-                <div className="text-2xl font-black text-[#002B49]">
-                  {properties.filter((p) => p.source.includes('لصالح الغير') || p.createdByAdmin).length}
-                </div>
-                <div className="text-xs font-bold text-slate-500 mt-1">إعلانات مسجلة لصالح الغير</div>
-              </div>
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-2xs">
-                <div className="text-2xl font-black text-emerald-600">
-                  {properties.filter((p) => p.isApproved && (p.source.includes('لصالح الغير') || p.createdByAdmin)).length}
-                </div>
-                <div className="text-xs font-bold text-slate-500 mt-1">إعلانات نشطة معتمدة</div>
-              </div>
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-2xs">
-                <div className="text-2xl font-black text-amber-600">
-                  {scheduledInspections.length}
-                </div>
-                <div className="text-xs font-bold text-slate-500 mt-1">معاينات ميدانية مجدولة</div>
-              </div>
-            </div>
-          </div>
-        ) : (isAdmin ? navIndex === 2 : navIndex === 1) ? (
-          /* ========================================================================= */
-          /* 3. شاشة طلبات الإيجار (المطلوبة) */
-          /* Regular User: Index 1 | Admin: Index 2 */
+          /* 2. شاشة طلبات الإيجار (المطلوبة) - Index 1 لكلا الواجهتين */
           /* ========================================================================= */
           <div className="space-y-4 animate-in fade-in duration-150">
             {/* Requests Hero Banner in Navy & Amber */}
@@ -2441,6 +2353,7 @@ export function App() {
             <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">جاري تحميل لوحة التحكم...</div>}>
               <div className="animate-in fade-in duration-150">
                 <AdminPanel
+                  currentUser={currentUser}
                   properties={properties}
                   onUpdatePropertyStatus={handleUpdatePropertyStatus}
                   onOpenDetails={(p) => setSelectedProperty(p)}
@@ -2489,12 +2402,6 @@ export function App() {
             setNavIndex(index as NavTabIndex);
           }}
           onOpenAddModal={() => setIsChoiceAddOpen(true)}
-          onOpenAdminAddModal={() => {
-            setEditingProperty(null);
-            setEditingTenantRequest(null);
-            setOverlayScreen('form_entry_offer');
-            setNavIndex(1);
-          }}
           pendingInspectionsCount={scheduledInspections.filter((i) => i.status === 'pending').length}
           tenantRequestsCount={tenantRequests.length}
           myAdsCount={myAdsCount}

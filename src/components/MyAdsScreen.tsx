@@ -3,7 +3,7 @@ import { Property, TenantRequest, ScheduledInspection, AppUser, PropertyStatus }
 import { 
   Building2, Clock, CheckCircle2, AlertTriangle, Edit3, Trash2, 
   Archive, RotateCcw, Eye, Plus, MapPin, Calendar, Copy, Check, CreditCard,
-  Search, X, Bell, XCircle, Heart, ArrowUpRight, MessageSquare, Maximize2, Bed, Bath
+  Search, X, Bell, Heart, ArrowUpRight, MessageSquare, Maximize2, Bed, Bath
 } from 'lucide-react';
 import { RealEstateAgent, Assignment } from './FlutterIcons';
 

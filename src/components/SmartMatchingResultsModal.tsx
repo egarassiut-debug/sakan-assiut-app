@@ -7,14 +7,7 @@ import {
   Building, 
   MapPin, 
   Eye, 
-  ArrowLeft, 
-  Tag, 
-  DollarSign, 
-  Layers, 
-  CheckCheck,
-  AlertCircle,
-  ExternalLink,
-  ChevronLeft
+  ArrowLeft
 } from 'lucide-react';
 
 export interface SubmittedSummaryItem {
