@@ -154,7 +154,7 @@ export interface BlockedUser {
   blockedAt: string;
 }
 
-export type PushNotificationType = 'welcome' | 'approved' | 'rejected' | 'needs_completion' | 'info' | 'smart_match' | 'match';
+export type PushNotificationType = 'welcome' | 'approved' | 'rejected' | 'needs_completion' | 'info' | 'smart_match' | 'match' | 'archive_warning' | 'archive_extended';
 
 export interface InAppPushNotification {
   id: string;

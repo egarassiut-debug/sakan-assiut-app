@@ -404,7 +404,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         paymentMethods: isLand ? ['كاش فوري (للبيع)'] : selectedPaymentMethods,
         ownerName: contactName.trim() || 'مالك العقار',
         ownerPhone: cleanContactPhone,
-        source: isAdmin ? 'إدارة المنصة (لصالح الغير)' : 'مالك مباشر',
+        source: isAdmin ? 'إدارة المنظومة (نشر مباشر)' : 'مالك مباشر',
         images: uploadedImages.length > 0 ? uploadedImages : [isLand ? defaultLandImg : defaultAptImg],
         createdByAdmin: isAdmin,
         fee: isAdmin && fee ? Number(fee) : undefined,
@@ -500,7 +500,9 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   ? `تعديل واستيفاء عرض العقار (${editingProperty.code})`
                   : `تعديل واستيفاء طلب العقار (${editingTenantRequest?.requestCode || editingTenantRequest?.id})`
                 : isAdmin
-                ? 'إضافة إعلان لصالح الغير (منسق الإدارة)'
+                ? isOffer
+                  ? 'إضافة عرض عقار (إدارة المنظومة)'
+                  : 'إضافة طلب عقار (إدارة المنظومة)'
                 : isOffer
                 ? 'إضافة عرض عقار (متاح)'
                 : 'إضافة طلب عقار (مطلوب)'}
@@ -509,7 +511,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               {isEditing
                 ? 'تحديث البيانات وإعادة الإرسال لمراجعة الإدارة'
                 : isAdmin
-                ? 'نشر فوري ومباشر لصالح الغير مع تحديد الرسوم وتاريخ المعاينة'
+                ? 'نشر فوري ومباشر معتمد مع تحديد الرسوم وتاريخ المعاينة'
                 : isOffer
                 ? 'للمالك أو الوسيط العقاري'
                 : 'للباحث عن سكن أو شراء'}
@@ -1149,13 +1151,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               />
             )}
 
-            {/* Admin Financial & Inspection Coordination (لصالح الغير) */}
+            {/* Admin Financial & Inspection Coordination */}
             {isAdmin && (
               <div className="bg-amber-50/80 p-4 rounded-2xl border-2 border-amber-300 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                    بيانات المعاينة الميدانية والرسوم (لصالح الغير - الإدارة)
+                    بيانات المعاينة الميدانية والرسوم (إدارة المنظومة)
                   </span>
                   <span className="text-[10px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded-full shadow-2xs">
                     نشر مباشر ومعتمد فوراً
@@ -1212,7 +1214,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 {isEditing
                   ? 'حفظ واستيفاء البيانات وإعادة الإرسال للمراجعة'
                   : isAdmin
-                  ? 'نشر الإعلان مباشرة لصالح الغير (معتمد فوراً)'
+                  ? 'نشر الإعلان مباشرة (معتمد فوراً من الإدارة)'
                   : isOffer
                   ? 'نشر عرض العقار الآن (متاح)'
                   : 'إرسال وتسجيل طلب العقار (مطلوب)'}
@@ -1245,7 +1247,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             <div className="space-y-2.5">
               <p className="text-[13px] leading-[1.5] text-slate-700">
                 {isAdmin
-                  ? 'تم إضافة ونشر الإعلان لصالح الغير مباشرة بنجاح دون الحاجة لمراجعة إدارية، وهو متاح الآن في عروض المنصة.'
+                  ? 'تم إضافة ونشر الإعلان مباشرة بنجاح دون الحاجة لمراجعة إدارية، وهو متاح الآن في عروض المنصة.'
                   : 'تم تسجيل طلبك بنجاح! الإعلان حالياً قيد المراجعة وفي انتظار سداد رسوم النشر والموافقة الإدارية ليظهر على المنصة.'}
               </p>
               {submittedListingId && (

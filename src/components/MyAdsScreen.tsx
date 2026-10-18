@@ -152,22 +152,22 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
   return (
     <div className="space-y-4 animate-in fade-in duration-150 select-none" dir="rtl">
       
-      {/* 1. Header Banner matching Flutter theme */}
-      <div className="bg-[#002B49] text-white rounded-3xl p-5 sm:p-6 shadow-md border border-[#001D33] space-y-4">
+      {/* 1. Header Banner matching global theme */}
+      <div className="bg-white text-slate-900 rounded-[12px] p-5 sm:p-6 shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#E2E8F0] space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs bg-[#FFB300] text-black px-2.5 py-0.5 rounded-full font-bold">
+              <span className="text-xs bg-[#F0F6FF] text-[#1D4ED8] px-2.5 py-0.5 rounded-[6px] font-bold border border-blue-100">
                 سجل حسابي
               </span>
-              <span className="text-xs text-white/80 font-semibold">
-                رقم الحساب: <span dir="ltr" className="font-mono">{currentUser.phone}</span>
+              <span className="text-xs text-slate-500 font-semibold">
+                رقم الحساب: <span dir="ltr" className="font-mono text-[#0F172A] font-bold">{currentUser.phone}</span>
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black mt-1.5 tracking-tight text-white">
+            <h1 className="text-xl sm:text-2xl font-bold mt-1.5 tracking-tight text-[#0F172A]">
               إعلاناتي وعقاراتي المسجلة
             </h1>
-            <p className="text-xs sm:text-sm text-white/70 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
               متابعة مراحل المراجعة، المعاينة، وتعديل أو أرشفة أو إعادة نشر إعلاناتك بأسيوط
             </p>
           </div>
@@ -177,66 +177,66 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
             <button
               type="button"
               onClick={onOpenAddOffer}
-              className="px-3.5 py-2 rounded-xl bg-[#FFB300] hover:bg-[#FFA000] text-black font-black text-xs transition-transform active:scale-95 shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-[10px] bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-xs transition-transform active:scale-95 shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-black" />
+              <Plus className="w-4 h-4 text-blue-300" />
               <span>إضافة عقار</span>
             </button>
             <button
               type="button"
               onClick={onOpenAddRequest}
-              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer border border-white/10"
+              className="px-3.5 py-2 rounded-[10px] bg-[#F0F6FF] hover:bg-blue-100 text-[#1D4ED8] font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer border border-blue-200"
             >
-              <Assignment className="w-4 h-4 text-white" />
+              <Assignment className="w-4 h-4 text-[#1D4ED8]" />
               <span>طلب سكن</span>
             </button>
           </div>
         </div>
 
         {/* 2. Quick Pipeline Metrics Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
-          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+          <div className="bg-[#F8FAFC] p-3 rounded-[10px] border border-[#E2E8F0]">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-white/70 font-semibold">المعروض النشط</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span className="text-[11px] text-slate-500 font-semibold">المعروض النشط</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="text-xl font-black text-emerald-300 mt-1">{stats.approved}</div>
+            <div className="text-xl font-bold text-emerald-700 mt-1">{stats.approved}</div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/10">
+          <div className="bg-[#F8FAFC] p-3 rounded-[10px] border border-[#E2E8F0]">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-white/70 font-semibold">قيد المراجعة والسداد</span>
-              <Clock className="w-4 h-4 text-amber-400" />
+              <span className="text-[11px] text-slate-500 font-semibold">قيد المراجعة والسداد</span>
+              <Clock className="w-4 h-4 text-amber-600" />
             </div>
-            <div className="text-xl font-black text-amber-300 mt-1">{stats.pending}</div>
+            <div className="text-xl font-bold text-amber-700 mt-1">{stats.pending}</div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/10">
+          <div className="bg-[#F8FAFC] p-3 rounded-[10px] border border-[#E2E8F0]">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-white/70 font-semibold">مطلوب استكمال بيان</span>
-              <AlertTriangle className="w-4 h-4 text-rose-400" />
+              <span className="text-[11px] text-slate-500 font-semibold">مطلوب استكمال بيان</span>
+              <AlertTriangle className="w-4 h-4 text-rose-500" />
             </div>
-            <div className="text-xl font-black text-rose-300 mt-1">{stats.needsCompletion}</div>
+            <div className="text-xl font-bold text-rose-600 mt-1">{stats.needsCompletion}</div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/10">
+          <div className="bg-[#F8FAFC] p-3 rounded-[10px] border border-[#E2E8F0]">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-white/70 font-semibold">المؤرشف والمنتهي</span>
-              <Archive className="w-4 h-4 text-slate-300" />
+              <span className="text-[11px] text-slate-500 font-semibold">المؤرشف والمنتهي</span>
+              <Archive className="w-4 h-4 text-slate-400" />
             </div>
-            <div className="text-xl font-black text-slate-200 mt-1">{stats.archived + stats.rentedSold}</div>
+            <div className="text-xl font-bold text-slate-700 mt-1">{stats.archived + stats.rentedSold}</div>
           </div>
         </div>
       </div>
 
       {/* 3. Category Toggle (عقاراتي vs طلباتي للسكن vs عقاراتي المفضلة) */}
-      <div className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-2xs flex gap-1.5 flex-wrap sm:flex-nowrap">
+      <div className="bg-white p-1.5 rounded-[12px] border border-[#E2E8F0] shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex gap-1.5 flex-wrap sm:flex-nowrap">
         <button
           type="button"
           onClick={() => setActiveCategory('properties')}
-          className={`flex-1 min-w-[90px] py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`flex-1 min-w-[90px] py-2.5 rounded-[10px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeCategory === 'properties'
-              ? 'bg-[#002B49] text-[#FFB300] font-black shadow-xs'
+              ? 'bg-[#0F172A] text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
@@ -247,9 +247,9 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
         <button
           type="button"
           onClick={() => setActiveCategory('requests')}
-          className={`flex-1 min-w-[90px] py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`flex-1 min-w-[90px] py-2.5 rounded-[10px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeCategory === 'requests'
-              ? 'bg-[#002B49] text-[#FFB300] font-black shadow-xs'
+              ? 'bg-[#0F172A] text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
@@ -260,9 +260,9 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
         <button
           type="button"
           onClick={() => setActiveCategory('favorites')}
-          className={`flex-1 min-w-[90px] py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`flex-1 min-w-[90px] py-2.5 rounded-[10px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeCategory === 'favorites'
-              ? 'bg-rose-500 text-white font-black shadow-xs'
+              ? 'bg-[#1D4ED8] text-white font-bold shadow-xs'
               : 'text-slate-600 hover:text-rose-700 hover:bg-rose-50/50'
           }`}
         >
@@ -273,14 +273,14 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
 
       {/* 4. Stage Filters Pills (For Properties) & Search */}
       {activeCategory === 'properties' && (
-        <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2.5">
+        <div className="bg-white p-3 rounded-[12px] border border-[#E2E8F0] shadow-[0_4px_12px_rgba(0,0,0,0.05)] space-y-2.5">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
             <button
               type="button"
               onClick={() => setFilterStage('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-colors cursor-pointer ${
+              className={`px-3 py-1.5 rounded-[10px] text-xs font-bold shrink-0 transition-colors cursor-pointer ${
                 filterStage === 'all'
-                  ? 'bg-[#002B49] text-[#FFB300]'
+                  ? 'bg-[#0F172A] text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -290,7 +290,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
             <button
               type="button"
               onClick={() => setFilterStage('approved')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-[10px] text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1 ${
                 filterStage === 'approved'
                   ? 'bg-emerald-700 text-white'
                   : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
@@ -303,7 +303,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
             <button
               type="button"
               onClick={() => setFilterStage('pending')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-[10px] text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1 ${
                 filterStage === 'pending'
                   ? 'bg-amber-600 text-white'
                   : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
@@ -316,7 +316,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
             <button
               type="button"
               onClick={() => setFilterStage('needs_completion')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-[10px] text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1 ${
                 filterStage === 'needs_completion'
                   ? 'bg-rose-600 text-white'
                   : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200'
@@ -329,7 +329,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
             <button
               type="button"
               onClick={() => setFilterStage('archived')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-[10px] text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1 ${
                 filterStage === 'archived'
                   ? 'bg-slate-800 text-white'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -348,7 +348,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ابحث في إعلاناتك برقم الكود، العنوان، أو المنطقة..."
-              className="w-full pr-10 pl-9 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+              className="w-full pr-10 pl-9 py-2 text-xs bg-slate-50 border border-[#E2E8F0] rounded-[10px] focus:bg-white focus:outline-hidden focus:border-[#1D4ED8] focus:ring-1 focus:ring-[#1D4ED8]/20"
             />
             {searchQuery && (
               <button

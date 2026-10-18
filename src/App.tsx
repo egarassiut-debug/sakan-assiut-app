@@ -1582,8 +1582,17 @@ export function App() {
   // Check if current screen is dedicated FormEntryScreen (Offer / Request)
   const isFormEntry = overlayScreen === 'form_entry_offer' || overlayScreen === 'form_entry_request';
 
+  // Dynamic page title for the dark navy header bar
+  const getHeaderTitle = () => {
+    if (navIndex === 0) return 'عروض الايجار والبيع';
+    if (navIndex === 1 || (isAdmin && navIndex === 2)) return 'طلبات الايجار والشراء';
+    if (!isAdmin && navIndex === 2) return 'إعلاناتي';
+    if (navIndex === 3) return 'لوحة التحكم الإدارية';
+    return 'عروض الايجار والبيع';
+  };
+
   return (
-    <div className={`min-h-screen bg-[#F5F7FA] flex flex-col justify-between text-slate-900 font-['Cairo'] ${isFormEntry ? 'pb-0' : 'pb-24'}`}>
+    <div className={`min-h-screen bg-[#F8FAFC] flex flex-col justify-between text-slate-900 font-['Tajawal','Cairo',sans-serif] ${isFormEntry ? 'pb-0' : 'pb-24'}`}>
       
       {/* 1. Top Global Header (hidden in FormEntryScreen which has its own AppBar) */}
       {!isFormEntry && (
@@ -1598,6 +1607,7 @@ export function App() {
           onOpenNotifications={() => setIsNotificationCenterOpen(true)}
           favoritesCount={favoritePropertyIds.length}
           onOpenFavorites={() => setIsFavoritesModalOpen(true)}
+          pageTitle={getHeaderTitle()}
         />
       )}
 
@@ -1631,452 +1641,170 @@ export function App() {
           /* 1. صفحة عروض الإيجار (المتاحة) - Index 0 */
           /* ========================================================================= */
           <div className="space-y-4 animate-in fade-in duration-150">
-            {/* Search and Hero Banner in Primary Navy */}
-            <div className="bg-[#002B49] text-white rounded-3xl p-5 sm:p-6 shadow-md border border-[#001D33] space-y-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs bg-[#FFB300] text-black px-2.5 py-0.5 rounded-full font-bold">
-                    محافظة أسيوط
-                  </span>
-                  <span className="text-xs text-white/80 font-semibold">
-                    صفحة عروض الإيجار والعقارات
+            {/* Header Section: Single-line concise title reading 'عروض الايجار والبيع' */}
+            <div className="text-center pt-2 pb-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] tracking-tight">
+                عروض الايجار والبيع
+              </h1>
+            </div>
+
+            {/* Search Bar: Single streamlined search input bar with integrated parameters */}
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ابحث عن عقارك المثالي أو المنطقة أو الكود..."
+                className="w-full pr-12 pl-10 py-3.5 rounded-[12px] bg-white text-slate-800 placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-[#E2E8F0] shadow-[0_4px_12px_rgba(0,0,0,0.05)] focus:outline-hidden focus:border-[#1D4ED8] focus:ring-2 focus:ring-[#1D4ED8]/10 transition-all"
+              />
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#1D4ED8]" />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Filters Layout: Exactly two filter dropdown buttons side-by-side in a single row */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Button 1: فلتر المناطق */}
+              <div 
+                className="relative h-12 rounded-[12px] bg-white hover:bg-[#F0F6FF] border border-[#E2E8F0] transition-all shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-3.5 cursor-pointer group"
+                title="فلتر المناطق"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-[#F0F6FF] flex items-center justify-center shrink-0">
+                    <MapPin className="w-3.5 h-3.5 text-[#1D4ED8]" />
+                  </div>
+                  <span className="text-xs font-semibold text-[#0F172A] truncate">
+                    {selectedDistrict === 'all' ? 'فلتر المناطق' : selectedDistrict}
                   </span>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black mt-1.5 tracking-tight">
-                  عروض الإيجار والعقارات المتاحة بأسيوط
-                </h1>
-                <p className="text-xs sm:text-sm text-white/70 mt-1">
-                  شقق سكنية، سكن طلابي، محلات تجارية، وأراضي فضاء معتمدة مع كود مباشر للمعاينة
-                </p>
+                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-[#1D4ED8] transition-colors" />
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-slate-900"
+                  title="اختر المنطقة أو الحي"
+                >
+                  <option value="all">جميع أحياء ومناطق أسيوط</option>
+                  {activeDistrictOptions.map((opt) => (
+                    <option key={opt.id} value={opt.name}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Search Bar Input */}
-              <div className="relative">
-                <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="ابحث بكود العقار (مثال: AS-101) أو المنطقة أو الشارع..."
-                  className="w-full pr-11 pl-10 py-3 rounded-2xl bg-white text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm font-semibold shadow-xs focus:outline-hidden focus:ring-2 focus:ring-[#FFB300]"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
+              {/* Button 2: فلتر الوحدات */}
+              <div 
+                className="relative h-12 rounded-[12px] bg-white hover:bg-[#F0F6FF] border border-[#E2E8F0] transition-all shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-3.5 cursor-pointer group"
+                title="فلتر الوحدات"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-[#F0F6FF] flex items-center justify-center shrink-0">
+                    <Building className="w-3.5 h-3.5 text-[#1D4ED8]" />
+                  </div>
+                  <span className="text-xs font-semibold text-[#0F172A] truncate">
+                    {selectedPropertyType === 'all' ? 'فلتر الوحدات' : selectedPropertyType}
+                  </span>
+                </div>
+                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-[#1D4ED8] transition-colors" />
+                <select
+                  value={selectedPropertyType}
+                  onChange={(e) => setSelectedPropertyType(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-slate-900"
+                  title="اختر نوع الوحدة"
+                >
+                  <option value="all">جميع أنواع الوحدات</option>
+                  {activePropertyTypeOptions.map((opt) => (
+                    <option key={opt.id} value={opt.name}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
               </div>
+            </div>
 
-              {/* Quick Purpose Pills */}
-              <div className="flex gap-2 pt-1 overflow-x-auto pb-1 scrollbar-none">
+            {/* Purpose Filter Pills & Available Count */}
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                 <button
                   onClick={() => setPurposeFilter('rent')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
                     purposeFilter === 'rent'
-                      ? 'bg-[#FFB300] text-black shadow-xs font-black'
-                      : 'bg-white/10 text-white hover:bg-white/20'
+                      ? 'bg-[#1D4ED8] text-white shadow-xs'
+                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
                   }`}
                 >
                   عروض الإيجار ({properties.filter((p) => p.purpose === 'rent' && (isAdmin || p.status === 'approved')).length})
                 </button>
                 <button
                   onClick={() => setPurposeFilter('sale')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
                     purposeFilter === 'sale'
-                      ? 'bg-[#FFB300] text-black shadow-xs font-black'
-                      : 'bg-white/10 text-white hover:bg-white/20'
+                      ? 'bg-[#1D4ED8] text-white shadow-xs'
+                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
                   }`}
                 >
-                  عروض البيع والتمليك ({properties.filter((p) => p.purpose === 'sale' && (isAdmin || p.status === 'approved')).length})
+                  عروض البيع ({properties.filter((p) => p.purpose === 'sale' && (isAdmin || p.status === 'approved')).length})
                 </button>
                 <button
                   onClick={() => setPurposeFilter('all')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
                     purposeFilter === 'all'
-                      ? 'bg-[#FFB300] text-black shadow-xs font-black'
-                      : 'bg-white/10 text-white hover:bg-white/20'
+                      ? 'bg-[#1D4ED8] text-white shadow-xs'
+                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
                   }`}
                 >
                   الكل ({properties.filter((p) => isAdmin || p.status === 'approved').length})
                 </button>
               </div>
+
+              <div className="text-xs text-slate-500 font-medium shrink-0">
+                المعروض: <span className="text-[#1D4ED8] font-bold">{filteredProperties.length}</span>
+              </div>
             </div>
 
-            {/* Filter Controls & Saved Search Bar */}
-            <div className="bg-white p-3.5 sm:p-4 rounded-3xl border border-slate-200/90 shadow-2xs space-y-3">
-              {/* 4-Item Grid 2x2 Filter Section */}
-              <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-                {/* 1. فلتر المناطق (الصف العلوي 1) */}
-                <div 
-                  className="relative h-13 rounded-2xl bg-[#002B49] hover:bg-[#001D33] text-white transition-all shadow-xs border border-[#001D33] flex items-center justify-between px-3 cursor-pointer group"
-                  title="فلتر المناطق"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                      <MapPin className="w-4 h-4 text-[#FFB300]" />
-                    </div>
-                    <div className="flex flex-col text-right truncate">
-                      <span className="text-[10px] text-slate-300 font-medium leading-none mb-0.5">فلتر المناطق</span>
-                      <span className="text-xs font-bold text-white truncate">
-                        {selectedDistrict === 'all' ? 'جميع المناطق' : selectedDistrict}
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-amber-300 shrink-0 mr-1 group-hover:translate-y-0.5 transition-transform" />
-                  <select
-                    value={selectedDistrict}
-                    onChange={(e) => setSelectedDistrict(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-slate-900"
-                    title="اختر المنطقة أو الحي"
-                  >
-                    <option value="all">جميع أحياء ومناطق أسيوط</option>
-                    {activeDistrictOptions.map((opt) => (
-                      <option key={opt.id} value={opt.name}>
-                        {opt.name}
-                      </option>
-                    ))}
-                  </select>
+            {/* Active Filters Clear Badge */}
+            {(selectedDistrict !== 'all' || selectedPropertyType !== 'all' || searchQuery) && (
+              <div className="flex items-center justify-between text-xs px-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-slate-400 font-medium">الفلاتر المحددة:</span>
+                  {selectedDistrict !== 'all' && (
+                    <span className="bg-[#F0F6FF] text-[#1D4ED8] font-semibold px-2 py-0.5 rounded-lg border border-blue-100">
+                      {selectedDistrict}
+                    </span>
+                  )}
+                  {selectedPropertyType !== 'all' && (
+                    <span className="bg-[#F0F6FF] text-[#1D4ED8] font-semibold px-2 py-0.5 rounded-lg border border-blue-100">
+                      {selectedPropertyType}
+                    </span>
+                  )}
                 </div>
-
-                {/* 2. فلتر الوحدات (الصف العلوي 2) */}
-                <div 
-                  className="relative h-13 rounded-2xl bg-[#002B49] hover:bg-[#001D33] text-white transition-all shadow-xs border border-[#001D33] flex items-center justify-between px-3 cursor-pointer group"
-                  title="فلتر الوحدات"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                      <Building className="w-4 h-4 text-[#FFB300]" />
-                    </div>
-                    <div className="flex flex-col text-right truncate">
-                      <span className="text-[10px] text-slate-300 font-medium leading-none mb-0.5">فلتر الوحدات</span>
-                      <span className="text-xs font-bold text-white truncate">
-                        {selectedPropertyType === 'all' ? 'جميع الوحدات' : selectedPropertyType}
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-amber-300 shrink-0 mr-1 group-hover:translate-y-0.5 transition-transform" />
-                  <select
-                    value={selectedPropertyType}
-                    onChange={(e) => setSelectedPropertyType(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-slate-900"
-                    title="اختر نوع الوحدة"
-                  >
-                    <option value="all">جميع أنواع الوحدات</option>
-                    {activePropertyTypeOptions.map((opt) => (
-                      <option key={opt.id} value={opt.name}>
-                        {opt.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 3. فلتر السعر (الصف السفلي 3) */}
                 <button
-                  type="button"
-                  onClick={() => setIsPriceFilterOpen(!isPriceFilterOpen)}
-                  className={`h-13 rounded-2xl transition-all shadow-xs border flex items-center justify-between px-3 cursor-pointer text-right group ${
-                    minPrice || maxPrice || isPriceFilterOpen
-                      ? 'bg-[#001D33] text-white border-[#FFB300] ring-1 ring-[#FFB300]/40'
-                      : 'bg-[#002B49] hover:bg-[#001D33] text-white border-[#001D33]'
-                  }`}
-                  title="فلتر السعر والنطاق السعري"
+                  onClick={() => {
+                    setSelectedDistrict('all');
+                    setSelectedPropertyType('all');
+                    setSearchQuery('');
+                  }}
+                  className="text-xs text-rose-500 hover:underline font-semibold cursor-pointer shrink-0"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                      <DollarSign className="w-4 h-4 text-[#FFB300]" />
-                    </div>
-                    <div className="flex flex-col text-right truncate">
-                      <span className="text-[10px] text-slate-300 font-medium leading-none mb-0.5">فلتر السعر</span>
-                      <span className="text-xs font-bold text-white truncate">
-                        {minPrice || maxPrice
-                          ? `${minPrice ? Number(minPrice).toLocaleString() : '0'} - ${maxPrice ? Number(maxPrice).toLocaleString() : 'بلا حد'} ج.م`
-                          : (isPriceFilterOpen ? 'إغلاق النطاق' : 'تحديد السعر')}
-                      </span>
-                    </div>
-                  </div>
-                  <SlidersHorizontal className={`w-3.5 h-3.5 shrink-0 mr-1 transition-transform ${isPriceFilterOpen ? 'text-[#FFB300] rotate-90' : 'text-amber-300'}`} />
+                  مسح الفلاتر
                 </button>
-
-                {/* 4. فلتر البحث (الصف السفلي 4 - مدمجاً فيه حفظ المعايير والمفضلة) */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsSearchMenuOpen(!isSearchMenuOpen)}
-                    className={`w-full h-13 rounded-2xl transition-all shadow-xs border flex items-center justify-between px-3 cursor-pointer text-right group ${
-                      isSearchMenuOpen
-                        ? 'bg-[#001D33] text-white border-[#FFB300] ring-1 ring-[#FFB300]/40'
-                        : 'bg-[#002B49] hover:bg-[#001D33] text-white border-[#001D33]'
-                    }`}
-                    title="فلتر البحث وحفظ المعايير والمفضلة"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                        <Bookmark className="w-4 h-4 text-[#FFB300] fill-[#FFB300]/20" />
-                      </div>
-                      <div className="flex flex-col text-right truncate">
-                        <span className="text-[10px] text-slate-300 font-medium leading-none mb-0.5">فلتر البحث</span>
-                        <span className="text-xs font-bold text-white truncate">
-                          حفظ المعايير والمفضلة
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0 mr-1">
-                      {savedSearches.length > 0 && (
-                        <span className="bg-[#FFB300] text-[#002B49] text-[10px] font-black px-1.5 py-0.5 rounded-full" title="المعايير المحفوظة">
-                          {savedSearches.length}
-                        </span>
-                      )}
-                      {favoriteProperties.length > 0 && (
-                        <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full" title="العقارات المفضلة">
-                          <Heart className="w-2.5 h-2.5 fill-current inline" />
-                        </span>
-                      )}
-                      <ChevronDown className={`w-3.5 h-3.5 text-amber-300 transition-transform ${isSearchMenuOpen ? 'rotate-180' : ''}`} />
-                    </div>
-                  </button>
-
-                  {/* Dropdown Menu for Filter 4 (فلتر البحث المدمج) */}
-                  {isSearchMenuOpen && (
-                    <>
-                      {/* Invisible backdrop */}
-                      <div 
-                        className="fixed inset-0 z-30" 
-                        onClick={() => setIsSearchMenuOpen(false)} 
-                      />
-                      <div 
-                        className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-40 text-slate-800 animate-in fade-in slide-in-from-top-2 duration-150"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="px-2.5 py-1.5 border-b border-slate-100 flex items-center justify-between text-xs font-bold text-slate-800">
-                          <span className="flex items-center gap-1.5">
-                            <Bookmark className="w-3.5 h-3.5 text-[#002B49]" />
-                            <span>خيارات فلتر البحث المدمجة</span>
-                          </span>
-                          <button 
-                            type="button" 
-                            onClick={() => setIsSearchMenuOpen(false)}
-                            className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        <div className="py-1 space-y-1">
-                          {/* حفظ المعايير الحالية */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleSaveCurrentCriteria();
-                              setIsSearchMenuOpen(false);
-                            }}
-                            className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-800 hover:bg-amber-50 hover:text-amber-950 rounded-xl transition-colors cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2">
-                              <Bookmark className="w-4 h-4 text-[#FFB300] fill-[#FFB300]" />
-                              <span>حفظ المعايير الحالية</span>
-                            </span>
-                            <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md font-semibold">حفظ</span>
-                          </button>
-
-                          {/* المعايير المحفوظة */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsSavedSearchModalOpen(true);
-                              setIsSearchMenuOpen(false);
-                            }}
-                            className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2">
-                              <SlidersHorizontal className="w-4 h-4 text-[#002B49]" />
-                              <span>المعايير المحفوظة</span>
-                            </span>
-                            <span className="bg-[#FFB300] text-black text-[10px] font-black px-1.5 py-0.2 rounded-full">
-                              {savedSearches.length}
-                            </span>
-                          </button>
-
-                          {/* العقارات المفضلة */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsFavoritesModalOpen(true);
-                              setIsSearchMenuOpen(false);
-                            }}
-                            className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-800 hover:bg-rose-50 hover:text-rose-900 rounded-xl transition-colors cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2">
-                              <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-                              <span>العقارات المفضلة</span>
-                            </span>
-                            <span className="bg-rose-100 text-rose-700 text-[10px] font-black px-1.5 py-0.2 rounded-full">
-                              {favoriteProperties.length}
-                            </span>
-                          </button>
-
-                          {/* إعادة ضبط الفلاتر */}
-                          {(selectedDistrict !== 'all' || selectedPropertyType !== 'all' || minPrice || maxPrice || searchQuery) && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleResetSearchFilters();
-                                setIsSearchMenuOpen(false);
-                              }}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border-t border-slate-100 mt-1"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
-                              <span>إعادة ضبط جميع المعايير</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
               </div>
-
-              {/* Expandable Price Range Section */}
-              {isPriceFilterOpen && (
-                <div className="pt-3 border-t border-slate-100 animate-in fade-in duration-150 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                    <span className="flex items-center gap-1.5">
-                      <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                      حدد النطاق السعري بالجنيه المصري (ج.م):
-                    </span>
-                    {(minPrice || maxPrice) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMinPrice('');
-                          setMaxPrice('');
-                        }}
-                        className="text-[11px] text-rose-600 hover:underline cursor-pointer"
-                      >
-                        مسح نطاق السعر
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-1.5 flex-1 min-w-[140px]">
-                      <span className="text-xs text-slate-500 font-semibold shrink-0">من:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="500"
-                        value={minPrice}
-                        onChange={(e) => setMinPrice(e.target.value)}
-                        placeholder="أقل سعر (مثال: 2000)"
-                        className="w-full px-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-300 font-semibold focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-1.5 flex-1 min-w-[140px]">
-                      <span className="text-xs text-slate-500 font-semibold shrink-0">إلى:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="500"
-                        value={maxPrice}
-                        onChange={(e) => setMaxPrice(e.target.value)}
-                        placeholder="أعلى سعر (مثال: 6000)"
-                        className="w-full px-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-300 font-semibold focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Quick Price Range Shortcuts */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[11px] text-slate-400 font-medium">اختصارات سريعة:</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMinPrice('');
-                        setMaxPrice('3000');
-                      }}
-                      className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
-                    >
-                      أقل من 3,000 ج.م
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMinPrice('3000');
-                        setMaxPrice('6000');
-                      }}
-                      className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
-                    >
-                      3,000 - 6,000 ج.م
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMinPrice('6000');
-                        setMaxPrice('12000');
-                      }}
-                      className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
-                    >
-                      6,000 - 12,000 ج.م
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMinPrice('12000');
-                        setMaxPrice('');
-                      }}
-                      className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
-                    >
-                      أكثر من 12,000 ج.م
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMinPrice('');
-                        setMaxPrice('');
-                      }}
-                      className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
-                    >
-                      أي سعر
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Bottom Status / Summary Row */}
-              <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-slate-400 font-medium">المعايير المفعلة:</span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
-                    <MapPin className="w-2.5 h-2.5 text-[#FFB300]" />
-                    {selectedDistrict === 'all' ? 'جميع المناطق' : selectedDistrict}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
-                    <Building className="w-2.5 h-2.5 text-[#002B49]" />
-                    {selectedPropertyType === 'all' ? 'جميع الوحدات' : selectedPropertyType}
-                  </span>
-                  {(minPrice || maxPrice) && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md">
-                      <DollarSign className="w-2.5 h-2.5 text-emerald-600" />
-                      {minPrice ? Number(minPrice).toLocaleString() : '0'} - {maxPrice ? Number(maxPrice).toLocaleString() : 'بلا حد'} ج.م
-                    </span>
-                  )}
-                </div>
-
-                <div className="text-xs text-slate-500 font-bold shrink-0">
-                  المعروض المتاح: <span className="text-[#002B49] font-black">{filteredProperties.length}</span>
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Property Cards List */}
             {filteredProperties.length === 0 ? (
-              <div className="bg-white p-12 rounded-3xl text-center border border-slate-200 space-y-3">
-                <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto">
+              <div className="bg-white p-12 rounded-[12px] text-center border border-[#E2E8F0] shadow-[0_4px_12px_rgba(0,0,0,0.05)] space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 text-[#1D4ED8] flex items-center justify-center mx-auto">
                   <Building2 className="w-8 h-8" />
                 </div>
-                <h3 className="font-bold text-slate-800 text-base">لا توجد عقارات مطابقة للبحث</h3>
+                <h3 className="font-bold text-[#0F172A] text-base">لا توجد عقارات مطابقة للبحث</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
                   جرب تغيير كلمات البحث أو تصفية الأحياء والخيارات للاطلاع على المزيد من العقارات المتاحة
                 </p>
@@ -2087,7 +1815,7 @@ export function App() {
                     setSelectedPropertyType('all');
                     setPurposeFilter('all');
                   }}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-[10px] bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
                 >
                   إعادة ضبط الفلاتر
                 </button>
@@ -2115,180 +1843,190 @@ export function App() {
           </div>
         ) : (navIndex === 1 || (isAdmin && navIndex === 2)) ? (
           /* ========================================================================= */
-          /* 2. شاشة طلبات الإيجار (المطلوبة) - Index 1 لكلا الواجهتين */
+          /* 2. شاشة طلبات الإيجار والشراء (المطلوبة) - Index 1 لكلا الواجهتين */
           /* ========================================================================= */
           <div className="space-y-4 animate-in fade-in duration-150">
-            {/* Requests Hero Banner in Navy & Amber */}
-            <div className="bg-gradient-to-r from-[#002B49] to-[#001D33] text-white rounded-3xl p-5 sm:p-6 shadow-md border border-[#001D33] space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs bg-[#FFB300] text-black px-2.5 py-0.5 rounded-full font-bold">
-                    طلبات الإيجار والسكن
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-black mt-1">
-                    طلبات السكن والوحدات المطلوبة بأسيوط
-                  </h2>
-                  <p className="text-xs text-white/70 mt-0.5">
-                    طلبات مستأجرين وباحثين جادين عن شقق، سكن طالبات/طلبة، ومحلات تجارية
-                  </p>
-                </div>
+            {/* Header Section: Single-line concise title reading 'طلبات الايجار والشراء' */}
+            <div className="text-center pt-2 pb-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] tracking-tight">
+                طلبات الايجار والشراء
+              </h1>
+            </div>
+
+            {/* Search Bar: Single streamlined search input bar with integrated parameters */}
+            <div className="relative">
+              <input
+                type="text"
+                value={requestSearchQuery}
+                onChange={(e) => setRequestSearchQuery(e.target.value)}
+                placeholder="ابحث في الطلبات بالحي، نوع العقار، الكود، أو الملاحظات..."
+                className="w-full pr-12 pl-10 py-3.5 rounded-[12px] bg-white text-slate-800 placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-[#E2E8F0] shadow-[0_4px_12px_rgba(0,0,0,0.05)] focus:outline-hidden focus:border-[#1D4ED8] focus:ring-2 focus:ring-[#1D4ED8]/10 transition-all"
+              />
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#1D4ED8]" />
+              {requestSearchQuery && (
                 <button
-                  onClick={() => setOverlayScreen('form_entry_request')}
-                  className="px-4 py-2.5 rounded-2xl bg-[#FFB300] hover:bg-[#FFA000] text-black font-black text-xs transition-transform active:scale-95 shadow-md flex items-center gap-1.5 cursor-pointer shrink-0"
+                  onClick={() => setRequestSearchQuery('')}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
                 >
-                  <PersonSearch className="w-4 h-4 text-black" />
-                  <span>أضف طلبك</span>
+                  <X className="w-4 h-4" />
                 </button>
+              )}
+            </div>
+
+            {/* Filters Layout: Exactly two filter dropdown buttons side-by-side in a single row */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Button 1: فلتر المناطق */}
+              <div 
+                className="relative h-12 rounded-[12px] bg-white hover:bg-[#F0F6FF] border border-[#E2E8F0] transition-all shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-3.5 cursor-pointer group"
+                title="فلتر المناطق"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-[#F0F6FF] flex items-center justify-center shrink-0">
+                    <MapPin className="w-3.5 h-3.5 text-[#1D4ED8]" />
+                  </div>
+                  <span className="text-xs font-semibold text-[#0F172A] truncate">
+                    {requestDistrict === 'all' ? 'فلتر المناطق' : requestDistrict}
+                  </span>
+                </div>
+                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-[#1D4ED8] transition-colors" />
+                <select
+                  value={requestDistrict}
+                  onChange={(e) => setRequestDistrict(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-slate-900"
+                  title="اختر المنطقة أو الحي"
+                >
+                  <option value="all">جميع أحياء ومناطق أسيوط</option>
+                  {activeDistrictOptions.map((opt) => (
+                    <option key={opt.id} value={opt.name}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Integrated Search Bar for Requests */}
-              <div className="relative pt-1">
-                <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={requestSearchQuery}
-                  onChange={(e) => setRequestSearchQuery(e.target.value)}
-                  placeholder="ابحث في الطلبات بالحي، نوع العقار، الكود، أو الملاحظات..."
-                  className="w-full pr-10 pl-10 py-2.5 rounded-xl bg-white/10 text-white placeholder:text-white/50 text-xs border border-white/20 focus:outline-hidden focus:ring-1 focus:ring-[#FFB300]"
-                />
-                {requestSearchQuery && (
-                  <button
-                    onClick={() => setRequestSearchQuery('')}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
+              {/* Button 2: فلتر الوحدات */}
+              <div 
+                className="relative h-12 rounded-[12px] bg-white hover:bg-[#F0F6FF] border border-[#E2E8F0] transition-all shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-3.5 cursor-pointer group"
+                title="فلتر الوحدات"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-[#F0F6FF] flex items-center justify-center shrink-0">
+                    <Building className="w-3.5 h-3.5 text-[#1D4ED8]" />
+                  </div>
+                  <span className="text-xs font-semibold text-[#0F172A] truncate">
+                    {requestPropertyType === 'all' ? 'فلتر الوحدات' : requestPropertyType}
+                  </span>
+                </div>
+                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-[#1D4ED8] transition-colors" />
+                <select
+                  value={requestPropertyType}
+                  onChange={(e) => setRequestPropertyType(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-slate-900"
+                  title="اختر نوع الوحدة المطلوبة"
+                >
+                  <option value="all">جميع أنواع الوحدات المطلوبة</option>
+                  {activePropertyTypeOptions.map((opt) => (
+                    <option key={opt.id} value={opt.name}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
               </div>
+            </div>
 
-              {/* Quick Purpose Pills for Requests */}
-              <div className="flex gap-2 pt-1 overflow-x-auto pb-1 scrollbar-none">
+            {/* Purpose Filter Pills & Quick Add Request */}
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                 <button
                   onClick={() => setRequestPurpose('rent')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
                     requestPurpose === 'rent'
-                      ? 'bg-[#FFB300] text-black shadow-xs font-black'
-                      : 'bg-white/10 text-white hover:bg-white/20'
+                      ? 'bg-[#1D4ED8] text-white shadow-xs'
+                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
                   }`}
                 >
                   طلبات الإيجار ({tenantRequests.filter((r) => r.purpose === 'rent' && (isAdmin || r.status === 'approved' || r.isApproved !== false)).length})
                 </button>
                 <button
                   onClick={() => setRequestPurpose('sale')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
                     requestPurpose === 'sale'
-                      ? 'bg-[#FFB300] text-black shadow-xs font-black'
-                      : 'bg-white/10 text-white hover:bg-white/20'
+                      ? 'bg-[#1D4ED8] text-white shadow-xs'
+                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
                   }`}
                 >
                   طلبات الشراء ({tenantRequests.filter((r) => r.purpose === 'sale' && (isAdmin || r.status === 'approved' || r.isApproved !== false)).length})
                 </button>
                 <button
                   onClick={() => setRequestPurpose('all')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
                     requestPurpose === 'all'
-                      ? 'bg-[#FFB300] text-black shadow-xs font-black'
-                      : 'bg-white/10 text-white hover:bg-white/20'
+                      ? 'bg-[#1D4ED8] text-white shadow-xs'
+                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
                   }`}
                 >
                   الكل ({tenantRequests.filter((r) => isAdmin || r.status === 'approved' || r.isApproved !== false).length})
                 </button>
               </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setOverlayScreen('form_entry_request')}
+                  className="px-3.5 py-1.5 rounded-[10px] bg-[#0F172A] hover:bg-[#1E293B] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                  title="أضف طلبك العقاري"
+                >
+                  <PersonSearch className="w-3.5 h-3.5 text-blue-300" />
+                  <span>أضف طلبك</span>
+                </button>
+              </div>
             </div>
 
-            {/* Filter Controls Card matching Offers Screen */}
-            <div className="bg-white p-3.5 sm:p-4 rounded-3xl border border-slate-200/90 shadow-2xs space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2.5">
-                <div className="flex flex-wrap items-center gap-2 flex-1">
-                  {/* District Dropdown */}
-                  <div className="relative">
-                    <MapPin className="w-3.5 h-3.5 text-[#FFB300] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <select
-                      value={requestDistrict}
-                      onChange={(e) => setRequestDistrict(e.target.value)}
-                      className="bg-slate-50 border border-slate-300 rounded-xl pr-7 pl-3 py-2 text-xs font-semibold text-slate-700 focus:outline-hidden focus:ring-1 focus:ring-[#002B49] cursor-pointer"
-                    >
-                      <option value="all">جميع أحياء ومناطق أسيوط</option>
-                      {activeDistrictOptions.map((opt) => (
-                        <option key={opt.id} value={opt.name}>
-                          {opt.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Property Type Dropdown */}
-                  <div className="relative">
-                    <Building className="w-3.5 h-3.5 text-[#002B49] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <select
-                      value={requestPropertyType}
-                      onChange={(e) => setRequestPropertyType(e.target.value)}
-                      className="bg-slate-50 border border-slate-300 rounded-xl pr-7 pl-3 py-2 text-xs font-semibold text-slate-700 focus:outline-hidden focus:ring-1 focus:ring-[#002B49] cursor-pointer"
-                    >
-                      <option value="all">جميع أنواع الوحدات المطلوبة</option>
-                      {activePropertyTypeOptions.map((opt) => (
-                        <option key={opt.id} value={opt.name}>
-                          {opt.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Reset Filters */}
-                  {(requestDistrict !== 'all' || requestPropertyType !== 'all' || requestSearchQuery || requestPurpose !== 'all') && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRequestDistrict('all');
-                        setRequestPropertyType('all');
-                        setRequestSearchQuery('');
-                        setRequestPurpose('all');
-                      }}
-                      className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer text-xs font-bold flex items-center gap-1"
-                      title="إعادة ضبط فلاتر الطلبات"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>إعادة ضبط</span>
-                    </button>
+            {/* Active Filters Summary Chips Bar */}
+            {(requestDistrict !== 'all' || requestPropertyType !== 'all' || requestSearchQuery || requestPurpose !== 'all') && (
+              <div className="flex items-center justify-between text-xs px-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-slate-400 font-medium">الفلاتر المحددة:</span>
+                  {requestDistrict !== 'all' && (
+                    <span className="bg-[#F0F6FF] text-[#1D4ED8] font-semibold px-2 py-0.5 rounded-[8px] border border-blue-100">
+                      {requestDistrict}
+                    </span>
+                  )}
+                  {requestPropertyType !== 'all' && (
+                    <span className="bg-[#F0F6FF] text-[#1D4ED8] font-semibold px-2 py-0.5 rounded-[8px] border border-blue-100">
+                      {requestPropertyType}
+                    </span>
                   )}
                 </div>
+                <button
+                  onClick={() => {
+                    setRequestDistrict('all');
+                    setRequestPropertyType('all');
+                    setRequestSearchQuery('');
+                    setRequestPurpose('all');
+                  }}
+                  className="text-xs text-rose-500 hover:underline font-semibold cursor-pointer shrink-0"
+                >
+                  مسح الفلاتر
+                </button>
               </div>
-
-              {/* Active Filters Summary Chips Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-slate-400 font-medium">الفلاتر النشطة:</span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                    <MapPin className="w-2.5 h-2.5 text-amber-600" />
-                    {requestDistrict === 'all' ? 'جميع المناطق' : requestDistrict}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
-                    <Building className="w-2.5 h-2.5 text-[#002B49]" />
-                    {requestPropertyType === 'all' ? 'جميع الوحدات' : requestPropertyType}
-                  </span>
-                </div>
-
-                <div className="text-xs text-slate-500 font-bold shrink-0">
-                  الطلبات المتاحة: <span className="text-[#002B49] font-black">{filteredTenantRequests.length}</span>
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Requests Cards List: Unified 3-column responsive grid matching PropertyCard */}
             {filteredTenantRequests.length === 0 ? (
-              <div className="bg-white p-12 rounded-3xl text-center border border-slate-200 space-y-3">
-                <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto">
+              <div className="bg-white p-12 rounded-[12px] text-center border border-[#E2E8F0] shadow-[0_4px_12px_rgba(0,0,0,0.05)] space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 text-[#1D4ED8] flex items-center justify-center mx-auto">
                   <Users className="w-8 h-8" />
                 </div>
-                <h3 className="font-bold text-slate-800 text-base">لا توجد طلبات إيجار مسجلة مطابقة</h3>
+                <h3 className="font-bold text-[#0F172A] text-base">لا توجد طلبات مسجلة مطابقة</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
                   كن أول من يسجل طلبه العقاري للحصول على عروض فورية من ملاك العقارات والوسطاء
                 </p>
                 <button
                   onClick={() => setOverlayScreen('form_entry_request')}
-                  className="px-4 py-2 rounded-xl bg-[#002B49] text-[#FFB300] font-black text-xs transition-colors shadow-xs cursor-pointer"
+                  className="px-4 py-2 rounded-[10px] bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-xs transition-colors shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                 >
-                  إضافة طلب إيجار جديد
+                  <PersonSearch className="w-3.5 h-3.5 text-blue-300" />
+                  <span>إضافة طلب جديد</span>
                 </button>
               </div>
             ) : (

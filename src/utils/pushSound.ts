@@ -3,7 +3,9 @@
  * Runs completely client-side with zero external assets or network requests.
  * Fails safely and silently if the browser blocks audio autoplay.
  */
-export const playPushChime = (type: 'approved' | 'rejected' | 'welcome' | 'info' | 'needs_completion' | 'smart_match' | 'match' = 'approved') => {
+import { PushNotificationType } from '../types/property';
+
+export const playPushChime = (type: PushNotificationType | string = 'approved') => {
   try {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;

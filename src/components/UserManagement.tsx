@@ -1,21 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppUser } from '../types/property';
 import { 
   getAllRegisteredUsers, 
-  saveRegisteredUsers, 
-  toggleUserBlockStatus, 
   resetUserPinCode, 
   deleteRegisteredUser,
-  createWhatsAppLink,
-  ADMIN_CONTACT_PHONE,
-  ADMIN_WHATSAPP_NUMBER
+  toggleUserBlockStatus,
+  createWhatsAppLink
 } from '../utils/userManager';
 import { 
   Users, Search, ShieldCheck, UserX, UserCheck, KeyRound, 
   Trash2, MessageCircle, AlertCircle, CheckCircle2, Lock, 
-  Unlock, Eye, EyeOff, RefreshCw, Phone, Calendar, User, 
-  Copy, Check, ShieldAlert, Sparkles, Filter
+  Unlock, Eye, EyeOff, RefreshCw, Phone, User, Calendar,
+  Copy, Check, Sparkles, Filter, Download, FileSpreadsheet, Printer
 } from 'lucide-react';
+import { exportToCSV, exportToPrintablePDF } from '../utils/exportUtils';
 
 interface UserManagementProps {
   currentUser?: AppUser | null;
@@ -45,9 +43,23 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   // Copied state indicator
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
 
+  // Export dropdown state
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
   const loadUsers = () => {
     setUsers(getAllRegisteredUsers());
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(event.target as Node)) {
+        setIsExportOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     loadUsers();
@@ -96,6 +108,33 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   const activeCount = users.filter((u) => !u.isBlocked).length;
   const blockedCount = users.filter((u) => u.isBlocked).length;
   const adminCount = users.filter((u) => u.role === 'admin').length;
+
+  // Export Columns Configuration
+  const userExportColumns = [
+    { header: 'اسم المستخدم', accessor: (u: AppUser) => u.name },
+    { header: 'رقم الهاتف', accessor: (u: AppUser) => u.phone },
+    { header: 'الدور / الصلاحية', accessor: (u: AppUser) => (u.role === 'admin' ? 'مدير نظام' : 'مستخدم عادي') },
+    { header: 'حالة الحساب', accessor: (u: AppUser) => (u.isBlocked ? 'محظور' : 'نشط') },
+    { header: 'رمز PIN', accessor: (u: AppUser) => u.pin || 'غير محدد' },
+    { header: 'تاريخ التسجيل', accessor: (u: AppUser) => (u.createdAt ? new Date(u.createdAt).toLocaleDateString('ar-EG') : '-') },
+  ];
+
+  const handleExportCSV = () => {
+    exportToCSV(filteredUsers, userExportColumns, 'قائمة_المستخدمين_عقارات_أسيوط');
+    showToast(`تم تصدير ${filteredUsers.length} مستخدم كملف CSV بنجاح.`);
+    setIsExportOpen(false);
+  };
+
+  const handleExportPDF = () => {
+    exportToPrintablePDF(
+      'سجل حسابات المستخدمين المسجلين - أسيوط',
+      filteredUsers,
+      userExportColumns,
+      'تقرير تفصيلي لحسابات المستخدمين وصلاحياتهم'
+    );
+    showToast(`جاري فتح معاينة الطباعة / PDF لـ ${filteredUsers.length} مستخدم.`);
+    setIsExportOpen(false);
+  };
 
   // Handle PIN Reset Submission
   const handleConfirmResetPin = (e: React.FormEvent) => {
@@ -206,14 +245,59 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
           </div>
         </div>
 
-        <button
-          onClick={loadUsers}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
-          title="تحديث قائمة الحسابات"
-        >
-          <RefreshCw className="w-4 h-4 text-[#FFB300]" />
-          <span>تحديث القائمة</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap" ref={exportRef}>
+          {/* تصدير البيانات */}
+          <div className="relative">
+            <button
+              onClick={() => setIsExportOpen(!isExportOpen)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FFB300] hover:bg-[#FFA000] text-slate-950 text-xs font-black transition-all shadow-xs cursor-pointer active:scale-95"
+              title="تصدير بيانات المستخدمين (CSV أو PDF)"
+            >
+              <Download className="w-4 h-4 text-slate-950" />
+              <span>تصدير البيانات</span>
+            </button>
+
+            {isExportOpen && (
+              <div 
+                className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-right"
+              >
+                <div className="px-3.5 py-2 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                  <span>خيارات التصدير</span>
+                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono">{filteredUsers.length} مستخدم</span>
+                </div>
+                <button
+                  onClick={handleExportCSV}
+                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <span>ملف Excel (CSV)</span>
+                  </span>
+                  <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-mono font-bold">.csv</span>
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Printer className="w-4 h-4 text-rose-600" />
+                    <span>طباعة / حفظ PDF</span>
+                  </span>
+                  <span className="text-[10px] bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-mono font-bold">.pdf</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={loadUsers}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
+            title="تحديث قائمة الحسابات"
+          >
+            <RefreshCw className="w-4 h-4 text-[#FFB300]" />
+            <span>تحديث القائمة</span>
+          </button>
+        </div>
       </div>
 
       {/* Summary Stat Cards */}
