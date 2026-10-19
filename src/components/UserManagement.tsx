@@ -153,7 +153,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       showToast(`تم تغيير رمز PIN للمستخدم (${pinModalUser.name}) بنجاح.`);
 
       if (sendWhatsAppOnReset) {
-        const message = `مرحباً بك أستاذ ${pinModalUser.name}، بناءً على تواصلك معنا لإعادة تعيين كلمة المرور، تم تحديث رمز PIN الخاص بحسابك على منصة عرض وطلب أسيوط إلى: [${cleaned}]. يمكنك الآن تسجيل الدخول مباشرة باستخدام رقم هاتفك (${pinModalUser.phone}) والرمز الجديد.`;
+        const message = `مرحباً بك أستاذ ${pinModalUser.name}، بناءً على تواصلك معنا لإعادة تعيين كلمة المرور، تم تحديث رمز PIN الخاص بحسابك على تطبيق سكن أسيوط إلى: [${cleaned}]. يمكنك الآن تسجيل الدخول مباشرة باستخدام رقم هاتفك (${pinModalUser.phone}) والرمز الجديد.`;
         const link = createWhatsAppLink(pinModalUser.phone, message);
         window.open(link, '_blank');
       }
@@ -507,7 +507,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                     <a
                       href={createWhatsAppLink(
                         u.phone,
-                        `السلام عليكم أستاذ ${u.name}، معك إدارة منصة عرض وطلب أسيوط.`
+                        `السلام عليكم أستاذ ${u.name}، معك إدارة تطبيق سكن أسيوط.`
                       )}
                       target="_blank"
                       rel="noopener noreferrer"

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { InAppPushNotification } from '../types/property';
-import { CheckCircle2, XCircle, Bell, Sparkles, X, ExternalLink, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, XCircle, Bell, Sparkles, X, ExternalLink, AlertTriangle, Home } from 'lucide-react';
 
 interface InAppPushBannerProps {
   notification: InAppPushNotification | null;
@@ -113,11 +113,11 @@ export const InAppPushBanner: React.FC<InAppPushBannerProps> = ({
         {/* Top Header of In-App Push */}
         <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2.5 text-[11px] text-slate-300">
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-md bg-[#FFB300] text-slate-950 flex items-center justify-center font-bold text-[10px]">
-              ع
+            <div className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-xs">
+              <Home className="w-3 h-3 text-white" />
             </div>
-            <span className="font-bold text-white">منصة عرض وطلب • أسيوط</span>
-            <span className="text-[10px] text-slate-400">• إشعار فوري (In-App Push)</span>
+            <span className="font-bold text-white">تطبيق سكن أسيوط</span>
+            <span className="text-[10px] text-slate-400">• إشعار فوري</span>
           </div>
 
           <div className="flex items-center gap-2">

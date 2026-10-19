@@ -1,5 +1,5 @@
-// Service Worker for منصة عرض وطلب أسيوط العقارية
-const CACHE_NAME = 'ardaw-assiut-pwa-v1';
+// Service Worker for تطبيق سكن أسيوط العقاري
+const CACHE_NAME = 'sakan-assiut-pwa-v2';
 
 // Essential assets for offline bootstrapping
 const PRECACHE_ASSETS = [
@@ -65,7 +65,7 @@ self.addEventListener('fetch', (event) => {
           if (cached) return cached;
           const fallback = await caches.match('/index.html');
           if (fallback) return fallback;
-          return new Response('<h1>أنت غير متصل بالإنترنت</h1><p>يرجى التحقق من اتصالك بالشبكة والعودة لتطبيق عرض وطلب أسيوط.</p>', {
+          return new Response('<h1>أنت غير متصل بالإنترنت</h1><p>يرجى التحقق من اتصالك بالشبكة والعودة لتطبيق سكن أسيوط.</p>', {
             headers: { 'Content-Type': 'text/html; charset=utf-8' }
           });
         })

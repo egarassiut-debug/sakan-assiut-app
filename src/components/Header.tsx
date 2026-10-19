@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppUser } from '../types/property';
-import { LogOut, User, ShieldCheck, Bell, Building2, Heart, Menu } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Bell, Building2, Home, Heart, Menu } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 
 export interface HeaderProps {
@@ -42,11 +42,10 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-6xl mx-auto px-3 sm:px-4 h-14 sm:h-15 flex items-center justify-between gap-2 sm:gap-4">
         
         {/* ================================================================= */}
-        {/* Zone 1 (Right): Menu Drawer Trigger (☰) + Title in Admin Mode OR Brand Name */}
+        {/* Zone 1 (Right): Menu Drawer Trigger (☰) if Admin + Fixed Brand "سكن أسيوط" */}
         {/* ================================================================= */}
-        {isAdminView ? (
-          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            {/* زر القائمة الجانبية (☰) في أقصى اليمين */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {isAdminView && (
             <button
               type="button"
               onClick={onToggleAdminDrawer}
@@ -56,36 +55,41 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Menu className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
             </button>
+          )}
 
-            {/* بجانب زر القائمة مباشرة إلى اليسار: عنوان الصفحة */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm sm:text-base font-bold text-white tracking-tight">
-                لوحة التحكم والإدارة
-              </span>
-              <span className="hidden sm:inline text-[10px] bg-blue-500/20 text-blue-300 font-bold px-2 py-0.5 rounded-md border border-blue-400/30">
-                إدارة
-              </span>
-            </div>
-          </div>
-        ) : (
+          {/* Persistent Brand Logo & Title: سكن أسيوط */}
           <div 
             onClick={() => onSelectTab && onSelectTab('home')}
-            className="flex items-center gap-2 cursor-pointer shrink-0 group py-1"
-            title="العودة للصفحة الرئيسية"
+            className="flex items-center gap-2 sm:gap-2.5 cursor-pointer py-1 group select-none"
+            title="سكن أسيوط - العودة للرئيسية"
           >
-            <div className="w-8 h-8 rounded-xl bg-white/10 group-hover:bg-white/20 flex items-center justify-center border border-white/15 transition-all shadow-2xs shrink-0">
-              <Building2 className="w-4 h-4 text-blue-400" />
+            {/* Expressive house & property logo - distinctive, eye-catching vibrant color */}
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 flex items-center justify-center ring-2 ring-amber-300/60 shadow-md shadow-amber-500/30 group-hover:shadow-amber-500/50 transition-all group-hover:scale-105 shrink-0 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-white/30 pointer-events-none" />
+              <Home className="w-5 h-5 text-white drop-shadow-md stroke-[2.2]" />
             </div>
-            <div className="hidden xs:flex items-center gap-1.5 whitespace-nowrap">
-              <span className="text-xs sm:text-sm font-bold text-white tracking-tight">
-                عرض وطلب
-              </span>
-              <span className="text-[10px] bg-blue-500/20 text-blue-300 font-bold px-1.5 py-0.5 rounded-md border border-blue-400/30">
-                أسيوط
+
+            <div className="flex flex-col text-right leading-tight">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm sm:text-base font-black text-white tracking-tight drop-shadow-xs">
+                  سكن <span className="text-amber-400">أسيوط</span>
+                </span>
+                {isAdminView ? (
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-1.5 py-0.5 rounded-md border border-amber-400/30">
+                    لوحة التحكم
+                  </span>
+                ) : (
+                  <span className="text-[9px] bg-amber-400/15 text-amber-300 font-bold px-1.5 py-0.5 rounded-md border border-amber-400/30">
+                    عقارات
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-slate-300 font-medium hidden xs:inline">
+                المنظومة العقارية المعتمدة
               </span>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Center spacing spacer */}
         <div className="flex-1" />

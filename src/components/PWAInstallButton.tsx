@@ -27,7 +27,7 @@ export const PWAInstallButton: React.FC = () => {
       <button
         type="button"
         onClick={handleInstallClick}
-        title="تثبيت تطبيق عرض وطلب أسيوط على هاتفك"
+        title="تثبيت تطبيق سكن أسيوط على هاتفك"
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-[#FFB300] to-amber-400 hover:from-amber-400 hover:to-[#FFB300] text-[#002B49] font-black text-xs shadow-xs transition-all active:scale-95 cursor-pointer shrink-0 border border-amber-300"
       >
         <Smartphone className="w-3.5 h-3.5" />
@@ -46,8 +46,8 @@ export const PWAInstallButton: React.FC = () => {
                   <Download className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-[#002B49]">تثبيت التطبيق على الهاتف</h3>
-                  <p className="text-[11px] text-slate-500">منصة عرض وطلب - محافظة أسيوط</p>
+                  <h3 className="text-sm font-black text-[#002B49]">تثبيت تطبيق سكن أسيوط</h3>
+                  <p className="text-[11px] text-slate-500">المنظومة العقارية المعتمدة بمحافظة أسيوط</p>
                 </div>
               </div>
               <button
@@ -89,7 +89,7 @@ export const PWAInstallButton: React.FC = () => {
                   <span className="font-black text-slate-900">تأكيد التثبيت:</span>
                   <div className="flex items-center gap-1.5 text-slate-600 mt-0.5">
                     <CheckCircle2 className="w-4 h-4 text-[#FFB300]" />
-                    <span>سيظهر تطبيق "عرض وطلب أسيوط" كأيقونة تطبيق رسمي على شاشتك.</span>
+                    <span>سيظهر تطبيق "سكن أسيوط" كأيقونة تطبيق رسمي على شاشتك.</span>
                   </div>
                 </div>
               </div>

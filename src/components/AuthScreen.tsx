@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AppUser } from '../types/property';
 import { 
-  Building2, User, Lock, Phone, 
-  CheckCircle2, AlertCircle, Eye, EyeOff, UserPlus, LogIn, MessageCircle 
+  Building2, Home, User, Lock, Phone, 
+  CheckCircle2, AlertCircle, Eye, EyeOff, UserPlus, LogIn, MessageCircle, Sparkles 
 } from 'lucide-react';
 import { verifyAdminPasskey, saveSecureSession } from '../utils/security';
 import { validateEgyptianPhone, normalizeEgyptianPhone, isValidEgyptianPhone } from '../utils/phoneValidator';
@@ -270,20 +270,29 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Branding */}
-        <div className="bg-[#002B49] p-6 text-center text-white relative">
-          <div className="w-16 h-16 mx-auto bg-white/10 rounded-2xl flex items-center justify-center border border-white/20 shadow-md mb-3">
-            <Building2 className="w-9 h-9 text-[#FFB300]" />
+        <div className="bg-gradient-to-b from-[#0F172A] via-[#002B49] to-[#0F172A] p-6 text-center text-white relative">
+          
+          {/* Top Badge: تطبيق سكن أسيوط - المنظومة العقارية المعتمدة بأسرها */}
+          <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 text-amber-300 border border-amber-400/40 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold mb-3 shadow-xs">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span>تطبيق سكن أسيوط - المنظومة العقارية المعتمدة بأسرها</span>
           </div>
-          <h1 className="text-xl font-black text-white">منصة عرض وطلب - أسيوط</h1>
-          <p className="text-xs text-slate-300 mt-1">
-            المنظومة العقارية المعتمدة لعروض وطلبات العقارات بأسيوط
+
+          {/* Logo / Badge in vibrant, eye-catching warm amber-gold with crisp house icon */}
+          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 rounded-3xl flex items-center justify-center ring-4 ring-amber-300/40 shadow-xl shadow-amber-500/30 mb-3 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-white/30 pointer-events-none" />
+            <Home className="w-9 h-9 text-white drop-shadow-md stroke-[2.2]" />
+          </div>
+
+          <h1 className="text-2xl font-black text-white tracking-tight">
+            سكن <span className="text-amber-400">أسيوط</span>
+          </h1>
+          <p className="text-xs text-slate-200 mt-1.5 font-medium leading-relaxed max-w-xs mx-auto">
+            تطبيق سكن أسيوط - المنظومة العقارية المعتمدة بأسرها
           </p>
 
-          <div className="absolute top-4 left-4 flex items-center gap-2">
+          <div className="absolute top-4 left-4">
             <PWAInstallButton />
-            <span className="text-[10px] bg-[#FFB300] text-[#002B49] font-black px-2 py-0.5 rounded-full shadow-xs">
-              أسيوط
-            </span>
           </div>
         </div>
 
@@ -429,7 +438,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                 <div className="flex justify-end mt-1.5">
                   <a
                     href={`https://wa.me/201002345678?text=${encodeURIComponent(
-                      `السلام عليكم ورحمة الله، أود استعادة أو إعادة تعيين كلمة المرور (رمز PIN) لحسابي على منصة عرض وطلب أسيوط${
+                      `السلام عليكم ورحمة الله، أود استعادة أو إعادة تعيين كلمة المرور (رمز PIN) لحسابي على تطبيق سكن أسيوط${
                         phone ? ` (رقم هاتفي المسجل: ${phone})` : ''
                       }.`
                     )}`}
@@ -504,7 +513,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       </div>
 
       <div className="mt-4 text-center text-xs text-slate-400">
-        منظومة عرض وطلب العقارية • محافظة أسيوط
+        تطبيق سكن أسيوط • المنظومة العقارية المعتمدة بمحافظة أسيوط
       </div>
     </div>
   );
