@@ -12,10 +12,20 @@ import {
   ShieldCheck, CheckCircle2, XCircle, Trash2, Eye, Lock, 
   UserX, Ban, AlertTriangle, Calendar, Plus, Search,
   Edit3, MessageSquare, Users, UserCheck, Download, FileSpreadsheet, Printer, ChevronDown,
-  SlidersHorizontal, BarChart3, RotateCcw, Building2, Menu, X, ChevronLeft
+  SlidersHorizontal, BarChart3, RotateCcw, Building2, Menu, X, ChevronLeft,
+  Phone, MessageCircle, User, Database, RefreshCw
 } from 'lucide-react';
 import { UserManagement } from './UserManagement';
 import { exportToCSV, exportToPrintablePDF } from '../utils/exportUtils';
+import { 
+  isSupabaseActive, 
+  getSupabaseConfig, 
+  saveSupabaseConfig, 
+  dbFetchProperties, 
+  dbFetchTenantRequests, 
+  dbUpsertProperty, 
+  dbUpsertTenantRequest 
+} from '../lib/supabase';
 
 interface AdminPanelProps {
   currentUser?: AppUser | null;
@@ -109,10 +119,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const pendingModerationCount = useMemo(() => {
     const pendingProps = properties.filter(
-      (p) => (p.isApproved === false || p.status === 'pending' || p.status === 'pending_approval')
+      (p) =>
+        (p.isApproved === false || p.status === 'pending' || p.status === 'pending_approval' || p.status === 'under_review') &&
+        p.status !== 'needs_completion' &&
+        p.status !== 'rejected'
     ).length;
     const pendingReqs = tenantRequests.filter(
-      (r) => (r.isApproved === false || r.status === 'pending' || r.status === 'pending_approval')
+      (r) =>
+        (r.isApproved === false || r.status === 'pending' || r.status === 'pending_approval' || r.status === 'under_review') &&
+        r.status !== 'needs_completion' &&
+        r.status !== 'rejected'
     ).length;
     return pendingProps + pendingReqs;
   }, [properties, tenantRequests]);
@@ -139,6 +155,50 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [blockRole, setBlockRole] = useState<'owner' | 'broker' | 'tenant'>('tenant');
   const [blockReason, setBlockReason] = useState('');
   const [blockPhoneError, setBlockPhoneError] = useState<string | null>(null);
+
+  // Supabase Configuration State & Migration
+  const initialSbConfig = useMemo(() => getSupabaseConfig(), []);
+  const [sbUrl, setSbUrl] = useState(initialSbConfig?.url || '');
+  const [sbAnonKey, setSbAnonKey] = useState(initialSbConfig?.anonKey || '');
+  const [sbSaveMsg, setSbSaveMsg] = useState<string | null>(null);
+  const [isPushingAllToSb, setIsPushingAllToSb] = useState(false);
+
+  const handleSaveSbConfig = () => {
+    if (!sbUrl.trim() || !sbAnonKey.trim()) {
+      setSbSaveMsg('يرجى إدخال كل من رابط المشروع ومفتاح الوصول (Anon Key).');
+      return;
+    }
+    saveSupabaseConfig({ url: sbUrl.trim(), anonKey: sbAnonKey.trim() });
+    setSbSaveMsg('تم حفظ وتحديث إعدادات Supabase بنجاح! جاري الاتصال المباشر بقاعدة البيانات.');
+    setTimeout(() => setSbSaveMsg(null), 4000);
+  };
+
+  const handlePushAllToSupabase = async () => {
+    if (!isSupabaseActive()) {
+      alert('يرجى حفظ إعدادات Supabase أولاً والتأكد من صحة الرابط والمفتاح.');
+      return;
+    }
+    setIsPushingAllToSb(true);
+    try {
+      let countP = 0;
+      let countR = 0;
+      for (const p of properties) {
+        await dbUpsertProperty(p);
+        countP++;
+      }
+      for (const r of tenantRequests) {
+        await dbUpsertTenantRequest(r);
+        countR++;
+      }
+      setSbSaveMsg(`تم رفع ومزامنة (${countP}) عقار و (${countR}) طلب بنجاح إلى قاعدة بيانات Supabase!`);
+    } catch (err) {
+      setSbSaveMsg('حدث خطأ أثناء مزامنة البيانات.');
+      console.error(err);
+    } finally {
+      setIsPushingAllToSb(false);
+      setTimeout(() => setSbSaveMsg(null), 5000);
+    }
+  };
 
   // Recharts Data
   const rentTotal = properties.filter((p) => p.purpose === 'rent').length;
@@ -175,7 +235,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const filteredProperties = useMemo(() => {
     return properties.filter((p) => {
       if (filterStatus === 'pending') {
-        const isPending = (p.isApproved === false || p.status === 'pending' || p.status === 'pending_approval') && p.status !== 'needs_completion';
+        const isPending =
+          (p.isApproved === false || p.status === 'pending' || p.status === 'pending_approval' || p.status === 'under_review') &&
+          p.status !== 'needs_completion' &&
+          p.status !== 'rejected';
         if (!isPending) return false;
       } else if (filterStatus === 'needs_completion') {
         if (p.status !== 'needs_completion') return false;
@@ -190,7 +253,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           p.code.toLowerCase().includes(q) ||
           p.title.toLowerCase().includes(q) ||
           p.district.toLowerCase().includes(q) ||
-          (p.ownerPhone && p.ownerPhone.includes(q))
+          (p.ownerPhone && p.ownerPhone.includes(q)) ||
+          (p.ownerName && p.ownerName.toLowerCase().includes(q))
         );
       }
       return true;
@@ -200,7 +264,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const filteredRequests = useMemo(() => {
     return tenantRequests.filter((r) => {
       if (filterStatus === 'pending') {
-        const isPending = (r.isApproved === false || r.status === 'pending' || r.status === 'pending_approval') && r.status !== 'needs_completion';
+        const isPending =
+          (r.isApproved === false || r.status === 'pending' || r.status === 'pending_approval' || r.status === 'under_review') &&
+          r.status !== 'needs_completion' &&
+          r.status !== 'rejected';
         if (!isPending) return false;
       } else if (filterStatus === 'needs_completion') {
         if (r.status !== 'needs_completion') return false;
@@ -650,18 +717,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     },
                     {
                       id: 'pending',
-                      label: 'بانتظار الموافقة',
+                      label: 'بانتظار الموافقة ومراجعة الإدارة',
                       count:
                         moderationType === 'properties'
                           ? properties.filter(
                               (p) =>
-                                (p.isApproved === false || p.status === 'pending' || p.status === 'pending_approval') &&
-                                p.status !== 'needs_completion'
+                                (p.isApproved === false || p.status === 'pending' || p.status === 'pending_approval' || p.status === 'under_review') &&
+                                p.status !== 'needs_completion' &&
+                                p.status !== 'rejected'
                             ).length
                           : tenantRequests.filter(
                               (r) =>
-                                (r.isApproved === false || r.status === 'pending' || r.status === 'pending_approval') &&
-                                r.status !== 'needs_completion'
+                                (r.isApproved === false || r.status === 'pending' || r.status === 'pending_approval' || r.status === 'under_review') &&
+                                r.status !== 'needs_completion' &&
+                                r.status !== 'rejected'
                             ).length,
                     },
                     {
@@ -726,8 +795,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   ) : (
                     filteredProperties.map((item) => {
                       const isPending =
-                        (item.isApproved === false || item.status === 'pending' || item.status === 'pending_approval') &&
-                        item.status !== 'needs_completion';
+                        (item.isApproved === false || item.status === 'pending' || item.status === 'pending_approval' || item.status === 'under_review') &&
+                        item.status !== 'needs_completion' &&
+                        item.status !== 'rejected';
                       const isNeedsComp = item.status === 'needs_completion';
 
                       return (
@@ -756,7 +826,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               {isPending ? (
                                 <span className="text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
                                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                                  في انتظار سداد الرسوم والموافقة
+                                  بانتظار المراجعة والاعتماد
                                 </span>
                               ) : isNeedsComp ? (
                                 <span className="text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
@@ -788,11 +858,50 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-600 bg-slate-50/70 p-2.5 rounded-xl border border-slate-100">
-                            <div>السعر: <strong className="text-[#002B49] font-mono">{item.price.toLocaleString()} ج.م</strong></div>
-                            <div>المساحة: <strong className="text-[#002B49]">{item.area} م²</strong></div>
-                            <div>المعلن: <strong>{item.ownerName}</strong></div>
-                            <div>الهاتف: <strong dir="ltr">{item.ownerPhone}</strong></div>
+                          {/* بطاقة تفاصيل وبيانات صاحب الإعلان */}
+                          <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/80 space-y-2">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                  <User className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-400 block font-medium">بيانات صاحب الإعلان / المعلن</span>
+                                  <span className="font-bold text-xs sm:text-sm text-slate-900">{item.ownerName || 'مالك العقار'}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {item.ownerPhone && (
+                                  <>
+                                    <a
+                                      href={`tel:${item.ownerPhone}`}
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold border border-emerald-200 flex items-center gap-1 transition-colors"
+                                      title="اتصال هاتفياً بالمعلن"
+                                    >
+                                      <Phone className="w-3 h-3" />
+                                      <span dir="ltr">{item.ownerPhone}</span>
+                                    </a>
+                                    <a
+                                      href={`https://wa.me/20${item.ownerPhone.replace(/^0+/, '')}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 transition-colors"
+                                      title="مراسلة عبر الواتساب"
+                                    >
+                                      <MessageCircle className="w-3 h-3" />
+                                      <span>واتساب</span>
+                                    </a>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-600 pt-0.5">
+                              <div>السعر: <strong className="text-[#002B49] font-mono">{item.price.toLocaleString()} ج.م</strong></div>
+                              <div>المساحة: <strong className="text-[#002B49]">{item.area} م²</strong></div>
+                              <div>تاريخ الإضافة: <strong className="font-mono text-slate-700">{item.createdAt || 'اليوم'}</strong></div>
+                              <div>المصدر: <strong className="text-slate-800">{item.source || 'مالك مباشر'}</strong></div>
+                            </div>
                           </div>
 
                           {/* ملاحظة استكمال البيان إذا كانت مسجلة مسبقاً */}
@@ -938,8 +1047,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   ) : (
                     filteredRequests.map((req) => {
                       const isPending =
-                        (req.isApproved === false || req.status === 'pending' || req.status === 'pending_approval') &&
-                        req.status !== 'needs_completion';
+                        (req.isApproved === false || req.status === 'pending' || req.status === 'pending_approval' || req.status === 'under_review') &&
+                        req.status !== 'needs_completion' &&
+                        req.status !== 'rejected';
                       const isNeedsComp = req.status === 'needs_completion';
 
                       return (
@@ -996,22 +1106,61 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-600 bg-slate-50/70 p-2.5 rounded-xl border border-slate-100">
-                            <div>
-                              الميزانية:{' '}
-                              <strong className="text-[#002B49] font-mono">
-                                {req.minPrice ? `${req.minPrice.toLocaleString()} - ` : ''}
-                                {req.maxPrice.toLocaleString()} ج.م
-                              </strong>
+                          {/* بطاقة تفاصيل وبيانات صاحب طلب السكن */}
+                          <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/80 space-y-2">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                  <User className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-400 block font-medium">بيانات صاحب الطلب / الباحث</span>
+                                  <span className="font-bold text-xs sm:text-sm text-slate-900">{req.tenantName || 'مواطن باحث عن عقار'}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {req.tenantPhone && (
+                                  <>
+                                    <a
+                                      href={`tel:${req.tenantPhone}`}
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold border border-emerald-200 flex items-center gap-1 transition-colors"
+                                      title="اتصال هاتفياً بصاحب الطلب"
+                                    >
+                                      <Phone className="w-3 h-3" />
+                                      <span dir="ltr">{req.tenantPhone}</span>
+                                    </a>
+                                    <a
+                                      href={`https://wa.me/20${req.tenantPhone.replace(/^0+/, '')}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 transition-colors"
+                                      title="مراسلة عبر الواتساب"
+                                    >
+                                      <MessageCircle className="w-3 h-3" />
+                                      <span>واتساب</span>
+                                    </a>
+                                  </>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              المساحة:{' '}
-                              <strong className="text-[#002B49]">
-                                {req.minArea || req.maxArea ? `${req.minArea || ''}-${req.maxArea || ''} م²` : 'غير محدد'}
-                              </strong>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-600 pt-0.5">
+                              <div>
+                                الميزانية:{' '}
+                                <strong className="text-[#002B49] font-mono">
+                                  {req.minPrice ? `${req.minPrice.toLocaleString()} - ` : ''}
+                                  {req.maxPrice.toLocaleString()} ج.م
+                                </strong>
+                              </div>
+                              <div>
+                                المساحة:{' '}
+                                <strong className="text-[#002B49]">
+                                  {req.minArea || req.maxArea ? `${req.minArea || ''}-${req.maxArea || ''} م²` : 'غير محدد'}
+                                </strong>
+                              </div>
+                              <div>تاريخ الطلب: <strong className="font-mono text-slate-700">{req.createdAt || 'اليوم'}</strong></div>
+                              <div>الحي المفضل: <strong className="text-slate-800">{req.preferredDistrict}</strong></div>
                             </div>
-                            <div>صاحب الطلب: <strong>{req.tenantName}</strong></div>
-                            <div>الهاتف: <strong dir="ltr">{req.tenantPhone}</strong></div>
                           </div>
 
                           {req.notes && (
@@ -1503,7 +1652,97 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
-              {/* Card 3: إعدادات إعادة الضبط وتأمين الجلسة */}
+              {/* Card 3: إعدادات الربط بقاعدة بيانات الإنتاج السحابية (Supabase) */}
+              <div className="bg-white p-4 sm:p-5 rounded-[14px] border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                      <Database className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm sm:text-base">
+                        قاعدة بيانات الإنتاج والمزامنة السحابية (Supabase)
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        ربط لوحة التحكم بالمستخدمين والعقارات الحية لضمان مزامنة الإعلانات والحسابات فورياً عبر كافة الأجهزة وVercel
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shrink-0 ${
+                    isSupabaseActive()
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border border-amber-200'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${isSupabaseActive() ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                    <span>{isSupabaseActive() ? 'قاعدة البيانات الحية متصلة (Online)' : 'تخزين محلي متزامن'}</span>
+                  </span>
+                </div>
+
+                {sbSaveMsg && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold rounded-xl flex items-center gap-2 animate-in fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>{sbSaveMsg}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-right">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      رابط مشروع Supabase (Project URL):
+                    </label>
+                    <input
+                      type="text"
+                      dir="ltr"
+                      value={sbUrl}
+                      onChange={(e) => setSbUrl(e.target.value)}
+                      placeholder="https://xyzcompany.supabase.co"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-[#1D4ED8] focus:ring-1 focus:ring-[#1D4ED8]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      مفتاح الوصول العام (Anon Public Key):
+                    </label>
+                    <input
+                      type="password"
+                      dir="ltr"
+                      value={sbAnonKey}
+                      onChange={(e) => setSbAnonKey(e.target.value)}
+                      placeholder="eyJhbGciOi..."
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-[#1D4ED8] focus:ring-1 focus:ring-[#1D4ED8]"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={handleSaveSbConfig}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#002B49] hover:bg-[#00385F] text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-[#FFB300]" />
+                    <span>حفظ وتفعيل الاتصال فوراً</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handlePushAllToSupabase}
+                    disabled={isPushingAllToSb}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isPushingAllToSb ? 'animate-spin' : ''}`} />
+                    <span>{isPushingAllToSb ? 'جاري الرفع...' : 'رفع ومزامنة كافة العروض والطلبات الحالية إلى Supabase'}</span>
+                  </button>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-[11px] text-slate-500 leading-relaxed">
+                  💡 <strong>ملاحظة هامة:</strong> يتضمن المشروع ملف <code className="text-blue-700 font-mono font-bold bg-blue-50 px-1 py-0.5 rounded">supabase_schema.sql</code> في المجلد الرئيسي، يحتوي على المخطط الشامل لجداول (<code className="font-mono">app_users</code>, <code className="font-mono">properties</code>, <code className="font-mono">tenant_requests</code>) مع سياسات الأمان (RLS) ومفتاح التحديث اللحظي (Realtime). قم بتشغيله في SQL Editor داخل لوحة تحكم Supabase لتفعيل كافة الصلاحيات فوراً.
+                </div>
+              </div>
+
+              {/* Card 4: إعدادات إعادة الضبط وتأمين الجلسة */}
               <div className="bg-white p-4 sm:p-5 rounded-[14px] border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <span className="font-bold text-slate-900 text-sm block">استعادة الإعدادات الافتراضية للقوائم</span>

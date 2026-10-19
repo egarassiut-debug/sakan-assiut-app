@@ -23,6 +23,8 @@ const DEFAULT_USERS_FALLBACK: AppUser[] = [
   },
 ];
 
+import { dbFetchUsers, dbUpsertUser, dbDeleteUser, isSupabaseActive } from '../lib/supabase';
+
 export function getAllRegisteredUsers(): AppUser[] {
   try {
     const raw = localStorage.getItem(USERS_DB_KEY);
@@ -40,9 +42,78 @@ export function getAllRegisteredUsers(): AppUser[] {
 export function saveRegisteredUsers(users: AppUser[]): void {
   try {
     localStorage.setItem(USERS_DB_KEY, JSON.stringify(users));
+    window.dispatchEvent(new CustomEvent('ardaw_users_updated', { detail: users }));
   } catch (e) {
     console.error('Error saving users db:', e);
   }
+}
+
+/**
+ * Live bidirectional sync between local cache and Supabase
+ */
+export async function syncUsersWithDatabase(): Promise<AppUser[]> {
+  const localUsers = getAllRegisteredUsers();
+  if (!isSupabaseActive()) {
+    return localUsers;
+  }
+
+  try {
+    const dbUsers = await dbFetchUsers();
+    if (dbUsers && Array.isArray(dbUsers)) {
+      // Merge DB users and local users by phone number
+      const userMap = new Map<string, AppUser>();
+      
+      // Default fallback admins
+      DEFAULT_USERS_FALLBACK.forEach((u) => userMap.set(u.phone, u));
+      
+      // Local users
+      localUsers.forEach((u) => userMap.set(u.phone, u));
+      
+      // DB users take precedence
+      dbUsers.forEach((u) => userMap.set(u.phone, u));
+      
+      const merged = Array.from(userMap.values());
+      saveRegisteredUsers(merged);
+
+      // Push any local-only users up to Supabase
+      const dbPhones = new Set(dbUsers.map((u) => u.phone));
+      for (const localUser of localUsers) {
+        if (!dbPhones.has(localUser.phone)) {
+          dbUpsertUser(localUser).catch((e) => console.warn('Sync up user failed:', e));
+        }
+      }
+
+      return merged;
+    }
+  } catch (err) {
+    console.warn('Sync users error:', err);
+  }
+  return localUsers;
+}
+
+/**
+ * Register or add a user with instant storage & background Supabase sync
+ */
+export async function registerNewUser(newUser: AppUser): Promise<AppUser[]> {
+  const current = getAllRegisteredUsers();
+  // Check if exists
+  const existsIndex = current.findIndex((u) => u.phone === newUser.phone);
+  let updated: AppUser[];
+  if (existsIndex >= 0) {
+    updated = [...current];
+    updated[existsIndex] = { ...updated[existsIndex], ...newUser };
+  } else {
+    updated = [newUser, ...current];
+  }
+
+  saveRegisteredUsers(updated);
+
+  // Sync with Supabase in background
+  dbUpsertUser(newUser).catch((err) => {
+    console.warn('Background Supabase upsert user failed:', err);
+  });
+
+  return updated;
 }
 
 export function resetUserPinCode(userId: string, newPin: string, adminUser?: AppUser | null): boolean {
@@ -53,6 +124,9 @@ export function resetUserPinCode(userId: string, newPin: string, adminUser?: App
 
     users[index].pin = newPin;
     saveRegisteredUsers(users);
+
+    // Sync with DB
+    dbUpsertUser(users[index]).catch((e) => console.warn('Supabase reset PIN sync failed:', e));
 
     if (adminUser) {
       logAdminActivity(
@@ -89,11 +163,16 @@ export function toggleUserBlockStatus(
     users[index].isBlocked = shouldBlock;
     if (shouldBlock) {
       users[index].blockedReason = reason || 'مخالفة شروط النشر أو الاستخدام';
+      users[index].blockedAt = new Date().toISOString();
     } else {
       delete users[index].blockedReason;
+      delete users[index].blockedAt;
     }
 
     saveRegisteredUsers(users);
+
+    // Sync with DB
+    dbUpsertUser(users[index]).catch((e) => console.warn('Supabase block toggle sync failed:', e));
 
     if (adminUser) {
       logAdminActivity(
@@ -127,6 +206,9 @@ export function deleteRegisteredUser(userId: string, adminUser?: AppUser | null)
 
     const filtered = users.filter((u) => u.id !== userId);
     saveRegisteredUsers(filtered);
+
+    // Sync with DB
+    dbDeleteUser(userId).catch((e) => console.warn('Supabase delete user sync failed:', e));
 
     if (adminUser) {
       logAdminActivity(

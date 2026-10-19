@@ -5,13 +5,15 @@ import {
   resetUserPinCode, 
   deleteRegisteredUser,
   toggleUserBlockStatus,
-  createWhatsAppLink
+  createWhatsAppLink,
+  syncUsersWithDatabase
 } from '../utils/userManager';
+import { isSupabaseActive } from '../lib/supabase';
 import { 
   Users, Search, ShieldCheck, UserX, UserCheck, KeyRound, 
   Trash2, MessageCircle, AlertCircle, CheckCircle2, Lock, 
   Unlock, Eye, EyeOff, RefreshCw, Phone, User, Calendar,
-  Copy, Check, Sparkles, Filter, Download, FileSpreadsheet, Printer
+  Copy, Check, Sparkles, Filter, Download, FileSpreadsheet, Printer, Database
 } from 'lucide-react';
 import { exportToCSV, exportToPrintablePDF } from '../utils/exportUtils';
 
@@ -20,7 +22,8 @@ interface UserManagementProps {
 }
 
 export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
-  const [users, setUsers] = useState<AppUser[]>([]);
+  const [users, setUsers] = useState<AppUser[]>(() => getAllRegisteredUsers());
+  const [isSyncing, setIsSyncing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
   const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'admin'>('all');
@@ -47,8 +50,21 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   const [isExportOpen, setIsExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
-  const loadUsers = () => {
+  const loadUsers = async (showFeedback = false) => {
+    setIsSyncing(true);
+    // Instant local view
     setUsers(getAllRegisteredUsers());
+    try {
+      const synced = await syncUsersWithDatabase();
+      setUsers(synced);
+      if (showFeedback) {
+        showToast(`تم تحديث بيانات المستخدمين بنجاح (${synced.length} حساب مسجل).`);
+      }
+    } catch (e) {
+      console.warn('Sync failed:', e);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   useEffect(() => {
@@ -63,9 +79,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
   useEffect(() => {
     loadUsers();
-    const handleUpdate = () => loadUsers();
+    const handleUpdate = () => {
+      setUsers(getAllRegisteredUsers());
+    };
     window.addEventListener('ardaw_users_updated', handleUpdate);
-    return () => window.removeEventListener('ardaw_users_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('ardaw_users_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
   }, []);
 
   const showToast = (msg: string) => {
@@ -240,12 +262,33 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-1">
-              التحكم في بيانات الحسابات، إعادة تعيين رمز PIN بضغطة زر والتواصل الفوري عبر الواتساب، وإدارة الحظر
+              التحكم في بيانات الحسابات، وإعادة تعيين رمز PIN، وجلب الحسابات المسجلة حديثاً فوراً
             </p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                isSupabaseActive() 
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' 
+                  : 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isSupabaseActive() ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400'}`} />
+                {isSupabaseActive() ? 'متصل بقاعدة البيانات الحية (Supabase)' : 'تخزين متزامن (جاهز للربط بـ Supabase)'}
+              </span>
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap" ref={exportRef}>
+          {/* زر التحديث اللحظي من قاعدة البيانات */}
+          <button
+            onClick={() => loadUsers(true)}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+            title="تحديث فوري من قاعدة البيانات"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing ? 'جاري الجلب...' : 'تحديث حي'}</span>
+          </button>
+
           {/* تصدير البيانات */}
           <div className="relative">
             <button
@@ -290,7 +333,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
           </div>
 
           <button
-            onClick={loadUsers}
+            onClick={() => loadUsers(true)}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
             title="تحديث قائمة الحسابات"
           >

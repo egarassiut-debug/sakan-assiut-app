@@ -7,6 +7,7 @@ import {
 import { verifyAdminPasskey, saveSecureSession } from '../utils/security';
 import { validateEgyptianPhone, normalizeEgyptianPhone, isValidEgyptianPhone } from '../utils/phoneValidator';
 import { isAuthorizedAdminPhone, findAdminByPhone } from '../utils/adminManager';
+import { registerNewUser, syncUsersWithDatabase } from '../utils/userManager';
 import { PWAInstallButton } from './PWAInstallButton';
 
 interface AuthScreenProps {
@@ -113,6 +114,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           setAuthMode('login');
         }
       }
+      // 3. Sync with live database in background
+      syncUsersWithDatabase().catch((e) => console.warn('Sync users on auth screen mount failed:', e));
     } catch (e) {
       console.error('Error reading auth cache:', e);
     }
@@ -191,8 +194,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
         createdAt: new Date().toISOString().split('T')[0],
       };
 
-      const updatedDb = [newUser, ...usersDb];
-      localStorage.setItem('ardaw_users_db', JSON.stringify(updatedDb));
+      await registerNewUser(newUser);
 
       if (rememberMe) {
         localStorage.setItem('ardaw_saved_credentials', JSON.stringify({ phone, pin }));

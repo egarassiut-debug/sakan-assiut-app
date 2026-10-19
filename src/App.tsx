@@ -37,6 +37,16 @@ import { isSecureAdminSession, clearSecureSession } from './utils/security';
 import { playPushChime } from './utils/pushSound';
 import { RealEstateAgent, PersonSearch } from './components/FlutterIcons';
 import type { SubmittedSummaryItem, MatchEntry } from './components/SmartMatchingResultsModal';
+import { 
+  dbFetchProperties, 
+  dbUpsertProperty, 
+  dbDeleteProperty, 
+  dbFetchTenantRequests, 
+  dbUpsertTenantRequest, 
+  dbDeleteTenantRequest, 
+  isSupabaseActive, 
+  getSupabaseClient 
+} from './lib/supabase';
 
 // Code-split heavy components & modals for minimal initial bundle and fast startup
 const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
@@ -218,8 +228,107 @@ export function App() {
     }
     return INITIAL_BLOCKED_USERS;
   });
-  
-  // Dynamic categories with localStorage persistence
+
+  // Live Database Sync for Properties & Tenant Requests
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncLiveDatabase = async () => {
+      if (!isSupabaseActive()) return;
+      try {
+        const [dbProps, dbReqs] = await Promise.all([
+          dbFetchProperties(),
+          dbFetchTenantRequests(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (dbProps && Array.isArray(dbProps) && dbProps.length > 0) {
+          setProperties((prev) => {
+            const propMap = new Map<string, Property>();
+            INITIAL_PROPERTIES.forEach((p) => propMap.set(p.id, p));
+            prev.forEach((p) => propMap.set(p.id, p));
+            dbProps.forEach((p) => propMap.set(p.id, p));
+            const merged = Array.from(propMap.values());
+            try {
+              localStorage.setItem('ardaw_properties', JSON.stringify(merged));
+            } catch (e) {
+              console.warn(e);
+            }
+            return merged;
+          });
+        }
+
+        if (dbReqs && Array.isArray(dbReqs) && dbReqs.length > 0) {
+          setTenantRequests((prev) => {
+            const reqMap = new Map<string, TenantRequest>();
+            INITIAL_TENANT_REQUESTS.forEach((r) => reqMap.set(r.id, r));
+            prev.forEach((r) => reqMap.set(r.id, r));
+            dbReqs.forEach((r) => reqMap.set(r.id, r));
+            const merged = Array.from(reqMap.values());
+            try {
+              localStorage.setItem('ardaw_tenant_requests', JSON.stringify(merged));
+            } catch (e) {
+              console.warn(e);
+            }
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.warn('Live database sync failed:', err);
+      }
+    };
+
+    syncLiveDatabase();
+
+    // Listen for storage changes from other tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'ardaw_properties' && e.newValue) {
+        try { setProperties(JSON.parse(e.newValue)); } catch {}
+      }
+      if (e.key === 'ardaw_tenant_requests' && e.newValue) {
+        try { setTenantRequests(JSON.parse(e.newValue)); } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Supabase Realtime channel subscription
+    const client = getSupabaseClient();
+    let channel: any = null;
+    if (client) {
+      try {
+        channel = client
+          .channel('public_realtime_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'properties' }, () => {
+            dbFetchProperties().then((fresh) => {
+              if (fresh && isMounted) {
+                setProperties(fresh);
+                localStorage.setItem('ardaw_properties', JSON.stringify(fresh));
+              }
+            });
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'tenant_requests' }, () => {
+            dbFetchTenantRequests().then((fresh) => {
+              if (fresh && isMounted) {
+                setTenantRequests(fresh);
+                localStorage.setItem('ardaw_tenant_requests', JSON.stringify(fresh));
+              }
+            });
+          })
+          .subscribe();
+      } catch (e) {
+        console.warn('Realtime channel error:', e);
+      }
+    }
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', handleStorageChange);
+      if (channel && client) {
+        client.removeChannel(channel);
+      }
+    };
+  }, []);
   const [dropdownCategories, setDropdownCategories] = useState<Record<string, DropdownCategory>>(() => {
     try {
       const saved = localStorage.getItem('ardaw_dropdown_categories');
@@ -914,6 +1023,11 @@ export function App() {
       return updated;
     });
 
+    // Instant background sync with Supabase production database
+    dbUpsertProperty(newProp).catch((err) => {
+      console.warn('Supabase upsert property warning:', err);
+    });
+
     if (newProp.isApproved === false || newProp.status === 'pending_approval') {
       addToast({
         type: 'info',
@@ -1000,6 +1114,11 @@ export function App() {
       return updated;
     });
 
+    // Instant background sync with Supabase production database
+    dbUpsertTenantRequest(newReq).catch((err) => {
+      console.warn('Supabase upsert tenant request warning:', err);
+    });
+
     addToast({
       type: 'success',
       title: 'تم تسجيل طلب السكن',
@@ -1079,7 +1198,7 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Update Property in Local Storage
+  // Update Property in Local Storage and Database
   const handleUpdateProperty = (updatedProp: Property) => {
     setProperties((prev) => {
       const updated = prev.map((p) => (p.id === updatedProp.id ? updatedProp : p));
@@ -1089,6 +1208,9 @@ export function App() {
         console.error(e);
       }
       return updated;
+    });
+    dbUpsertProperty(updatedProp).catch((err) => {
+      console.warn('Supabase update property failed:', err);
     });
     setEditingProperty(null);
     setOverlayScreen('none');
@@ -1100,7 +1222,7 @@ export function App() {
     });
   };
 
-  // Update Tenant Request in Local Storage
+  // Update Tenant Request in Local Storage and Database
   const handleUpdateTenantRequest = (updatedReq: TenantRequest) => {
     setTenantRequests((prev) => {
       const updated = prev.map((r) => (r.id === updatedReq.id ? updatedReq : r));
@@ -1110,6 +1232,9 @@ export function App() {
         console.error(e);
       }
       return updated;
+    });
+    dbUpsertTenantRequest(updatedReq).catch((err) => {
+      console.warn('Supabase update tenant request failed:', err);
     });
     setEditingTenantRequest(null);
     setOverlayScreen('none');
@@ -1126,15 +1251,18 @@ export function App() {
     const targetReq = tenantRequests.find((r) => r.id === reqId);
     const wasPendingReq = targetReq && (targetReq.status === 'pending_approval' || targetReq.status === 'pending' || targetReq.isApproved === false);
 
+    let updatedReqObj: TenantRequest | null = null;
     setTenantRequests((prev) => {
       const updated = prev.map((r) => {
         if (r.id === reqId) {
-          return {
+          const item: TenantRequest = {
             ...r,
             status: newStatus,
             isApproved: newStatus === 'approved',
             adminNote: note !== undefined ? note : r.adminNote,
           };
+          updatedReqObj = item;
+          return item;
         }
         return r;
       });
@@ -1145,6 +1273,10 @@ export function App() {
       }
       return updated;
     });
+
+    if (updatedReqObj) {
+      dbUpsertTenantRequest(updatedReqObj).catch((e) => console.warn('Supabase tenant request status update failed:', e));
+    }
 
     // In-App Push Notification on Tenant Request Status Change
     if (targetReq && wasPendingReq) {
@@ -1202,6 +1334,7 @@ export function App() {
       }
       return updated;
     });
+    dbDeleteTenantRequest(reqId).catch((e) => console.warn('Supabase delete tenant request failed:', e));
     addToast({
       type: 'info',
       title: 'تم حذف الطلب',
@@ -1215,15 +1348,18 @@ export function App() {
     const targetProp = properties.find((p) => p.id === propId);
     const wasPending = targetProp && (targetProp.status === 'pending' || targetProp.status === 'pending_approval' || targetProp.isApproved === false);
 
+    let updatedPropObj: Property | null = null;
     setProperties((prev) => {
       const updated = prev.map((p) => {
         if (p.id === propId) {
-          return {
+          const item: Property = {
             ...p,
             status: newStatus,
             isApproved: newStatus === 'approved',
             adminNote: adminNote !== undefined ? adminNote : p.adminNote,
           };
+          updatedPropObj = item;
+          return item;
         }
         return p;
       });
@@ -1234,6 +1370,10 @@ export function App() {
       }
       return updated;
     });
+
+    if (updatedPropObj) {
+      dbUpsertProperty(updatedPropObj).catch((e) => console.warn('Supabase property status update failed:', e));
+    }
 
     // In-App Push Notification on Property Status Change
     if (targetProp && wasPending) {
@@ -1304,6 +1444,7 @@ export function App() {
       }
       return updated;
     });
+    dbDeleteProperty(propId).catch((e) => console.warn('Supabase delete property failed:', e));
     if (selectedProperty?.id === propId) {
       setSelectedProperty(null);
     }

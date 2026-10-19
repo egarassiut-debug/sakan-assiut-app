@@ -12,7 +12,7 @@ export interface AppUser {
   blockedAt?: string;
 }
 
-export type PropertyStatus = 'pending' | 'pending_approval' | 'approved' | 'rejected' | 'rented' | 'sold' | 'needs_completion' | 'archived';
+export type PropertyStatus = 'pending' | 'pending_approval' | 'under_review' | 'approved' | 'rejected' | 'rented' | 'sold' | 'needs_completion' | 'archived';
 
 export type PropertyPurpose = 'rent' | 'sale';
 
@@ -123,7 +123,7 @@ export interface TenantRequest {
   urgency?: 'immediate' | 'within_month' | 'exploring';
   notes?: string;
   adminNote?: string;
-  status?: 'pending' | 'pending_approval' | 'active' | 'approved' | 'matched' | 'fulfilled' | 'rejected' | 'needs_completion';
+  status?: 'pending' | 'pending_approval' | 'under_review' | 'active' | 'approved' | 'matched' | 'fulfilled' | 'rejected' | 'needs_completion';
   createdAt: string;
 }
 
