@@ -63,10 +63,14 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-2 sm:gap-2.5 cursor-pointer py-1 group select-none"
             title="سكن أسيوط - العودة للرئيسية"
           >
-            {/* Expressive house & property logo - distinctive, eye-catching vibrant color */}
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 flex items-center justify-center ring-2 ring-amber-300/60 shadow-md shadow-amber-500/30 group-hover:shadow-amber-500/50 transition-all group-hover:scale-105 shrink-0 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-white/30 pointer-events-none" />
-              <Home className="w-5 h-5 text-white drop-shadow-md stroke-[2.2]" />
+            {/* Official Sakan Logo Image - Fixed in Top Right */}
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-amber-400/90 shadow-md shadow-black/40 group-hover:ring-amber-300 group-hover:scale-105 transition-all shrink-0 bg-[#0A1D1A] flex items-center justify-center p-0.5">
+              <img 
+                src="/sakan-logo.png" 
+                alt="شعار تطبيق سكن أسيوط" 
+                className="w-full h-full object-cover rounded-lg sm:rounded-xl" 
+                loading="eager"
+              />
             </div>
 
             <div className="flex flex-col text-right leading-tight">

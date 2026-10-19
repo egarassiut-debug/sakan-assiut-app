@@ -278,10 +278,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             <span>تطبيق سكن أسيوط - المنظومة العقارية المعتمدة بأسرها</span>
           </div>
 
-          {/* Logo / Badge in vibrant, eye-catching warm amber-gold with crisp house icon */}
-          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 rounded-3xl flex items-center justify-center ring-4 ring-amber-300/40 shadow-xl shadow-amber-500/30 mb-3 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-white/30 pointer-events-none" />
-            <Home className="w-9 h-9 text-white drop-shadow-md stroke-[2.2]" />
+          {/* Official Sakan Logo Image */}
+          <div className="w-20 h-20 mx-auto rounded-3xl overflow-hidden ring-4 ring-amber-400/80 shadow-2xl shadow-black/50 mb-3 bg-[#0A1D1A] flex items-center justify-center p-1 group hover:scale-105 transition-all">
+            <img 
+              src="/sakan-logo.png" 
+              alt="شعار تطبيق سكن أسيوط" 
+              className="w-full h-full object-cover rounded-2xl" 
+              loading="eager"
+            />
           </div>
 
           <h1 className="text-2xl font-black text-white tracking-tight">

@@ -82,7 +82,7 @@ export const InAppPushBanner: React.FC<InAppPushBannerProps> = ({
       case 'welcome':
         return {
           bg: 'bg-gradient-to-r from-slate-900/95 via-[#002B49]/95 to-slate-900/95 border-amber-400/80 text-white shadow-amber-950/30',
-          icon: <Home className="w-3.5 h-3.5 text-amber-400 shrink-0" />,
+          icon: <img src="/sakan-logo.png" alt="سكن أسيوط" className="w-4 h-4 rounded-full object-cover ring-1 ring-amber-400 shrink-0" />,
         };
       case 'smart_match':
       case 'match':
