@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { InAppPushNotification } from '../types/property';
-import { CheckCircle2, XCircle, Bell, Sparkles, X, ExternalLink, AlertTriangle, Home } from 'lucide-react';
+import { CheckCircle2, XCircle, Bell, Sparkles, AlertTriangle, ExternalLink, Home } from 'lucide-react';
 
 interface InAppPushBannerProps {
   notification: InAppPushNotification | null;
@@ -8,187 +8,140 @@ interface InAppPushBannerProps {
   onOpenDetails?: (notification: InAppPushNotification) => void;
 }
 
+/**
+ * Compact In-App Push Alert Capsule:
+ * - Single-line text with ellipsis
+ * - Auto-dismiss in 2 seconds (1.5 - 2s range)
+ * - Tap to dismiss or swipe in any direction
+ * - Clean pill design without bulky buttons or clutter
+ */
 export const InAppPushBanner: React.FC<InAppPushBannerProps> = ({
   notification,
   onDismiss,
   onOpenDetails,
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleClose = () => {
+    setIsDismissing(true);
+    setTimeout(() => {
+      onDismiss();
+    }, 150);
+  };
 
   useEffect(() => {
     if (notification) {
-      setIsVisible(true);
-      // Auto dismiss after 8 seconds
+      setIsDismissing(false);
+      // Auto-dismiss within 2 seconds
       const timer = setTimeout(() => {
-        setIsVisible(false);
-        setTimeout(onDismiss, 300);
-      }, 8000);
+        handleClose();
+      }, 2000);
 
       return () => clearTimeout(timer);
-    } else {
-      setIsVisible(false);
     }
-  }, [notification, onDismiss]);
+  }, [notification]);
 
   if (!notification) return null;
+
+  // Touch Swipe Handlers for instant dismissal
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const diffX = Math.abs(touch.clientX - touchStartRef.current.x);
+    const diffY = Math.abs(touch.clientY - touchStartRef.current.y);
+
+    if (diffX > 35 || diffY > 35) {
+      handleClose();
+    }
+    touchStartRef.current = null;
+  };
 
   const getStyle = () => {
     switch (notification.type) {
       case 'approved':
         return {
-          border: 'border-emerald-500/80',
-          gradient: 'from-[#002B49] via-[#023e68] to-[#044c77]',
-          icon: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
-          badgeBg: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-          badgeText: 'معتمد وجاهز',
-          buttonBg: 'bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black',
+          bg: 'bg-emerald-950/95 border-emerald-400/80 text-white shadow-emerald-950/40',
+          icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />,
         };
       case 'rejected':
         return {
-          border: 'border-rose-500/80',
-          gradient: 'from-[#2e0914] via-[#3d0f1c] to-[#1f050d]',
-          icon: <XCircle className="w-5 h-5 text-rose-400" />,
-          badgeBg: 'bg-rose-500/20 text-rose-300 border border-rose-500/30',
-          badgeText: 'مرفوض',
-          buttonBg: 'bg-rose-600 hover:bg-rose-700 text-white font-black',
+          bg: 'bg-rose-950/95 border-rose-400/80 text-white shadow-rose-950/40',
+          icon: <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />,
         };
       case 'needs_completion':
         return {
-          border: 'border-amber-500/80',
-          gradient: 'from-[#291e03] via-[#3d2c05] to-[#1f1703]',
-          icon: <AlertTriangle className="w-5 h-5 text-amber-400" />,
-          badgeBg: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
-          badgeText: 'مطلوب استكمال بيان',
-          buttonBg: 'bg-amber-500 hover:bg-amber-600 text-slate-950 font-black',
+          bg: 'bg-amber-950/95 border-amber-400/80 text-white shadow-amber-950/40',
+          icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />,
         };
       case 'welcome':
         return {
-          border: 'border-amber-400/80',
-          gradient: 'from-[#002B49] via-[#00385f] to-[#001D33]',
-          icon: <Sparkles className="w-5 h-5 text-amber-300 animate-spin-slow" />,
-          badgeBg: 'bg-amber-400/20 text-amber-300 border border-amber-400/30',
-          badgeText: 'رسالة ترحيبية',
-          buttonBg: 'bg-[#FFB300] hover:bg-[#FFA000] text-slate-950 font-black',
+          bg: 'bg-gradient-to-r from-slate-900/95 via-[#002B49]/95 to-slate-900/95 border-amber-400/80 text-white shadow-amber-950/30',
+          icon: <Home className="w-3.5 h-3.5 text-amber-400 shrink-0" />,
         };
       case 'smart_match':
       case 'match':
         return {
-          border: 'border-[#FFB300]',
-          gradient: 'from-[#002B49] via-[#01355a] to-[#001D33]',
-          icon: <span className="text-lg">🎯</span>,
-          badgeBg: 'bg-[#FFB300]/20 text-[#FFB300] border border-[#FFB300]/40',
-          badgeText: 'تطابق ذكي فوري 🎯',
-          buttonBg: 'bg-[#FFB300] hover:bg-[#ffa000] text-slate-950 font-black',
+          bg: 'bg-gradient-to-r from-slate-900/95 via-teal-950/95 to-slate-900/95 border-amber-400/80 text-white shadow-teal-950/40',
+          icon: <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse shrink-0" />,
         };
       case 'info':
       default:
         return {
-          border: 'border-cyan-500/80',
-          gradient: 'from-[#002B49] via-[#01355a] to-[#001D33]',
-          icon: <Bell className="w-5 h-5 text-cyan-400" />,
-          badgeBg: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30',
-          badgeText: 'تنبيه دفع',
-          buttonBg: 'bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-black',
+          bg: 'bg-slate-900/95 border-cyan-400/80 text-white shadow-cyan-950/30',
+          icon: <Bell className="w-3.5 h-3.5 text-cyan-400 shrink-0" />,
         };
     }
   };
 
   const style = getStyle();
 
-  const handleClose = () => {
-    setIsVisible(false);
-    setTimeout(onDismiss, 200);
-  };
+  // Single-line text combining title and body with clean ellipsis
+  const displayText = notification.title && notification.body
+    ? `${notification.title}: ${notification.body}`
+    : notification.body || notification.title;
 
   return (
     <div
       dir="rtl"
-      className="fixed top-3 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:max-w-xl sm:w-full z-[9999] pointer-events-auto select-none"
+      className="fixed top-3 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto select-none max-w-[92vw] sm:max-w-md w-auto"
     >
       <div
-        className={`rounded-2xl p-4 bg-gradient-to-r ${style.gradient} border-2 ${style.border} text-white shadow-2xl backdrop-blur-md transition-all duration-300 transform ${
-          isVisible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-6 opacity-0 scale-95'
-        }`}
+        onClick={handleClose}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        title="انقر أو اسحب لإخفاء التنبيه"
+        className={`cursor-pointer rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 border shadow-xl backdrop-blur-md flex items-center gap-2 max-w-full transition-all duration-200 active:scale-95 ${
+          isDismissing ? 'opacity-0 -translate-y-3 scale-90' : 'opacity-100 translate-y-0 scale-100 animate-in fade-in slide-in-from-top-2'
+        } ${style.bg}`}
       >
-        {/* Top Header of In-App Push */}
-        <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2.5 text-[11px] text-slate-300">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-xs">
-              <Home className="w-3 h-3 text-white" />
-            </div>
-            <span className="font-bold text-white">تطبيق سكن أسيوط</span>
-            <span className="text-[10px] text-slate-400">• إشعار فوري</span>
-          </div>
+        {style.icon}
 
-          <div className="flex items-center gap-2">
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${style.badgeBg}`}>
-              {style.badgeText}
-            </span>
-            <button
-              onClick={handleClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-              aria-label="إغلاق التنبيه"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+        {/* Single-line text with ellipsis */}
+        <span className="text-xs sm:text-[13px] font-bold text-white truncate max-w-[210px] xs:max-w-[280px] sm:max-w-[330px] leading-tight">
+          {displayText}
+        </span>
 
-        {/* Content Body */}
-        <div className="flex items-start gap-3">
-          <div className="mt-1 p-2 rounded-xl bg-white/10 shrink-0">
-            {style.icon}
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-black text-white leading-tight">
-              {notification.title}
-            </h4>
-            <p className="text-xs text-slate-200 mt-1 leading-relaxed font-medium">
-              {notification.body}
-            </p>
-
-            {notification.adminNote && (
-              <div className="mt-2 p-2 rounded-xl bg-black/30 border border-white/10 text-[11px] text-amber-200">
-                <span className="font-bold block">ملاحظة الإدارة:</span>
-                {notification.adminNote}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Action Row */}
-        <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between gap-2">
-          <span className="text-[10px] text-slate-400 font-medium">
-            {notification.itemCode ? `كود الإعلان: ${notification.itemCode}` : 'تنبيه مباشر'}
-          </span>
-
-          <div className="flex items-center gap-2">
-            {onOpenDetails && (notification.itemId || notification.itemCode) && (
-              <button
-                onClick={() => {
-                  onOpenDetails(notification);
-                  handleClose();
-                }}
-                className={`text-xs px-3.5 py-1.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${style.buttonBg}`}
-              >
-                <span>
-                  {notification.itemType === 'request'
-                    ? 'عرض التفاصيل'
-                    : 'معاينة العقار'}
-                </span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </button>
-            )}
-
-            <button
-              onClick={handleClose}
-              className="text-xs px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-colors cursor-pointer"
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
+        {/* Micro detail badge if linked to an item */}
+        {onOpenDetails && (notification.itemId || notification.itemCode) && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetails(notification);
+              handleClose();
+            }}
+            className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/20 hover:bg-white/30 text-white shrink-0 flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <span>عرض</span>
+            <ExternalLink className="w-2.5 h-2.5" />
+          </button>
+        )}
       </div>
     </div>
   );
