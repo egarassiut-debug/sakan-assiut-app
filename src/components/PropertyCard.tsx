@@ -109,10 +109,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   return (
     <div 
       onClick={handleCardClick}
-      className={`bg-white rounded-[12px] overflow-hidden border transition-all cursor-pointer group flex flex-col ${
+      className={`bg-white rounded-[14px] overflow-hidden border transition-all duration-200 cursor-pointer group flex flex-col ${
         isExpanded
-          ? 'border-[#1D4ED8] shadow-[0_4px_16px_rgba(29,78,216,0.12)] ring-2 ring-[#1D4ED8]/10'
-          : 'border-[#E2E8F0] shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:shadow-[0_6px_16px_rgba(0,0,0,0.08)]'
+          ? 'border-[#1D4ED8] shadow-[0_4px_20px_rgba(29,78,216,0.12)] ring-2 ring-[#1D4ED8]/10'
+          : 'border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)]'
       }`}
     >
       {/* Top Media Slider & Badges */}

@@ -1,6 +1,6 @@
 {
-  "name": "عرضه (إيجار) - سمسار وعقارات أسيوط",
-  "description": "تطبيق إيجار وعقارات أسيوط المعتمد - شقق وعقارات للإيجار والبيع مع كود فوري للمعاينة الميدانية وتوثيق الملكية في محافظة أسيوط.",
+  "name": "Sakan Assiut",
+  "description": "منصة وتطبيق سكن أسيوط لحجز والبحث عن العقارات والشقق والوحدات السكنية في أسيوط",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -37,7 +37,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
     // 1. شريط المستخدم العادي: عروض الإيجار والبيع - طلبات الإيجار - زر الإضافة (+) - إعلاناتي
     // -------------------------------------------------------------------------
     return (
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white text-slate-700 border-t border-[#E2E8F0] shadow-[0_-4px_12px_rgba(0,0,0,0.05)] select-none">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white text-slate-700 border-t border-[#E5E7EB] shadow-[0_-4px_20px_rgba(0,0,0,0.04)] select-none">
         <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-between relative">
           
           {/* 1. عروض الإيجار (Index 0) */}
@@ -132,7 +132,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   //    عروض الإيجار - طلبات الإيجار - زر الإضافة (+) - لوحة التحكم
   // ---------------------------------------------------------------------------
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white text-slate-700 border-t border-[#E2E8F0] shadow-[0_-4px_12px_rgba(0,0,0,0.05)] select-none">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white text-slate-700 border-t border-[#E5E7EB] shadow-[0_-4px_20px_rgba(0,0,0,0.04)] select-none">
       <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-between relative">
         
         {/* 1. عروض الإيجار (Index 0) */}

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Property, PropertyPurpose, PropertyUtilities, TenantRequest, AppUser } from '../types/property';
 import { DropdownCategory, UtilityOptionDefinition } from '../data/dropdownOptions';
 import { parseArabicVoiceTranscript } from '../utils/voiceParser';
@@ -97,42 +97,65 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     .filter((i) => i.isActive)
     .map((i) => i.name);
 
+  const draftStorageKey = isOffer ? 'asuit_property_form_draft_offer' : 'asuit_property_form_draft_request';
+
+  // 1. Read saved draft from localStorage on initial render if not in editing mode
+  const initialDraft = useMemo(() => {
+    if (isEditing) return null;
+    try {
+      const saved = localStorage.getItem(draftStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse draft from localStorage', e);
+    }
+    return null;
+  }, [isEditing, draftStorageKey]);
+
   // Common Form State
   const [propertyType, setPropertyType] = useState<string>(
-    editingProperty?.propertyType || editingTenantRequest?.propertyType || activePropertyTypes[0] || 'شقة سكنية'
+    editingProperty?.propertyType || editingTenantRequest?.propertyType || initialDraft?.propertyType || activePropertyTypes[0] || 'شقة سكنية'
   );
   const [purpose, setPurpose] = useState<PropertyPurpose>(
-    editingProperty?.purpose || editingTenantRequest?.purpose || 'rent'
+    editingProperty?.purpose || editingTenantRequest?.purpose || initialDraft?.purpose || 'rent'
   );
   const [district, setDistrict] = useState<string>(
-    editingProperty?.district || editingTenantRequest?.preferredDistrict || activeDistricts[0] || 'حي الجامعة'
+    editingProperty?.district || editingTenantRequest?.preferredDistrict || initialDraft?.district || activeDistricts[0] || 'حي الجامعة'
   );
-  const [address, setAddress] = useState(editingProperty?.address || '');
-  const [facade, setFacade] = useState(editingProperty?.facade || '');
+  const [address, setAddress] = useState(editingProperty?.address || initialDraft?.address || '');
+  const [facade, setFacade] = useState(editingProperty?.facade || initialDraft?.facade || '');
   const [area, setArea] = useState<number | ''>(
-    editingProperty ? editingProperty.area : (editingTenantRequest?.maxArea || editingTenantRequest?.minArea || '')
+    editingProperty ? editingProperty.area : (editingTenantRequest?.maxArea || editingTenantRequest?.minArea || initialDraft?.area || '')
   );
-  const [notes, setNotes] = useState(editingProperty?.description || editingTenantRequest?.notes || '');
-  const [contactName, setContactName] = useState(editingProperty?.ownerName || editingTenantRequest?.tenantName || currentUser?.name || '');
-  const [contactPhone, setContactPhone] = useState(editingProperty?.ownerPhone || editingTenantRequest?.tenantPhone || currentUser?.phone || '');
-  const [uploadedImages, setUploadedImages] = useState<string[]>(editingProperty?.images || []);
-  const [hasAgreedDeclaration, setHasAgreedDeclaration] = useState(Boolean(editingProperty || editingTenantRequest));
+  const [notes, setNotes] = useState(editingProperty?.description || editingTenantRequest?.notes || initialDraft?.notes || '');
+  const [contactName, setContactName] = useState(editingProperty?.ownerName || editingTenantRequest?.tenantName || initialDraft?.contactName || currentUser?.name || '');
+  const [contactPhone, setContactPhone] = useState(editingProperty?.ownerPhone || editingTenantRequest?.tenantPhone || initialDraft?.contactPhone || currentUser?.phone || '');
+  const [uploadedImages, setUploadedImages] = useState<string[]>(editingProperty?.images || initialDraft?.uploadedImages || []);
+  const [hasAgreedDeclaration, setHasAgreedDeclaration] = useState(Boolean(editingProperty || editingTenantRequest || initialDraft?.hasAgreedDeclaration));
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [submittedListingId, setSubmittedListingId] = useState('');
 
+  // Draft auto-save indicator state
+  const [hasRestoredDraft, setHasRestoredDraft] = useState<boolean>(() => Boolean(initialDraft && (initialDraft.title || initialDraft.address || initialDraft.area || initialDraft.price || initialDraft.notes || initialDraft.maxPrice)));
+  const [lastSavedNotice, setLastSavedNotice] = useState<string | null>(() => initialDraft?.savedAt ? `تم استرجاع مسودة من ${initialDraft.savedAt}` : null);
+
   // Offer-specific state (عرض عقار)
-  const [title, setTitle] = useState(editingProperty?.title || '');
-  const [price, setPrice] = useState<number | ''>(editingProperty ? editingProperty.price : '');
-  const [deposit, setDeposit] = useState<number | ''>(editingProperty?.deposit ?? '');
-  const [rentDurationMonths, setRentDurationMonths] = useState<number | ''>(editingProperty?.rentDurationMonths ?? 12);
-  const [bedrooms, setBedrooms] = useState<number | ''>(editingProperty?.bedrooms ?? (editingTenantRequest?.bedrooms ?? 3));
-  const [bathrooms, setBathrooms] = useState<number | ''>(editingProperty?.bathrooms ?? (editingTenantRequest?.bathrooms ?? 1));
-  const [totalFloors, setTotalFloors] = useState<number | ''>(editingProperty?.totalFloors ?? 8);
-  const [floorLevel, setFloorLevel] = useState<number | ''>(editingProperty?.floorLevel ?? 3);
-  const [hasElevator, setHasElevator] = useState(editingProperty?.hasElevator ?? true);
+  const [title, setTitle] = useState(editingProperty?.title || initialDraft?.title || '');
+  const [price, setPrice] = useState<number | ''>(editingProperty ? editingProperty.price : (initialDraft?.price ?? ''));
+  const [deposit, setDeposit] = useState<number | ''>(editingProperty?.deposit ?? (initialDraft?.deposit ?? ''));
+  const [rentDurationMonths, setRentDurationMonths] = useState<number | ''>(editingProperty?.rentDurationMonths ?? (initialDraft?.rentDurationMonths ?? 12));
+  const [bedrooms, setBedrooms] = useState<number | ''>(editingProperty?.bedrooms ?? (editingTenantRequest?.bedrooms ?? (initialDraft?.bedrooms ?? 3)));
+  const [bathrooms, setBathrooms] = useState<number | ''>(editingProperty?.bathrooms ?? (editingTenantRequest?.bathrooms ?? (initialDraft?.bathrooms ?? 1)));
+  const [totalFloors, setTotalFloors] = useState<number | ''>(editingProperty?.totalFloors ?? (initialDraft?.totalFloors ?? 8));
+  const [floorLevel, setFloorLevel] = useState<number | ''>(editingProperty?.floorLevel ?? (initialDraft?.floorLevel ?? 3));
+  const [hasElevator, setHasElevator] = useState(editingProperty?.hasElevator ?? (initialDraft?.hasElevator ?? true));
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>(
-    editingProperty?.paymentMethods?.length ? editingProperty.paymentMethods : [activePaymentMethods[0] || 'إيجار شهري مقدماً']
+    editingProperty?.paymentMethods?.length ? editingProperty.paymentMethods : (initialDraft?.selectedPaymentMethods ?? [activePaymentMethods[0] || 'إيجار شهري مقدماً'])
   );
   const [utilities] = useState<PropertyUtilities>(() => {
     if (editingProperty?.utilities) return editingProperty.utilities;
@@ -146,21 +169,144 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   });
 
   // Request-specific state (طلب عقار)
-  const [minPrice, setMinPrice] = useState<number | ''>(editingTenantRequest?.minPrice ?? '');
-  const [maxPrice, setMaxPrice] = useState<number | ''>(editingTenantRequest?.maxPrice ?? 4000);
-  const minArea = editingTenantRequest?.minArea ?? '';
-  const maxArea = editingTenantRequest?.maxArea ?? '';
-  const urgency = editingTenantRequest?.urgency || 'immediate';
+  const [minPrice, setMinPrice] = useState<number | ''>(editingTenantRequest?.minPrice ?? (initialDraft?.minPrice ?? ''));
+  const [maxPrice, setMaxPrice] = useState<number | ''>(editingTenantRequest?.maxPrice ?? (initialDraft?.maxPrice ?? 4000));
+  const minArea = editingTenantRequest?.minArea ?? (initialDraft?.minArea ?? '');
+  const maxArea = editingTenantRequest?.maxArea ?? (initialDraft?.maxArea ?? '');
+  const urgency = editingTenantRequest?.urgency || initialDraft?.urgency || 'immediate';
 
   // Admin-specific state for 3rd-party coordination
-  const [fee, setFee] = useState<number | ''>(editingProperty?.fee ?? 200);
-  const [inspectionDate, setInspectionDate] = useState<string>(editingProperty?.inspectionDate ?? '');
+  const [fee, setFee] = useState<number | ''>(editingProperty?.fee ?? (initialDraft?.fee ?? 200));
+  const [inspectionDate, setInspectionDate] = useState<string>(editingProperty?.inspectionDate ?? (initialDraft?.inspectionDate ?? ''));
 
   // Land detection
   const isLand = propertyType.includes('أرض') || propertyType.includes('فضاء');
 
   // خريطة لحفظ اختيارات المستخدم بناءً على معرف المرفق من لوحة التحكم (Flutter: Map<String, String> selectedUtilities)
-  const [selectedUtilities, setSelectedUtilities] = useState<Record<string, string>>({});
+  const [selectedUtilities, setSelectedUtilities] = useState<Record<string, string>>(initialDraft?.selectedUtilities || {});
+
+  // دالة مسح المسودة والبدء من جديد
+  const handleClearDraft = () => {
+    try {
+      localStorage.removeItem(draftStorageKey);
+    } catch {
+      // ignore
+    }
+    setHasRestoredDraft(false);
+    setLastSavedNotice(null);
+    setTitle('');
+    setPrice('');
+    setDeposit('');
+    setRentDurationMonths(12);
+    setAddress('');
+    setFacade('');
+    setArea('');
+    setNotes('');
+    setContactName(currentUser?.name || '');
+    setContactPhone(currentUser?.phone || '');
+    setUploadedImages([]);
+    setHasAgreedDeclaration(false);
+    setSelectedUtilities({});
+    setMinPrice('');
+    setMaxPrice(4000);
+    setBedrooms(3);
+    setBathrooms(1);
+    setTotalFloors(8);
+    setFloorLevel(3);
+    setHasElevator(true);
+  };
+
+  // تأثير الحفظ التلقائي عند كتابة أو تعديل أي بيان داخل النموذج
+  useEffect(() => {
+    if (isEditing) return;
+
+    const hasContent = Boolean(
+      title?.trim() ||
+      address?.trim() ||
+      facade?.trim() ||
+      notes?.trim() ||
+      (area !== '' && Number(area) > 0) ||
+      (price !== '' && Number(price) > 0) ||
+      (minPrice !== '' && Number(minPrice) > 0) ||
+      (uploadedImages && uploadedImages.length > 0) ||
+      (contactName && contactName !== (currentUser?.name || '')) ||
+      (contactPhone && contactPhone !== (currentUser?.phone || '')) ||
+      (selectedUtilities && Object.keys(selectedUtilities).length > 0)
+    );
+
+    if (!hasContent) return;
+
+    const timer = setTimeout(() => {
+      try {
+        const timeStr = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        const draftObj = {
+          propertyType,
+          purpose,
+          district,
+          address,
+          facade,
+          area,
+          notes,
+          contactName,
+          contactPhone,
+          uploadedImages,
+          hasAgreedDeclaration,
+          title,
+          price,
+          deposit,
+          rentDurationMonths,
+          bedrooms,
+          bathrooms,
+          totalFloors,
+          floorLevel,
+          hasElevator,
+          selectedPaymentMethods,
+          selectedUtilities,
+          minPrice,
+          maxPrice,
+          fee,
+          inspectionDate,
+          savedAt: timeStr,
+        };
+        localStorage.setItem(draftStorageKey, JSON.stringify(draftObj));
+        setLastSavedNotice(`محفوظ تلقائياً في ${timeStr}`);
+      } catch (err) {
+        console.error('Error auto-saving draft to localStorage', err);
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [
+    isEditing,
+    draftStorageKey,
+    propertyType,
+    purpose,
+    district,
+    address,
+    facade,
+    area,
+    notes,
+    contactName,
+    contactPhone,
+    uploadedImages,
+    hasAgreedDeclaration,
+    title,
+    price,
+    deposit,
+    rentDurationMonths,
+    bedrooms,
+    bathrooms,
+    totalFloors,
+    floorLevel,
+    hasElevator,
+    selectedPaymentMethods,
+    selectedUtilities,
+    minPrice,
+    maxPrice,
+    fee,
+    inspectionDate,
+    currentUser,
+  ]);
 
   // حساب نسبة اكتمال البيانات - Flutter DynamicFormEntryScreen calculateCompletionPercentage
   const calculateCompletionPercentage = () => {
@@ -260,14 +406,14 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           if (parsed.propertyType) handleTypeChange(parsed.propertyType);
           if (parsed.purpose) setPurpose(parsed.purpose);
           if (parsed.district) setDistrict(parsed.district);
-          if (parsed.area) setArea(parsed.area);
+          if (parsed.area) setArea(Number(parsed.area));
           if (parsed.price) {
-            if (isOffer) setPrice(parsed.price);
-            else setMaxPrice(parsed.price);
+            if (isOffer) setPrice(Number(parsed.price));
+            else setMaxPrice(Number(parsed.price));
           }
-          if (parsed.bedrooms !== undefined && parsed.bedrooms !== '') setBedrooms(parsed.bedrooms);
-          if (parsed.bathrooms !== undefined && parsed.bathrooms !== '') setBathrooms(parsed.bathrooms);
-          if (parsed.floorLevel !== undefined && parsed.floorLevel !== '') setFloorLevel(parsed.floorLevel);
+          if (parsed.bedrooms !== undefined && parsed.bedrooms !== '') setBedrooms(Number(parsed.bedrooms));
+          if (parsed.bathrooms !== undefined && parsed.bathrooms !== '') setBathrooms(Number(parsed.bathrooms));
+          if (parsed.floorLevel !== undefined && parsed.floorLevel !== '') setFloorLevel(Number(parsed.floorLevel));
           if (parsed.hasElevator !== undefined) setHasElevator(parsed.hasElevator);
           if (parsed.ownerPhone && parsed.ownerPhone !== '01000000000') setContactPhone(parsed.ownerPhone);
           if (parsed.address) setAddress(parsed.address);

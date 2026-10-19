@@ -63,7 +63,8 @@ import {
   MapPin, 
   Building, 
   DollarSign, 
-  Heart
+  Heart,
+  ClipboardList
 } from 'lucide-react';
 
 /**
@@ -338,6 +339,7 @@ export function App() {
   const [isChoiceAddOpen, setIsChoiceAddOpen] = useState(false);
   const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
   const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState(false);
+  const [isAdminDrawerOpen, setIsAdminDrawerOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [selectedTenantRequest, setSelectedTenantRequest] = useState<TenantRequest | null>(null);
   const [selectedPropertyForInspection, setSelectedPropertyForInspection] = useState<Property | null>(null);
@@ -1179,10 +1181,12 @@ export function App() {
       pending_approval: 'قيد المراجعة',
     };
 
+    const statusLabel = (newStatus && labelMap[newStatus]) || newStatus || 'قيد المراجعة';
+
     addToast({
       type: newStatus === 'approved' ? 'success' : 'warning',
       title: 'تم تحديث حالة الطلب',
-      message: `تم تغيير حالة طلب الإيجار إلى (${labelMap[newStatus] || newStatus}).`,
+      message: `تم تغيير حالة طلب الإيجار إلى (${statusLabel}).`,
       duration: 3500,
     });
   };
@@ -1587,7 +1591,7 @@ export function App() {
     if (navIndex === 0) return 'عروض الايجار والبيع';
     if (navIndex === 1 || (isAdmin && navIndex === 2)) return 'طلبات الايجار والشراء';
     if (!isAdmin && navIndex === 2) return 'إعلاناتي';
-    if (navIndex === 3) return 'لوحة التحكم الإدارية';
+    if (navIndex === 3) return 'لوحة التحكم والإدارة';
     return 'عروض الايجار والبيع';
   };
 
@@ -1608,6 +1612,8 @@ export function App() {
           favoritesCount={favoritePropertyIds.length}
           onOpenFavorites={() => setIsFavoritesModalOpen(true)}
           pageTitle={getHeaderTitle()}
+          isAdminView={isAdmin && navIndex === 3}
+          onToggleAdminDrawer={() => setIsAdminDrawerOpen((prev) => !prev)}
         />
       )}
 
@@ -1641,11 +1647,24 @@ export function App() {
           /* 1. صفحة عروض الإيجار (المتاحة) - Index 0 */
           /* ========================================================================= */
           <div className="space-y-4 animate-in fade-in duration-150">
-            {/* Header Section: Single-line concise title reading 'عروض الايجار والبيع' */}
-            <div className="text-center pt-2 pb-1">
-              <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] tracking-tight">
-                عروض الايجار والبيع
-              </h1>
+            {/* Page Title Banner Card: Luxury Navy #0F172A with 16px padding and smooth rounded corners */}
+            <div className="bg-[#0F172A] text-white p-4 rounded-[14px] shadow-[0_4px_20px_rgba(15,23,42,0.12)] border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10 shrink-0">
+                  <Building2 className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <h1 className="text-base sm:text-lg font-bold text-white tracking-normal font-['Tajawal','Cairo',sans-serif]">
+                    عروض الايجار والبيع
+                  </h1>
+                  <p className="text-xs text-slate-300 font-normal mt-0.5">
+                    عقارات وشقق متاحة في محافظة أسيوط
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 px-3 py-1 rounded-lg shrink-0">
+                {filteredProperties.length} عقار
+              </span>
             </div>
 
             {/* Search Bar: Single streamlined search input bar with integrated parameters */}
@@ -1654,8 +1673,8 @@ export function App() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ابحث عن عقارك المثالي أو المنطقة أو الكود..."
-                className="w-full pr-12 pl-10 py-3.5 rounded-[12px] bg-white text-slate-800 placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-[#E2E8F0] shadow-[0_4px_12px_rgba(0,0,0,0.05)] focus:outline-hidden focus:border-[#1D4ED8] focus:ring-2 focus:ring-[#1D4ED8]/10 transition-all"
+                placeholder="ابحث عن عقارك (المنطقة، نوع الوحدة، كود العقار، المواصفات)..."
+                className="w-full pr-12 pl-10 py-3.5 rounded-[14px] bg-white text-slate-800 placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] focus:outline-hidden focus:border-[#1D4ED8] focus:ring-2 focus:ring-[#1D4ED8]/10 transition-all"
               />
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#1D4ED8]" />
               {searchQuery && (
@@ -1672,7 +1691,7 @@ export function App() {
             <div className="grid grid-cols-2 gap-3">
               {/* Button 1: فلتر المناطق */}
               <div 
-                className="relative h-12 rounded-[12px] bg-white hover:bg-[#F0F6FF] border border-[#E2E8F0] transition-all shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-3.5 cursor-pointer group"
+                className="relative h-12 rounded-[14px] bg-white hover:bg-slate-50 border border-[#E5E7EB] transition-all shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex items-center justify-between px-3.5 cursor-pointer group"
                 title="فلتر المناطق"
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -1701,7 +1720,7 @@ export function App() {
 
               {/* Button 2: فلتر الوحدات */}
               <div 
-                className="relative h-12 rounded-[12px] bg-white hover:bg-[#F0F6FF] border border-[#E2E8F0] transition-all shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-3.5 cursor-pointer group"
+                className="relative h-12 rounded-[14px] bg-white hover:bg-slate-50 border border-[#E5E7EB] transition-all shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex items-center justify-between px-3.5 cursor-pointer group"
                 title="فلتر الوحدات"
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -1734,30 +1753,30 @@ export function App() {
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                 <button
                   onClick={() => setPurposeFilter('rent')}
-                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
                     purposeFilter === 'rent'
                       ? 'bg-[#1D4ED8] text-white shadow-xs'
-                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
+                      : 'bg-white text-slate-700 border border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:bg-slate-50'
                   }`}
                 >
                   عروض الإيجار ({properties.filter((p) => p.purpose === 'rent' && (isAdmin || p.status === 'approved')).length})
                 </button>
                 <button
                   onClick={() => setPurposeFilter('sale')}
-                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
                     purposeFilter === 'sale'
                       ? 'bg-[#1D4ED8] text-white shadow-xs'
-                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
+                      : 'bg-white text-slate-700 border border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:bg-slate-50'
                   }`}
                 >
                   عروض البيع ({properties.filter((p) => p.purpose === 'sale' && (isAdmin || p.status === 'approved')).length})
                 </button>
                 <button
                   onClick={() => setPurposeFilter('all')}
-                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
                     purposeFilter === 'all'
                       ? 'bg-[#1D4ED8] text-white shadow-xs'
-                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
+                      : 'bg-white text-slate-700 border border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:bg-slate-50'
                   }`}
                 >
                   الكل ({properties.filter((p) => isAdmin || p.status === 'approved').length})
@@ -1846,11 +1865,24 @@ export function App() {
           /* 2. شاشة طلبات الإيجار والشراء (المطلوبة) - Index 1 لكلا الواجهتين */
           /* ========================================================================= */
           <div className="space-y-4 animate-in fade-in duration-150">
-            {/* Header Section: Single-line concise title reading 'طلبات الايجار والشراء' */}
-            <div className="text-center pt-2 pb-1">
-              <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] tracking-tight">
-                طلبات الايجار والشراء
-              </h1>
+            {/* Page Title Banner Card: Luxury Navy #0F172A with 16px padding and smooth rounded corners */}
+            <div className="bg-[#0F172A] text-white p-4 rounded-[14px] shadow-[0_4px_20px_rgba(15,23,42,0.12)] border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10 shrink-0">
+                  <ClipboardList className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h1 className="text-base sm:text-lg font-bold text-white tracking-normal font-['Tajawal','Cairo',sans-serif]">
+                    طلبات الايجار والشراء
+                  </h1>
+                  <p className="text-xs text-slate-300 font-normal mt-0.5">
+                    طلبات السكن والوحدات المطلوبة في أسيوط
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30 px-3 py-1 rounded-lg shrink-0">
+                {tenantRequests.filter((r) => isAdmin || r.status === 'approved' || r.isApproved !== false).length} طلب
+              </span>
             </div>
 
             {/* Search Bar: Single streamlined search input bar with integrated parameters */}
@@ -1859,8 +1891,8 @@ export function App() {
                 type="text"
                 value={requestSearchQuery}
                 onChange={(e) => setRequestSearchQuery(e.target.value)}
-                placeholder="ابحث في الطلبات بالحي، نوع العقار، الكود، أو الملاحظات..."
-                className="w-full pr-12 pl-10 py-3.5 rounded-[12px] bg-white text-slate-800 placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-[#E2E8F0] shadow-[0_4px_12px_rgba(0,0,0,0.05)] focus:outline-hidden focus:border-[#1D4ED8] focus:ring-2 focus:ring-[#1D4ED8]/10 transition-all"
+                placeholder="ابحث في طلبات السكن (المنطقة، نوع الوحدة، كود الطلب، المواصفات)..."
+                className="w-full pr-12 pl-10 py-3.5 rounded-[14px] bg-white text-slate-800 placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] focus:outline-hidden focus:border-[#1D4ED8] focus:ring-2 focus:ring-[#1D4ED8]/10 transition-all"
               />
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#1D4ED8]" />
               {requestSearchQuery && (
@@ -1877,7 +1909,7 @@ export function App() {
             <div className="grid grid-cols-2 gap-3">
               {/* Button 1: فلتر المناطق */}
               <div 
-                className="relative h-12 rounded-[12px] bg-white hover:bg-[#F0F6FF] border border-[#E2E8F0] transition-all shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-3.5 cursor-pointer group"
+                className="relative h-12 rounded-[14px] bg-white hover:bg-slate-50 border border-[#E5E7EB] transition-all shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex items-center justify-between px-3.5 cursor-pointer group"
                 title="فلتر المناطق"
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -1906,7 +1938,7 @@ export function App() {
 
               {/* Button 2: فلتر الوحدات */}
               <div 
-                className="relative h-12 rounded-[12px] bg-white hover:bg-[#F0F6FF] border border-[#E2E8F0] transition-all shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-3.5 cursor-pointer group"
+                className="relative h-12 rounded-[14px] bg-white hover:bg-slate-50 border border-[#E5E7EB] transition-all shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex items-center justify-between px-3.5 cursor-pointer group"
                 title="فلتر الوحدات"
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -1939,30 +1971,30 @@ export function App() {
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                 <button
                   onClick={() => setRequestPurpose('rent')}
-                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
                     requestPurpose === 'rent'
                       ? 'bg-[#1D4ED8] text-white shadow-xs'
-                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
+                      : 'bg-white text-slate-700 border border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:bg-slate-50'
                   }`}
                 >
                   طلبات الإيجار ({tenantRequests.filter((r) => r.purpose === 'rent' && (isAdmin || r.status === 'approved' || r.isApproved !== false)).length})
                 </button>
                 <button
                   onClick={() => setRequestPurpose('sale')}
-                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
                     requestPurpose === 'sale'
                       ? 'bg-[#1D4ED8] text-white shadow-xs'
-                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
+                      : 'bg-white text-slate-700 border border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:bg-slate-50'
                   }`}
                 >
                   طلبات الشراء ({tenantRequests.filter((r) => r.purpose === 'sale' && (isAdmin || r.status === 'approved' || r.isApproved !== false)).length})
                 </button>
                 <button
                   onClick={() => setRequestPurpose('all')}
-                  className={`px-3.5 py-1.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
                     requestPurpose === 'all'
                       ? 'bg-[#1D4ED8] text-white shadow-xs'
-                      : 'bg-white text-[#1D4ED8] border border-[#E2E8F0] hover:bg-[#F0F6FF]'
+                      : 'bg-white text-slate-700 border border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:bg-slate-50'
                   }`}
                 >
                   الكل ({tenantRequests.filter((r) => isAdmin || r.status === 'approved' || r.isApproved !== false).length})
@@ -2113,6 +2145,9 @@ export function App() {
                   onAddBlockedUser={handleAddBlockedUser}
                   onRemoveBlockedUser={handleRemoveBlockedUser}
                   onUpdateInspectionStatus={handleUpdateInspectionStatus}
+                  isDrawerOpen={isAdminDrawerOpen}
+                  setIsDrawerOpen={setIsAdminDrawerOpen}
+                  onCloseDrawer={() => setIsAdminDrawerOpen(false)}
                 />
               </div>
             </Suspense>

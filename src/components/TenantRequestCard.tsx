@@ -36,7 +36,7 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
   }[request.urgency || 'within_month'];
 
   return (
-    <div className="group bg-white rounded-[12px] border border-[#E2E8F0] shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:shadow-[0_6px_16px_rgba(0,0,0,0.08)] transition-all overflow-hidden flex flex-col justify-between">
+    <div className="group bg-white rounded-[14px] border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] transition-all duration-200 overflow-hidden flex flex-col justify-between">
       {/* Top Banner / Visual Header matching PropertyCard height */}
       <div className="relative h-40 bg-gradient-to-br from-[#0F172A]/10 via-[#1D4ED8]/5 to-slate-100 p-3.5 flex flex-col justify-between border-b border-slate-100 select-none">
         

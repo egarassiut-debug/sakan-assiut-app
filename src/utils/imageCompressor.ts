@@ -1,68 +1,50 @@
 /**
- * Client-side Image Processing & Compression Utility
- * Reads images from device camera or photo gallery and compresses them
- * so that each image strictly does not exceed 250 KB (<= 250 * 1024 bytes)
- * before uploading or persisting in property data.
- */
-
-// Target maximum compressed size: 250 KB (256,000 bytes)
-export const MAX_COMPRESSED_IMAGE_SIZE_BYTES = 250 * 1024;
-
-// Safe raw file limit before compression (20 MB) to prevent out-of-memory crashes on mobile browsers
-export const MAX_RAW_IMAGE_SIZE_BYTES = 20 * 1024 * 1024;
-
-/**
- * Calculates the exact binary byte size of a Base64 Data URL.
+ * Calculates byte size of a base64 data URL
  */
 export function getDataUrlSizeBytes(dataUrl: string): number {
   if (!dataUrl) return 0;
-  const commaIndex = dataUrl.indexOf(',');
-  const base64Str = commaIndex !== -1 ? dataUrl.slice(commaIndex + 1) : dataUrl;
-  const padding = base64Str.endsWith('==') ? 2 : base64Str.endsWith('=') ? 1 : 0;
+  const commaIdx = dataUrl.indexOf(',');
+  const base64Str = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+  const padding = (base64Str.match(/=/g) || []).length;
   return Math.max(0, Math.floor((base64Str.length * 3) / 4) - padding);
 }
 
 /**
- * Formats a byte count into a readable Arabic string (e.g., '185.4 ك.ب').
+ * Formats byte size into Arabic or standard human readable string (e.g. 180 ك.ب)
  */
 export function formatBytes(bytes: number): string {
+  if (bytes <= 0) return '0 ك.ب';
   if (bytes < 1024) return `${bytes} بايت`;
   const kb = bytes / 1024;
-  if (kb < 1024) return `${kb.toFixed(1)} ك.ب`;
-  return `${(kb / 1024).toFixed(2)} ميجابايت`;
+  if (kb < 1024) return `${Math.round(kb)} ك.ب`;
+  const mb = kb / 1024;
+  return `${mb.toFixed(1)} م.ب`;
 }
 
 /**
- * Processes and compresses a single image file to ensure its final
- * base64 size does not exceed the target threshold (default: 250 KB).
+ * Reads and compresses a single File into a high quality JPEG data URL
  */
-export async function processImageFile(
-  file: File,
-  maxTargetBytes: number = MAX_COMPRESSED_IMAGE_SIZE_BYTES,
-  initialMaxWidth: number = 1280,
-  initialMaxHeight: number = 1280
-): Promise<string> {
-  // Reject files that are excessively huge (e.g., > 20 MB) to avoid crashing browser canvas
-  if (file.size > MAX_RAW_IMAGE_SIZE_BYTES) {
-    throw new Error(
-      `حجم الصورة الأصلية (${(file.size / (1024 * 1024)).toFixed(1)} ميجابايت) كبير جداً. يرجى اختيار ملف بحجم أقل من 20 ميجابايت.`
-    );
-  }
-
+export function compressImageFile(file: File, maxSizeBytes: number = 250 * 1024): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('فشل قراءة ملف الصورة من الجهاز'));
+    reader.onerror = reject;
     reader.onload = () => {
       const img = new Image();
-      img.onerror = () => reject(new Error('فشل معالجة صيغة الصورة'));
+      img.onerror = reject;
       img.onload = () => {
         let width = img.width;
         let height = img.height;
+        const maxDimension = 1400;
 
-        // Initial scale down if larger than 1280x1280 bounds
-        const scale = Math.min(1, initialMaxWidth / width, initialMaxHeight / height);
-        width = Math.max(100, Math.round(width * scale));
-        height = Math.max(100, Math.round(height * scale));
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
 
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -73,60 +55,22 @@ export async function processImageFile(
           return;
         }
 
-        // Fill background with white for clean transparent-to-JPEG conversion
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Stage 1: Quality reduction loop
+        // Quality reduction loop if needed
         let quality = 0.82;
-        let dataUrl = canvas.toDataURL('image/jpeg', quality);
-        let currentSize = getDataUrlSizeBytes(dataUrl);
+        let result = canvas.toDataURL('image/jpeg', quality);
+        let size = getDataUrlSizeBytes(result);
 
-        while (currentSize > maxTargetBytes && quality > 0.45) {
-          quality -= 0.08;
-          dataUrl = canvas.toDataURL('image/jpeg', quality);
-          currentSize = getDataUrlSizeBytes(dataUrl);
+        while (size > maxSizeBytes && quality > 0.4) {
+          quality -= 0.12;
+          result = canvas.toDataURL('image/jpeg', quality);
+          size = getDataUrlSizeBytes(result);
         }
 
-        // Stage 2: Dimension reduction loop if quality reduction alone was not enough
-        let resizeIteration = 0;
-        while (currentSize > maxTargetBytes && resizeIteration < 6 && (width > 200 || height > 200)) {
-          resizeIteration++;
-          width = Math.round(width * 0.85);
-          height = Math.round(height * 0.85);
-
-          canvas.width = width;
-          canvas.height = height;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, width, height);
-          ctx.drawImage(img, 0, 0, width, height);
-
-          // Test at moderate quality
-          quality = 0.65;
-          dataUrl = canvas.toDataURL('image/jpeg', quality);
-          currentSize = getDataUrlSizeBytes(dataUrl);
-
-          while (currentSize > maxTargetBytes && quality > 0.35) {
-            quality -= 0.1;
-            dataUrl = canvas.toDataURL('image/jpeg', quality);
-            currentSize = getDataUrlSizeBytes(dataUrl);
-          }
-        }
-
-        // Final safeguard: If still marginally exceeding 250 KB, step down once more
-        if (currentSize > maxTargetBytes) {
-          width = Math.round(width * 0.75);
-          height = Math.round(height * 0.75);
-          canvas.width = width;
-          canvas.height = height;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, width, height);
-          ctx.drawImage(img, 0, 0, width, height);
-          dataUrl = canvas.toDataURL('image/jpeg', 0.35);
-        }
-
-        resolve(dataUrl);
+        resolve(result);
       };
       img.src = reader.result as string;
     };
@@ -135,26 +79,12 @@ export async function processImageFile(
 }
 
 /**
- * Processes and compresses multiple image files concurrently,
- * ensuring each compressed image is strictly <= maxTargetBytes (250 KB).
+ * Processes multiple image files in parallel and returns array of compressed base64 strings
  */
 export async function processMultipleImageFiles(
-  files: FileList | File[],
-  maxTargetBytes: number = MAX_COMPRESSED_IMAGE_SIZE_BYTES
+  files: File[],
+  maxSizeBytes: number = 250 * 1024
 ): Promise<string[]> {
-  const fileArray = Array.from(files);
-  const results: string[] = [];
-
-  for (const file of fileArray) {
-    if (!file.type.startsWith('image/')) continue;
-    try {
-      const compressedDataUrl = await processImageFile(file, maxTargetBytes);
-      results.push(compressedDataUrl);
-    } catch (err) {
-      console.warn('Error compressing image file:', err);
-      throw err;
-    }
-  }
-
-  return results;
+  const promises = files.map((file) => compressImageFile(file, maxSizeBytes));
+  return Promise.all(promises);
 }

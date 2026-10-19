@@ -31,12 +31,14 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
   const isLand = property ? (property.propertyType === 'قطعة أرض فضاء' || property.propertyType.includes('أرض')) : false;
 
   const handleCopyCode = () => {
+    if (!property) return;
     navigator.clipboard.writeText(property.code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleWhatsApp = () => {
+    if (!property) return;
     const text = encodeURIComponent(
       `السلام عليكم، أود التواصل مع إدارة تطبيق عَرضَه أسيوط لطلب معاينة واستفسار عن العقار كود (${property.code}): ${property.title}.`
     );

@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppUser } from '../types/property';
-import { LogOut, User, ShieldCheck, Bell, Building2, Heart } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Bell, Building2, Heart, Menu } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 
 export interface HeaderProps {
@@ -12,14 +12,16 @@ export interface HeaderProps {
   favoritesCount?: number;
   onOpenFavorites?: () => void;
   pageTitle?: string;
+  isAdminView?: boolean;
+  onToggleAdminDrawer?: () => void;
 }
 
 /**
  * Top AppBar with Clean Flexbox Layout:
  * - Background: Dark Navy #0F172A
- * - Zone 1 (Right): System Brand Name
+ * - Zone 1 (Right): When on Admin view -> Menu button (☰) in far right + "لوحة التحكم والإدارة". Otherwise System Brand Name.
  * - Zone 2 (Center): Single-line page title in crisp white
- * - Zone 3 (Left): Action Controls (Favorites, Admin Dashboard, Notifications, Logout)
+ * - Zone 3 (Left): Action Controls (Favorites, Admin/Home switch, Notifications, Logout)
  */
 export const Header: React.FC<HeaderProps> = ({ 
   currentUser, 
@@ -30,6 +32,8 @@ export const Header: React.FC<HeaderProps> = ({
   favoritesCount = 0,
   onOpenFavorites,
   pageTitle = 'عروض الايجار والبيع',
+  isAdminView = false,
+  onToggleAdminDrawer,
 }) => {
   const isAdmin = currentUser?.role === 'admin';
 
@@ -38,41 +42,53 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-6xl mx-auto px-3 sm:px-4 h-14 sm:h-15 flex items-center justify-between gap-2 sm:gap-4">
         
         {/* ================================================================= */}
-        {/* Zone 1 (Right): System Name & Assiut Badge */}
+        {/* Zone 1 (Right): Menu Drawer Trigger (☰) + Title in Admin Mode OR Brand Name */}
         {/* ================================================================= */}
-        <div 
-          onClick={() => onSelectTab && onSelectTab('home')}
-          className="flex items-center gap-2 cursor-pointer shrink-0 group py-1"
-          title="العودة للصفحة الرئيسية"
-        >
-          <div className="w-8 h-8 rounded-xl bg-white/10 group-hover:bg-white/20 flex items-center justify-center border border-white/15 transition-all shadow-2xs shrink-0">
-            <Building2 className="w-4 h-4 text-blue-400" />
-          </div>
-          <div className="hidden xs:flex items-center gap-1.5 whitespace-nowrap">
-            <span className="text-xs sm:text-sm font-bold text-white tracking-tight">
-              عرض وطلب
-            </span>
-            <span className="text-[10px] bg-blue-500/20 text-blue-300 font-bold px-1.5 py-0.5 rounded-md border border-blue-400/30">
-              أسيوط
-            </span>
-          </div>
-        </div>
+        {isAdminView ? (
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            {/* زر القائمة الجانبية (☰) في أقصى اليمين */}
+            <button
+              type="button"
+              onClick={onToggleAdminDrawer}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white flex items-center justify-center border border-blue-400/40 transition-all cursor-pointer shadow-xs group"
+              title="فتح القائمة الجانبية للوحة التحكم ☰"
+              aria-label="القائمة الجانبية للوحة التحكم"
+            >
+              <Menu className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+            </button>
 
-        {/* ================================================================= */}
-        {/* Zone 2 (Center): Single-line concise page header title in white */}
-        {/* ================================================================= */}
-        <div className="flex items-center justify-center shrink min-w-0 px-1 sm:px-3">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xs sm:text-sm md:text-base font-bold text-white tracking-tight truncate max-w-[190px] xs:max-w-[240px] sm:max-w-xs md:max-w-md text-center">
-              {pageTitle}
-            </h1>
-            {isAdmin && (
-              <span className="hidden md:inline text-[10px] bg-blue-500/20 text-blue-300 font-bold px-2 py-0.5 rounded-full border border-blue-400/30 whitespace-nowrap">
+            {/* بجانب زر القائمة مباشرة إلى اليسار: عنوان الصفحة */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm sm:text-base font-bold text-white tracking-tight">
+                لوحة التحكم والإدارة
+              </span>
+              <span className="hidden sm:inline text-[10px] bg-blue-500/20 text-blue-300 font-bold px-2 py-0.5 rounded-md border border-blue-400/30">
                 إدارة
               </span>
-            )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div 
+            onClick={() => onSelectTab && onSelectTab('home')}
+            className="flex items-center gap-2 cursor-pointer shrink-0 group py-1"
+            title="العودة للصفحة الرئيسية"
+          >
+            <div className="w-8 h-8 rounded-xl bg-white/10 group-hover:bg-white/20 flex items-center justify-center border border-white/15 transition-all shadow-2xs shrink-0">
+              <Building2 className="w-4 h-4 text-blue-400" />
+            </div>
+            <div className="hidden xs:flex items-center gap-1.5 whitespace-nowrap">
+              <span className="text-xs sm:text-sm font-bold text-white tracking-tight">
+                عرض وطلب
+              </span>
+              <span className="text-[10px] bg-blue-500/20 text-blue-300 font-bold px-1.5 py-0.5 rounded-md border border-blue-400/30">
+                أسيوط
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Center spacing spacer */}
+        <div className="flex-1" />
 
         {/* ================================================================= */}
         {/* Zone 3 (Left): Independent Action Toolbar */}
@@ -81,16 +97,29 @@ export const Header: React.FC<HeaderProps> = ({
           {/* PWA Install Button */}
           <PWAInstallButton />
 
-          {/* Admin Dashboard shortcut for Admins */}
+          {/* Admin Dashboard shortcut / Return to Home for Admins */}
           {isAdmin && onSelectTab && (
             <button
               type="button"
-              onClick={() => onSelectTab('admin')}
-              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-[#1D4ED8] hover:bg-[#1E40AF] text-white font-bold text-xs transition-all shadow-xs cursor-pointer active:scale-95 border border-blue-500 shrink-0"
-              title="لوحة التحكم الإدارية"
+              onClick={() => onSelectTab(isAdminView ? 'home' : 'admin')}
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer active:scale-95 border shrink-0 ${
+                isAdminView
+                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                  : 'bg-[#1D4ED8] hover:bg-[#1E40AF] text-white border-blue-500'
+              }`}
+              title={isAdminView ? "العودة لتصفح العقارات" : "لوحة التحكم الإدارية"}
             >
-              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">لوحة التحكم</span>
+              {isAdminView ? (
+                <>
+                  <Building2 className="w-3.5 h-3.5 shrink-0 text-blue-300" />
+                  <span className="hidden sm:inline">الرئيسية</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden sm:inline">لوحة التحكم</span>
+                </>
+              )}
             </button>
           )}
 

@@ -339,6 +339,47 @@ export const INITIAL_PROPERTIES: Property[] = [
     isApproved: true,
     createdAt: '2026-09-25',
     viewsCount: 210
+  },
+  {
+    id: 'prop-archived-1',
+    code: 'ASY-7720',
+    type: 'عرض',
+    title: 'شقة 120 م² تشطيب لوكس بحي غرب أسيوط (مؤرشفة)',
+    description: 'شقة 3 غرف وصالة تم نقلها للأرشيف مؤقتاً بناءً على طلب المالك لحين تجديد دهانات الواجهة.',
+    propertyType: 'شقة سكنية',
+    purpose: 'rent',
+    price: 3800,
+    deposit: 3800,
+    rentDurationMonths: 12,
+    city: 'أسيوط',
+    district: 'المعلمين والأربعين',
+    address: 'شارع المحطة القديم متفرع من شارع 26 يوليو',
+    facade: 'واجهة قبلية على شارع هادئ',
+    area: 120,
+    bedrooms: 3,
+    bathrooms: 1,
+    totalFloors: 6,
+    floorLevel: 3,
+    hasElevator: false,
+    utilities: {
+      electricity: { available: true, type: 'عداد كودي حديث' },
+      water: { available: true, type: 'عداد مياه مستقل للشقة' },
+      gas: { available: true, type: 'غاز طبيعي فاتورة شهرية' },
+      internet: { available: false, type: 'غير متوفر' },
+      elevator: { available: false, type: 'بدون أسانسير (سلم مريح)' }
+    },
+    paymentMethods: ['إيجار شهري مقدماً'],
+    ownerName: 'الأستاذ كمال الدين عبد العال',
+    ownerPhone: '01223344556',
+    source: 'مالك مباشر',
+    images: [
+      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80'
+    ],
+    featured: false,
+    status: 'archived',
+    isApproved: false,
+    createdAt: '2026-09-15',
+    viewsCount: 45
   }
 ];
 

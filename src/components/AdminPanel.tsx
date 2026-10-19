@@ -11,7 +11,8 @@ import {
 import { 
   ShieldCheck, CheckCircle2, XCircle, Trash2, Eye, Lock, 
   UserX, Ban, AlertTriangle, Calendar, Plus, Search,
-  Edit3, MessageSquare, Users, UserCheck, Download, FileSpreadsheet, Printer, ChevronDown
+  Edit3, MessageSquare, Users, UserCheck, Download, FileSpreadsheet, Printer, ChevronDown,
+  SlidersHorizontal, BarChart3, RotateCcw, Building2, Menu, X, ChevronLeft
 } from 'lucide-react';
 import { UserManagement } from './UserManagement';
 import { exportToCSV, exportToPrintablePDF } from '../utils/exportUtils';
@@ -39,6 +40,10 @@ interface AdminPanelProps {
   onAddBlockedUser?: (user: Omit<BlockedUser, 'id' | 'blockedAt'>) => void;
   onRemoveBlockedUser?: (id: string) => void;
   onUpdateInspectionStatus?: (id: string, status: 'pending' | 'confirmed' | 'completed' | 'cancelled', feePaid?: boolean) => void;
+  isDrawerOpen?: boolean;
+  setIsDrawerOpen?: (open: boolean) => void;
+  onToggleDrawer?: (open?: boolean) => void;
+  onCloseDrawer?: () => void;
 }
 
 /**
@@ -72,15 +77,49 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onAddBlockedUser,
   onRemoveBlockedUser,
   onUpdateInspectionStatus,
+  isDrawerOpen: propIsDrawerOpen,
+  setIsDrawerOpen: propSetIsDrawerOpen,
+  onToggleDrawer,
+  onCloseDrawer,
 }) => {
-  // Main Top Tab (0: Filters & UI, 1: Moderations, Blocks, Inspections, 2: Admins & Activity Logs, 3: User Management)
-  const [adminTab, setAdminTab] = useState<0 | 1 | 2 | 3>(0);
+  // Active Section & Slide-over Drawer State
+  const [activeSection, setActiveSection] = useState<
+    'dropdowns' | 'moderation' | 'inspections' | 'users' | 'admins' | 'analytics' | 'blocks' | 'export_settings'
+  >('dropdowns');
+  const [internalDrawerOpen, setInternalDrawerOpen] = useState(false);
 
-  // Sub-tabs inside Tab 0
-  const [filterSubTab, setFilterSubTab] = useState<'dropdowns' | 'analytics'>('dropdowns');
+  const isDrawerOpen = propIsDrawerOpen !== undefined ? propIsDrawerOpen : internalDrawerOpen;
+  const setIsDrawerOpen = (open: boolean) => {
+    setInternalDrawerOpen(open);
+    if (propSetIsDrawerOpen) propSetIsDrawerOpen(open);
+    if (onToggleDrawer) onToggleDrawer(open);
+    if (!open && onCloseDrawer) onCloseDrawer();
+  };
 
-  // Sub-tabs inside Tab 1
-  const [modSubTab, setModSubTab] = useState<'moderation' | 'blocks' | 'inspections'>('moderation');
+  // Close drawer on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsDrawerOpen(false);
+    };
+    if (isDrawerOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDrawerOpen]);
+
+  const pendingModerationCount = useMemo(() => {
+    const pendingProps = properties.filter(
+      (p) => (p.isApproved === false || p.status === 'pending' || p.status === 'pending_approval')
+    ).length;
+    const pendingReqs = tenantRequests.filter(
+      (r) => (r.isApproved === false || r.status === 'pending' || r.status === 'pending_approval')
+    ).length;
+    return pendingProps + pendingReqs;
+  }, [properties, tenantRequests]);
+
+  const pendingInspectionsCount = useMemo(() => {
+    return inspections.filter((i) => i.status === 'pending').length;
+  }, [inspections]);
 
   // Moderation type: properties (عروض) or requests (طلبات)
   const [moderationType, setModerationType] = useState<'properties' | 'requests'>('properties');
@@ -281,205 +320,203 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setIsExportOpen(false);
   };
 
+  const menuItems = [
+    {
+      id: 'dropdowns' as const,
+      title: 'أدوات الواجهة والفلاتر',
+      subtitle: 'الأحياء، أنواع الوحدات، والمرافق',
+      icon: SlidersHorizontal,
+    },
+    {
+      id: 'moderation' as const,
+      title: 'الموافقات ومراجعة الإعلانات',
+      subtitle: 'اعتماد عروض العقارات وطلبات السكن',
+      icon: VerifiedUserIcon,
+      badge: pendingModerationCount > 0 ? pendingModerationCount : null,
+      badgeColor: 'bg-rose-500 text-white animate-pulse',
+    },
+    {
+      id: 'inspections' as const,
+      title: 'المعاينات الميدانية',
+      subtitle: 'مواعيد المعاينات وتأكيد الرسوم',
+      icon: Calendar,
+      badge: pendingInspectionsCount > 0 ? pendingInspectionsCount : null,
+      badgeColor: 'bg-amber-500 text-white',
+    },
+    {
+      id: 'users' as const,
+      title: 'إدارة المستخدمين',
+      subtitle: 'حسابات العملاء والوسطاء والملاك',
+      icon: UserCheck,
+    },
+    {
+      id: 'admins' as const,
+      title: 'إدارة المدراء والصلاحيات',
+      subtitle: 'فريق الإدارة وسجل العمليات',
+      icon: Users,
+    },
+    {
+      id: 'analytics' as const,
+      title: 'إحصائيات العقارات',
+      subtitle: 'تحليلات الأسعار والرسوم البيانية',
+      icon: BarChart3,
+    },
+    {
+      id: 'blocks' as const,
+      title: 'حظر المستخدمين (البلوكات)',
+      subtitle: 'قائمة الأرقام المحظورة',
+      icon: Ban,
+      badge: blockedUsers.length > 0 ? blockedUsers.length : null,
+      badgeColor: 'bg-slate-200 text-slate-800',
+    },
+    {
+      id: 'export_settings' as const,
+      title: 'الإعدادات وتصدير البيانات',
+      subtitle: 'تصدير Excel/PDF وضبط النظام',
+      icon: Download,
+    },
+  ];
   return (
     <div className="space-y-4">
-      {/* Admin Panel Top Bar */}
-      <div className="bg-[#0F172A] text-white rounded-[12px] p-5 shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-[10px] bg-white/10 border border-white/20 flex items-center justify-center text-blue-400">
-            <ShieldCheck className="w-7 h-7" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg sm:text-xl font-bold">شاشة لوحة التحكم الإدارية</h2>
-              <span className="text-[11px] bg-blue-500/20 text-blue-300 font-bold px-2.5 py-0.5 rounded-full border border-blue-400/30">
-                إدارة
-              </span>
+      {/* ========================================================================= */}
+      {/* Slide-over Drawer (القائمة الجانبية المنزلقة) & Backdrop Overlay */}
+      {/* ========================================================================= */}
+      {/* 1. Backdrop Overlay */}
+      <div
+        onClick={() => setIsDrawerOpen(false)}
+        className={`fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 transition-opacity duration-300 ease-in-out ${
+          isDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        aria-hidden="true"
+      />
+
+      {/* 2. Slide-over Drawer Panel (في حدود نصف الشاشة: 50% من عرض الشاشة) */}
+      <aside
+        className={`fixed inset-y-0 right-0 z-50 h-full w-[50vw] max-w-[50vw] bg-white shadow-2xl flex flex-col border-l border-slate-200 transform transition-transform duration-300 ease-out ${
+          isDrawerOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="قائمة لوحة التحكم"
+      >
+        {/* Drawer Header */}
+        <div className="bg-[#0F172A] text-white p-3 sm:p-4 flex items-center justify-between border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/10 flex items-center justify-center text-blue-400 shrink-0">
+              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">
-              نظام إدارة عروض وطلبات أسيوط: الفلاتر، القوائم، الموافقات، البلوكات والمعاينات
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap" ref={exportRef}>
-          {/* زر تصدير البيانات الشامل */}
-          <div className="relative">
-            <button
-              onClick={() => setIsExportOpen(!isExportOpen)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] bg-[#1D4ED8] hover:bg-[#1E40AF] text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
-              title="تصدير بيانات العقارات أو الطلبات كملف CSV أو PDF"
-            >
-              <Download className="w-4 h-4 text-white" />
-              <span>تصدير البيانات</span>
-              <ChevronDown className="w-3.5 h-3.5 text-white" />
-            </button>
-
-            {isExportOpen && (
-              <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-72 bg-white rounded-[12px] shadow-[0_4px_16px_rgba(0,0,0,0.1)] border border-[#E2E8F0] py-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 text-right">
-                <div className="px-3.5 py-1.5 border-b border-slate-100 text-[11px] font-bold text-slate-500">
-                  تصدير العقارات المعروضة ({filteredProperties.length})
-                </div>
-                <button
-                  onClick={handleExportPropertiesCSV}
-                  className="w-full px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
-                >
-                  <span className="flex items-center gap-2">
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                    <span>تحميل العقارات كملف Excel (CSV)</span>
-                  </span>
-                  <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-mono font-bold">.csv</span>
-                </button>
-                <button
-                  onClick={handleExportPropertiesPDF}
-                  className="w-full px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
-                >
-                  <span className="flex items-center gap-2">
-                    <Printer className="w-4 h-4 text-rose-600" />
-                    <span>طباعة / حفظ العقارات كـ PDF</span>
-                  </span>
-                  <span className="text-[10px] bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-mono font-bold">.pdf</span>
-                </button>
-
-                <div className="px-3.5 py-1.5 mt-2 border-t border-b border-slate-100 text-[11px] font-bold text-slate-500">
-                  تصدير طلبات المستأجرين ({filteredRequests.length})
-                </div>
-                <button
-                  onClick={handleExportRequestsCSV}
-                  className="w-full px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
-                >
-                  <span className="flex items-center gap-2">
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                    <span>تحميل الطلبات كملف Excel (CSV)</span>
-                  </span>
-                  <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-mono font-bold">.csv</span>
-                </button>
-                <button
-                  onClick={handleExportRequestsPDF}
-                  className="w-full px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
-                >
-                  <span className="flex items-center gap-2">
-                    <Printer className="w-4 h-4 text-rose-600" />
-                    <span>طباعة / حفظ الطلبات كـ PDF</span>
-                  </span>
-                  <span className="text-[10px] bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-mono font-bold">.pdf</span>
-                </button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-xs sm:text-base font-bold text-white truncate">لوحة التحكم</h3>
+                <span className="hidden sm:inline-block text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full font-bold">إدارة</span>
               </div>
-            )}
+              <p className="text-[10px] sm:text-xs text-slate-300 truncate hidden sm:block">أقسام وإعدادات سكن أسيوط</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsDrawerOpen(false)}
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            title="إغلاق القائمة"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Drawer Menu Items List */}
+        <div className="flex-1 overflow-y-auto p-2.5 sm:p-3.5 space-y-1.5 divide-y divide-slate-100">
+          <div className="text-[10px] sm:text-xs font-bold text-slate-400 px-2 py-1 uppercase tracking-wider flex items-center justify-between">
+            <span className="truncate">أقسام الإدارة</span>
+            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-mono font-bold shrink-0">
+              {menuItems.length}
+            </span>
           </div>
 
-          {onLockAdmin && (
-            <button
-              onClick={onLockAdmin}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white transition-all shadow-xs cursor-pointer active:scale-95"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>قفل لوحة الإدارة</span>
-            </button>
+          <nav className="space-y-1.5 pt-2">
+            {menuItems.map((item) => {
+              const isActive = activeSection === item.id;
+              const IconComponent = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveSection(item.id);
+                    setIsDrawerOpen(false); // Closes automatically when any option is pressed
+                  }}
+                  className={`w-full p-2.5 sm:p-3 rounded-xl flex items-center justify-between gap-2 text-right transition-all cursor-pointer border ${
+                    isActive
+                      ? 'bg-[#EFF6FF] border-blue-200 text-[#0F172A] font-bold shadow-xs ring-1 ring-blue-500/20'
+                      : 'bg-white border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
+                  }`}
+                  title={item.title}
+                >
+                  <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                    <div
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                        isActive ? 'bg-[#1D4ED8] text-white shadow-2xs' : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      <IconComponent className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className={`text-xs sm:text-sm truncate ${isActive ? 'text-[#0F172A] font-bold' : 'text-slate-800 font-semibold'}`}>
+                        {item.title}
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-slate-400 truncate hidden sm:block">
+                        {item.subtitle}
+                      </div>
+                    </div>
+                  </div>
+
+                  {item.badge !== undefined && item.badge !== null && (
+                    <span
+                      className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                        item.badgeColor || 'bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Drawer Footer */}
+        <div className="p-2.5 sm:p-3 bg-slate-50 border-t border-slate-200 shrink-0 flex items-center justify-between gap-1.5">
+          <div className="flex items-center gap-1.5 text-slate-500 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="text-[10px] font-medium truncate">جلسة نشطة</span>
+          </div>
+          <button
+            onClick={() => setIsDrawerOpen(false)}
+            className="text-[11px] sm:text-xs font-bold text-slate-600 hover:text-slate-900 px-2 py-1 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer shrink-0"
+          >
+            إغلاق
+          </button>
+        </div>
+      </aside>
+
+      {/* ========================================================================= */}
+      {/* Main Content View (الآن بعرض كامل ووافر للمحتوى) */}
+      {/* ========================================================================= */}
+      <div className="w-full space-y-4">
+          {/* القسم 1: أدوات الواجهة والفلاتر */}
+          {activeSection === 'dropdowns' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <DropdownManager
+                categories={dropdownCategories}
+                onUpdateCategory={onUpdateDropdownCategories}
+                utilities={utilityDefinitions}
+                onUpdateUtilities={onUpdateUtilityDefinitions}
+                onResetDefaults={onResetDefaults}
+              />
+            </div>
           )}
-        </div>
-      </div>
 
-      {/* Four Top Tabs: 0: Settings & Filters, 1: Moderations & Blocks, 2: Admins & Activity Logs, 3: User Management */}
-      <div className="bg-white rounded-[12px] p-1.5 border border-[#E2E8F0] shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          {/* Tab 0: التحكم بالواجهة والفلاتر */}
-          <button
-            onClick={() => setAdminTab(0)}
-            className={`py-3 px-2 sm:px-3 rounded-[10px] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              adminTab === 0
-                ? 'bg-[#0F172A] text-white shadow-xs'
-                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <SettingsIcon className={`w-4.5 h-4.5 shrink-0 ${adminTab === 0 ? 'text-blue-300' : 'text-slate-500'}`} />
-            <span className="truncate">الواجهة والفلاتر</span>
-          </button>
-
-          {/* Tab 1: الموافقات والبلوكات المعاينات */}
-          <button
-            onClick={() => setAdminTab(1)}
-            className={`py-3 px-2 sm:px-3 rounded-[10px] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              adminTab === 1
-                ? 'bg-[#0F172A] text-white shadow-xs'
-                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <VerifiedUserIcon className={`w-4.5 h-4.5 shrink-0 ${adminTab === 1 ? 'text-blue-300' : 'text-slate-500'}`} />
-            <span className="truncate">الموافقات والمعاينات</span>
-            {(properties.filter((p) => p.status === 'pending').length > 0 ||
-              inspections.filter((i) => i.status === 'pending').length > 0) && (
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-            )}
-          </button>
-
-          {/* Tab 2: إدارة المدراء والأنشطة (Admin Management & Logs) */}
-          <button
-            onClick={() => setAdminTab(2)}
-            className={`py-3 px-2 sm:px-3 rounded-[10px] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              adminTab === 2
-                ? 'bg-[#0F172A] text-white shadow-xs'
-                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <Users className={`w-4.5 h-4.5 shrink-0 ${adminTab === 2 ? 'text-blue-300' : 'text-slate-500'}`} />
-            <span className="truncate">المدراء والأنشطة</span>
-          </button>
-
-          {/* Tab 3: إدارة المستخدمين (User Management) */}
-          <button
-            onClick={() => setAdminTab(3)}
-            className={`py-3 px-2 sm:px-3 rounded-[10px] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              adminTab === 3
-                ? 'bg-[#0F172A] text-white shadow-xs'
-                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <UserCheck className={`w-4.5 h-4.5 shrink-0 ${adminTab === 3 ? 'text-blue-300' : 'text-slate-500'}`} />
-            <span className="truncate">إدارة المستخدمين</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* القسم الأول: التحكم في الفلاتر والقوائم المنسدلة وشكل التطبيق (TAB 0) */}
-      {/* ========================================================================= */}
-      {adminTab === 0 && (
-        <div className="space-y-4 animate-in fade-in duration-150">
-          {/* Sub-Tabs selector inside Tab 0 */}
-          <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-            <button
-              onClick={() => setFilterSubTab('dropdowns')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
-                filterSubTab === 'dropdowns'
-                  ? 'bg-white text-[#002B49] shadow-xs font-black'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              القوائم المنسدلة والمرافق والعدادات
-            </button>
-            <button
-              onClick={() => setFilterSubTab('analytics')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
-                filterSubTab === 'analytics'
-                  ? 'bg-white text-[#002B49] shadow-xs font-black'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              إحصائيات العقارات (Recharts)
-            </button>
-          </div>
-
-          {filterSubTab === 'dropdowns' ? (
-            <DropdownManager
-              categories={dropdownCategories}
-              onUpdateCategory={onUpdateDropdownCategories}
-              utilities={utilityDefinitions}
-              onUpdateUtilities={onUpdateUtilityDefinitions}
-              onResetDefaults={onResetDefaults}
-            />
-          ) : (
-            <div className="space-y-4">
+          {/* القسم 2: إحصائيات العقارات */}
+          {activeSection === 'analytics' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
               {/* Analytics Summary */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="bg-white p-4 rounded-2xl border border-slate-200">
@@ -566,63 +603,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* ========================================================================= */}
-      {/* القسم الثاني: الموافقات والبلوكات والمعاينات (TAB 1) */}
-      {/* ========================================================================= */}
-      {adminTab === 1 && (
-        <div className="space-y-4 animate-in fade-in duration-150">
-          {/* Sub-Tabs Selector inside Tab 1 */}
-          <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-            <button
-              onClick={() => setModSubTab('moderation')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                modSubTab === 'moderation'
-                  ? 'bg-white text-[#002B49] shadow-xs font-black'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <span>مراجعة الإعلانات والموافقات</span>
-              <span className="text-[10px] bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded-full">
-                {properties.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setModSubTab('blocks')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                modSubTab === 'blocks'
-                  ? 'bg-white text-rose-700 shadow-xs font-black'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Ban className="w-3.5 h-3.5 text-rose-600" />
-              <span>حظر المستخدمين (البلوكات)</span>
-              <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded-full">
-                {blockedUsers.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setModSubTab('inspections')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                modSubTab === 'inspections'
-                  ? 'bg-white text-[#002B49] shadow-xs font-black'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5 text-[#002B49]" />
-              <span>إدارة المعاينات</span>
-              <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded-full">
-                {inspections.length}
-              </span>
-            </button>
-          </div>
-
-          {/* SUB-SECTION A: MODERATION & APPROVALS */}
-          {modSubTab === 'moderation' && (
+          {/* القسم 3: الموافقات ومراجعة الإعلانات */}
+          {activeSection === 'moderation' && (
             <div className="space-y-3">
               {/* Toggle Between Offers and Requests */}
               <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 gap-1">
@@ -1179,7 +1162,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
 
           {/* SUB-SECTION B: USER BLOCKS (البلوكات) */}
-          {modSubTab === 'blocks' && (
+          {activeSection === 'blocks' && (
             <div className="space-y-4">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
@@ -1329,7 +1312,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
 
           {/* SUB-SECTION C: INSPECTIONS MANAGEMENT (المعاينات) */}
-          {modSubTab === 'inspections' && (
+          {activeSection === 'inspections' && (
             <div className="space-y-3">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between">
                 <div>
@@ -1418,26 +1401,127 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               )}
             </div>
           )}
-        </div>
-      )}
 
-      {/* ========================================================================= */}
-      {/* القسم الثالث: إدارة المدراء والأنشطة (TAB 2) */}
-      {/* ========================================================================= */}
-      {adminTab === 2 && (
-        <div className="animate-in fade-in duration-150">
-          <AdminRoleManagement currentUser={currentUser} />
-        </div>
-      )}
+          {/* القسم 6: إدارة المدراء والصلاحيات */}
+          {activeSection === 'admins' && (
+            <div className="animate-in fade-in duration-150">
+              <AdminRoleManagement currentUser={currentUser} />
+            </div>
+          )}
 
-      {/* ========================================================================= */}
-      {/* القسم الرابع: إدارة المستخدمين والحسابات (TAB 3) */}
-      {/* ========================================================================= */}
-      {adminTab === 3 && (
-        <div className="animate-in fade-in duration-150">
-          <UserManagement currentUser={currentUser} />
+          {/* القسم 7: إدارة المستخدمين والحسابات */}
+          {activeSection === 'users' && (
+            <div className="animate-in fade-in duration-150">
+              <UserManagement currentUser={currentUser} />
+            </div>
+          )}
+
+          {/* القسم 8: الإعدادات وتصدير البيانات والتقارير */}
+          {activeSection === 'export_settings' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              {/* Header Card */}
+              <div className="bg-white p-4 sm:p-5 rounded-[14px] border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#1D4ED8] flex items-center justify-center shrink-0">
+                    <Download className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-base">
+                      تصدير البيانات والتقارير وإعدادات النظام
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      تصدير سجلات العقارات والطلبات إلى ملفات Excel أو PDF قابلة للطباعة، وإدارة ضبط النظام.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Export Grid Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Card 1: سجل العقارات */}
+                <div className="bg-white p-4 sm:p-5 rounded-[14px] border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-bold text-slate-900 text-sm sm:text-base">سجل إعلانات العقارات</span>
+                      <span className="text-[11px] font-bold bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full font-mono">
+                        {filteredProperties.length} عقار
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      تصدير السجل الكامل لجميع إعلانات العقارات المعروضة في أسيوط مع الأسعار، بيانات الملاك، والمواصفات.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={handleExportPropertiesCSV}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-[10px] bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      <span>Excel (CSV)</span>
+                    </button>
+                    <button
+                      onClick={handleExportPropertiesPDF}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-[10px] bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>طباعة PDF</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Card 2: سجل طلبات المستأجرين */}
+                <div className="bg-white p-4 sm:p-5 rounded-[14px] border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-bold text-slate-900 text-sm sm:text-base">سجل طلبات السكن</span>
+                      <span className="text-[11px] font-bold bg-amber-50 text-amber-800 px-2.5 py-0.5 rounded-full font-mono">
+                        {filteredRequests.length} طلب
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      تصدير السجل الكامل لطلبات السكن والبحث المسجلة في أسيوط مع أرقام التواصل والأحياء والميزانيات.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={handleExportRequestsCSV}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-[10px] bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      <span>Excel (CSV)</span>
+                    </button>
+                    <button
+                      onClick={handleExportRequestsPDF}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-[10px] bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>طباعة PDF</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: إعدادات إعادة الضبط وتأمين الجلسة */}
+              <div className="bg-white p-4 sm:p-5 rounded-[14px] border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <span className="font-bold text-slate-900 text-sm block">استعادة الإعدادات الافتراضية للقوائم</span>
+                  <span className="text-xs text-slate-500">إعادة تعيين خيارات الأحياء والمرافق وأنواع العقارات إلى التوليفات الأساسية</span>
+                </div>
+                {onResetDefaults && (
+                  <button
+                    onClick={onResetDefaults}
+                    className="flex items-center gap-1.5 py-2 px-4 rounded-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer shrink-0"
+                  >
+                    <RotateCcw className="w-4 h-4 text-slate-600" />
+                    <span>إعادة تعيين الافتراضيات</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      )}
     </div>
   );
 };
