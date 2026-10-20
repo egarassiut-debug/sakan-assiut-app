@@ -353,6 +353,7 @@ export function App() {
   // Search & Filter State for Listings
   const [searchQuery, setSearchQuery] = useState('');
   const [purposeFilter, setPurposeFilter] = useState<'all' | 'rent' | 'sale'>('rent');
+  const [excludeEnded, setExcludeEnded] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('ardaw_last_search_criteria');
@@ -920,7 +921,13 @@ export function App() {
   const filteredProperties = useMemo(() => {
     return properties.filter((prop) => {
       // Must be approved for public regular view (unless viewed by admin)
-      if (!isAdmin && (prop.status !== 'approved' || prop.isApproved === false)) return false;
+      const isPubliclyAllowed = prop.isApproved !== false && (prop.status === 'approved' || prop.status === 'rented' || prop.status === 'sold');
+      if (!isAdmin && !isPubliclyAllowed) return false;
+
+      // Filter out finished/ended properties (rented / sold)
+      if (excludeEnded && (prop.status === 'rented' || prop.status === 'sold')) {
+        return false;
+      }
 
       // In Tab 0, if purposeFilter is 'rent' or 'all' or 'sale'
       if (purposeFilter !== 'all' && prop.purpose !== purposeFilter) return false;
@@ -959,7 +966,7 @@ export function App() {
 
       return true;
     });
-  }, [properties, isAdmin, purposeFilter, selectedDistrict, selectedPropertyType, searchQuery, minPrice, maxPrice]);
+  }, [properties, isAdmin, purposeFilter, selectedDistrict, selectedPropertyType, searchQuery, minPrice, maxPrice, excludeEnded]);
 
   // Filter Tenant Requests logic (طلبات الإيجار المطلوبة)
   const filteredTenantRequests = useMemo(() => {
@@ -1920,7 +1927,20 @@ export function App() {
                       : 'bg-white text-slate-700 border border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:bg-slate-50'
                   }`}
                 >
-                  الكل ({properties.filter((p) => isAdmin || p.status === 'approved').length})
+                  الكل ({properties.filter((p) => isAdmin || p.status === 'approved' || p.status === 'rented' || p.status === 'sold').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExcludeEnded(!excludeEnded)}
+                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    excludeEnded
+                      ? 'bg-amber-500 text-slate-950 border border-amber-400 font-bold shadow-xs ring-1 ring-amber-400/50'
+                      : 'bg-white text-slate-700 border border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:bg-slate-50'
+                  }`}
+                  title="استبعاد العقارات المنتهية (المؤجرة والمباعة)"
+                >
+                  <span className={`w-2 h-2 rounded-full ${excludeEnded ? 'bg-slate-950' : 'bg-slate-300'}`} />
+                  <span>استبعاد المنتهي</span>
                 </button>
               </div>
 
@@ -1930,7 +1950,7 @@ export function App() {
             </div>
 
             {/* Active Filters Clear Badge */}
-            {(selectedDistrict !== 'all' || selectedPropertyType !== 'all' || searchQuery) && (
+            {(selectedDistrict !== 'all' || selectedPropertyType !== 'all' || searchQuery || excludeEnded) && (
               <div className="flex items-center justify-between text-xs px-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-slate-400 font-medium">الفلاتر المحددة:</span>
@@ -1944,12 +1964,18 @@ export function App() {
                       {selectedPropertyType}
                     </span>
                   )}
+                  {excludeEnded && (
+                    <span className="bg-amber-100 text-amber-900 font-semibold px-2 py-0.5 rounded-lg border border-amber-300">
+                      استبعاد المنتهي (مؤجر/مباع)
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => {
                     setSelectedDistrict('all');
                     setSelectedPropertyType('all');
                     setSearchQuery('');
+                    setExcludeEnded(false);
                   }}
                   className="text-xs text-rose-500 hover:underline font-semibold cursor-pointer shrink-0"
                 >

@@ -3,9 +3,8 @@ import { Property } from '../types/property';
 import { 
   Copy, Check, MapPin, Maximize2, Bed, Bath, ArrowUpRight, 
   MessageSquare, Compass, Building, ChevronLeft, ChevronRight, Camera, Edit3, AlertTriangle, Heart, Star,
-  ChevronDown, Layers, Zap, Droplets, Flame, Wifi, Calendar, Lock, Tag, Share2, Phone
+  ChevronDown, Layers, Zap, Droplets, Flame, Wifi, Calendar, Lock, Tag
 } from 'lucide-react';
-import { SharePropertyModal } from './SharePropertyModal';
 
 interface PropertyCardProps {
   property: Property;
@@ -32,7 +31,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Toggle card expansion when clicking an empty space on the card without opening full modal
   const handleCardClick = (e: React.MouseEvent) => {
@@ -102,12 +100,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
       `السلام عليكم، أود التواصل مع إدارة التطبيق للاستفسار وطلب معاينة رسمية للعقار كود (${property.code}) - ${property.title} بأسيوط.`
     );
     window.open(`https://wa.me/201002345678?text=${text}`, '_blank');
-  };
-
-  const handleDirectCall = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const phone = property.contactPhone || '01002345678';
-    window.location.href = `tel:${phone}`;
   };
 
   const formatPrice = (price: number) => {
@@ -246,20 +238,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
               </button>
             )}
-
-            {/* Quick Share Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsShareModalOpen(true);
-              }}
-              className="w-7.5 h-7.5 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-125 cursor-pointer backdrop-blur-md bg-white/80 text-slate-700 hover:bg-white hover:text-blue-600"
-              title="مشاركة سريعة للعقار"
-              aria-label="مشاركة العقار"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-            </button>
           </div>
 
           {/* Purpose, Type & Status Badge */}
@@ -599,27 +577,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             )}
             <button
               type="button"
-              onClick={handleDirectCall}
-              className="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-              title="اتصال هاتفي مباشر"
-            >
-              <Phone className="w-3.5 h-3.5 text-slate-700 shrink-0" />
-              <span className="hidden sm:inline">اتصال</span>
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsShareModalOpen(true);
-              }}
-              className="h-9 px-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-              title="مشاركة العقار"
-            >
-              <Share2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="hidden sm:inline">مشاركة</span>
-            </button>
-            <button
-              type="button"
               onClick={handleWhatsApp}
               className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
               title="تواصل مع إدارة التطبيق عبر واتساب"
@@ -654,13 +611,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
         )}
       </div>
-
-      {/* Share Property Modal */}
-      <SharePropertyModal
-        property={property}
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-      />
     </div>
   );
 };
