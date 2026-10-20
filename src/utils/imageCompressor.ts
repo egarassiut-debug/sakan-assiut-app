@@ -69,10 +69,10 @@ export function compressImageFile(file: File, maxSizeBytes: number = 250 * 1024)
           const radius = Math.round(badgeHeight * 0.35);
 
           ctx.save();
-          // Dark luxury pill container with gold border
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
-          ctx.strokeStyle = 'rgba(217, 119, 6, 0.65)';
-          ctx.lineWidth = Math.max(1.5, Math.round(badgeHeight * 0.06));
+          // Subtle faint translucent grey glass pill container
+          ctx.fillStyle = 'rgba(30, 41, 59, 0.32)'; // رمادي باهت نصف شفاف غير مؤثر على تفاصيل الصورة
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'; // إطار رمادي/أبيض شفاف خفيف
+          ctx.lineWidth = 1;
 
           ctx.beginPath();
           if (typeof ctx.roundRect === 'function') {
@@ -83,25 +83,25 @@ export function compressImageFile(file: File, maxSizeBytes: number = 250 * 1024)
           ctx.fill();
           ctx.stroke();
 
-          // Emerald active dot indicator
-          const dotRadius = Math.max(3, Math.round(badgeHeight * 0.12));
-          ctx.fillStyle = '#10B981';
+          // Subtle Emerald active dot indicator (شارة التوثيق)
+          const dotRadius = Math.max(2.5, Math.round(badgeHeight * 0.11));
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.75)';
           ctx.beginPath();
           ctx.arc(bx + badgeWidth - margin * 0.8, by + badgeHeight / 2, dotRadius, 0, Math.PI * 2);
           ctx.fill();
 
-          // Brand Typography: "سكن أسيوط"
-          const fontSize = Math.max(12, Math.round(badgeHeight * 0.44));
-          ctx.font = `bold ${fontSize}px 'Tajawal', 'Cairo', sans-serif`;
-          ctx.fillStyle = '#FFFFFF';
+          // Brand Typography: "سكن أسيوط" بلون رمادي باهت ناعم غير فاقع
+          const fontSize = Math.max(11, Math.round(badgeHeight * 0.44));
+          ctx.font = `600 ${fontSize}px 'Tajawal', 'Cairo', sans-serif`;
+          ctx.fillStyle = 'rgba(241, 245, 249, 0.82)'; // رمادي فاتح باهت
           ctx.textAlign = 'right';
           ctx.textBaseline = 'middle';
           ctx.fillText('سكن أسيوط', bx + badgeWidth - margin * 1.5, by + badgeHeight / 2);
 
           // Verification subtext if badge is spacious
-          if (badgeWidth > 160) {
-            ctx.fillStyle = '#F59E0B';
-            ctx.font = `bold ${Math.max(9, Math.round(fontSize * 0.68))}px sans-serif`;
+          if (badgeWidth > 150) {
+            ctx.fillStyle = 'rgba(203, 213, 225, 0.65)'; // رمادي باهت
+            ctx.font = `500 ${Math.max(9, Math.round(fontSize * 0.68))}px sans-serif`;
             ctx.textAlign = 'left';
             ctx.fillText('منصة موثقة', bx + margin * 0.7, by + badgeHeight / 2);
           }
