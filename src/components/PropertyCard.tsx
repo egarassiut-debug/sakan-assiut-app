@@ -111,7 +111,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
       onClick={handleCardClick}
       className={`bg-white rounded-[14px] overflow-hidden border transition-all duration-200 cursor-pointer group flex flex-col ${
         isExpanded
-          ? 'border-[#1D4ED8] shadow-[0_4px_20px_rgba(29,78,216,0.12)] ring-2 ring-[#1D4ED8]/10'
+          ? 'border-[#002B49] shadow-[0_4px_20px_rgba(0,43,73,0.12)] ring-2 ring-[#002B49]/10'
           : 'border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)]'
       }`}
     >
@@ -262,8 +262,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             )}
             <span className={`px-2.5 py-1 rounded-xl font-bold text-xs shadow-xs ${
               property.purpose === 'rent'
-                ? 'bg-[#1D4ED8] text-white'
-                : 'bg-[#0F172A] text-white'
+                ? 'bg-[#002B49] text-white'
+                : 'bg-amber-600 text-white'
             }`}>
               {property.purpose === 'rent' ? 'للإيجار' : 'للبيع'}
             </span>
@@ -279,7 +279,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             المصدر: {property.source}
           </span>
           <span className="flex items-center gap-1 bg-black/45 backdrop-blur-xs px-2 py-0.5 rounded-lg text-[10px] font-semibold text-white">
-            <MapPin className="w-3 h-3 text-blue-300" />
+            <MapPin className="w-3 h-3 text-amber-300" />
             {property.district}
           </span>
         </div>
@@ -289,7 +289,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
       <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
         <div>
           {/* Title */}
-          <h3 className="font-bold text-[#0F172A] text-sm sm:text-base leading-snug line-clamp-2 group-hover:text-[#1D4ED8] transition-colors">
+          <h3 className="font-bold text-[#0F172A] text-sm sm:text-base leading-snug line-clamp-2 group-hover:text-[#002B49] transition-colors">
             {property.title}
           </h3>
 
@@ -310,7 +310,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               }}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                 ratingSummary && ratingSummary.count > 0
-                  ? 'bg-[#F0F6FF] border-blue-200 text-[#1D4ED8] hover:bg-blue-100 shadow-2xs'
+                  ? 'bg-amber-50/80 border-amber-200 text-amber-900 shadow-2xs'
                   : 'bg-slate-50 border-slate-200/80 text-slate-500 hover:bg-slate-100'
               }`}
               title="تقييمات المعاينة الميدانية الموثقة (اضغط للمعاينة والتقييم)"
@@ -329,10 +329,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
 
         {/* Specifications Details Row */}
-        <div className="bg-[#F0F6FF] rounded-2xl p-2.5 border border-blue-50 flex items-center justify-around text-xs text-slate-700">
+        <div className="bg-slate-50/90 rounded-2xl p-2.5 border border-slate-200/80 flex items-center justify-around text-xs text-slate-700">
           {/* Area */}
           <div className="flex items-center gap-1.5">
-            <Maximize2 className="w-3.5 h-3.5 text-[#1D4ED8] shrink-0" />
+            <Maximize2 className="w-3.5 h-3.5 text-slate-600 shrink-0" />
             <span className="font-bold text-[#0F172A]">{property.area}</span>
             <span className="text-[11px] text-slate-500">م²</span>
           </div>
@@ -340,7 +340,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           {isLand ? (
             /* Land Facade */
             <div className="flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5 text-[#1D4ED8] shrink-0" />
+              <Compass className="w-3.5 h-3.5 text-slate-600 shrink-0" />
               <span className="font-semibold text-[#0F172A] text-[11px]">
                 {property.facade ? property.facade.slice(0, 20) : 'واجهة مميزة'}
               </span>
@@ -350,21 +350,21 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             <>
               {property.bedrooms !== undefined && (
                 <div className="flex items-center gap-1.5">
-                  <Bed className="w-3.5 h-3.5 text-[#1D4ED8] shrink-0" />
+                  <Bed className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                   <span className="font-bold text-[#0F172A]">{property.bedrooms}</span>
                   <span className="text-[11px] text-slate-500">غرف</span>
                 </div>
               )}
               {property.bathrooms !== undefined && (
                 <div className="flex items-center gap-1.5">
-                  <Bath className="w-3.5 h-3.5 text-[#1D4ED8] shrink-0" />
+                  <Bath className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                   <span className="font-bold text-[#0F172A]">{property.bathrooms}</span>
                   <span className="text-[11px] text-slate-500">حمام</span>
                 </div>
               )}
               {property.hasElevator !== undefined && (
                 <div className="flex items-center gap-1.5">
-                  <Building className="w-3.5 h-3.5 text-[#1D4ED8] shrink-0" />
+                  <Building className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                   <span className="text-[11px] text-slate-600 font-medium">
                     {property.hasElevator ? 'أسانسير' : 'سلم'}
                   </span>
@@ -382,18 +382,18 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           }}
           className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-all select-none cursor-pointer ${
             isExpanded 
-              ? 'bg-[#F0F6FF] text-[#1D4ED8] border border-blue-200 shadow-2xs' 
+              ? 'bg-slate-100 text-[#002B49] border border-slate-300 shadow-2xs font-bold' 
               : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/70'
           }`}
           title={isExpanded ? 'انقر لطي التفاصيل المختصرة' : 'انقر لعرض تفاصيل إضافية مختصرة'}
         >
           <span className="flex items-center gap-1.5">
-            <Layers className={`w-3.5 h-3.5 shrink-0 ${isExpanded ? 'text-[#1D4ED8]' : 'text-slate-400'}`} />
+            <Layers className={`w-3.5 h-3.5 shrink-0 ${isExpanded ? 'text-[#002B49]' : 'text-slate-400'}`} />
             <span>
               {isExpanded ? 'تفاصيل مختصرة معروضة (انقر للطي)' : 'انقر على أي مساحة لعرض تفاصيل إضافية مختصرة'}
             </span>
           </span>
-          <ChevronDown className={`w-4 h-4 transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180 text-teal-700' : 'text-slate-400'}`} />
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180 text-[#002B49]' : 'text-slate-400'}`} />
         </div>
 
         {/* Expanded Concise Details Panel (المساحة، الغرف، الحمامات، الدور، المصعد، المرافق) */}
