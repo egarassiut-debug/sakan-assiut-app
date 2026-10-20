@@ -3,7 +3,7 @@ import { Property } from '../types/property';
 import { 
   Copy, Check, MapPin, Maximize2, Bed, Bath, ArrowUpRight, 
   MessageSquare, Compass, Building, ChevronLeft, ChevronRight, Camera, Edit3, AlertTriangle, Heart, Star,
-  ChevronDown, Layers, Zap, Droplets, Flame, Wifi, Calendar
+  ChevronDown, Layers, Zap, Droplets, Flame, Wifi, Calendar, Lock, Tag
 } from 'lucide-react';
 
 interface PropertyCardProps {
@@ -179,6 +179,29 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </>
         )}
 
+        {/* Status Overlay Watermark for Rented / Sold properties */}
+        {(property.status === 'rented' || property.status === 'sold') && (
+          <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[1px] z-10 flex items-center justify-center pointer-events-none">
+            <div className={`px-4 py-2 rounded-2xl shadow-xl font-black text-sm sm:text-base tracking-wide flex items-center gap-2 border ${
+              property.status === 'sold'
+                ? 'bg-rose-600/95 text-white border-rose-300/60 shadow-rose-950/40'
+                : 'bg-amber-500/95 text-slate-950 border-amber-200/80 shadow-amber-950/40'
+            }`}>
+              {property.status === 'sold' ? (
+                <>
+                  <Tag className="w-4 h-4 text-white" />
+                  <span>تم البيع نهائياً</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-4 h-4 text-slate-950" />
+                  <span>مؤجر حالياً</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Top Floating Badges */}
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none z-10">
           {/* Left: Property Code Chip & Favorite Button */}
@@ -217,8 +240,26 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             )}
           </div>
 
-          {/* Purpose & Type Badge */}
-          <div className="flex items-center gap-1.5">
+          {/* Purpose, Type & Status Badge */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            {property.status === 'rented' && (
+              <span className="px-2.5 py-1 rounded-xl bg-amber-500 text-slate-950 font-black text-xs shadow-md border border-amber-300 flex items-center gap-1 animate-pulse">
+                <Lock className="w-3 h-3 text-slate-950" />
+                <span>مؤجر</span>
+              </span>
+            )}
+            {property.status === 'sold' && (
+              <span className="px-2.5 py-1 rounded-xl bg-rose-600 text-white font-black text-xs shadow-md border border-rose-400 flex items-center gap-1">
+                <Tag className="w-3 h-3 text-white" />
+                <span>تم البيع</span>
+              </span>
+            )}
+            {(property.status === 'pending' || property.status === 'pending_approval' || property.status === 'under_review') && (
+              <span className="px-2 py-1 rounded-xl bg-amber-600/90 text-white font-bold text-[10px] shadow-sm flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 text-amber-200" />
+                <span>قيد المراجعة</span>
+              </span>
+            )}
             <span className={`px-2.5 py-1 rounded-xl font-bold text-xs shadow-xs ${
               property.purpose === 'rent'
                 ? 'bg-[#1D4ED8] text-white'
