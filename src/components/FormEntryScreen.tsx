@@ -137,8 +137,50 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const [uploadedImages, setUploadedImages] = useState<string[]>(editingProperty?.images || initialDraft?.uploadedImages || []);
   const [hasAgreedDeclaration, setHasAgreedDeclaration] = useState(Boolean(editingProperty || editingTenantRequest || initialDraft?.hasAgreedDeclaration));
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [invalidField, setInvalidField] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [submittedListingId, setSubmittedListingId] = useState('');
+
+  // Validation Refs for Smooth Auto-Scroll
+  const propertyTypeRef = useRef<HTMLSelectElement | null>(null);
+  const districtRef = useRef<HTMLSelectElement | null>(null);
+  const areaInputRef = useRef<HTMLInputElement | null>(null);
+  const priceInputRef = useRef<HTMLInputElement | null>(null);
+  const maxPriceInputRef = useRef<HTMLInputElement | null>(null);
+  const phoneInputRef = useRef<HTMLInputElement | null>(null);
+  const contactNameInputRef = useRef<HTMLInputElement | null>(null);
+  const declarationRef = useRef<HTMLLabelElement | null>(null);
+  const bottomErrorRef = useRef<HTMLDivElement | null>(null);
+  const topErrorRef = useRef<HTMLDivElement | null>(null);
+
+  const triggerValidationToast = (msg: string = 'يرجى استيفاء البيانات المطلوبة أولاً') => {
+    setToastMsg(msg);
+  };
+
+  useEffect(() => {
+    if (toastMsg) {
+      const timer = setTimeout(() => setToastMsg(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMsg]);
+
+  const scrollToError = (targetRef: React.RefObject<HTMLElement | null>) => {
+    setTimeout(() => {
+      if (targetRef && targetRef.current) {
+        targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if ('focus' in targetRef.current && typeof (targetRef.current as HTMLElement).focus === 'function') {
+          try {
+            (targetRef.current as HTMLElement).focus({ preventScroll: true });
+          } catch {
+            // ignore
+          }
+        }
+      } else if (bottomErrorRef.current) {
+        bottomErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 60);
+  };
 
   // Draft auto-save indicator state
   const [hasRestoredDraft, setHasRestoredDraft] = useState<boolean>(() => Boolean(initialDraft && (initialDraft.title || initialDraft.address || initialDraft.area || initialDraft.price || initialDraft.notes || initialDraft.maxPrice)));
@@ -474,18 +516,26 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setInvalidField(null);
 
     // 1. Strict Egyptian Mobile Validation (11 digits, 010/011/012/015)
     const phoneError = validateEgyptianPhone(contactPhone, 'رقم الهاتف للتواصل');
     if (phoneError) {
-      setErrorMsg(phoneError);
+      setErrorMsg(`تنبيه: ${phoneError}`);
+      setInvalidField('phone');
+      triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
+      scrollToError(phoneInputRef);
       return;
     }
 
     const cleanContactPhone = normalizeEgyptianPhone(contactPhone);
 
+    // 2. Area validation
     if (!area || Number(area) <= 0) {
-      setErrorMsg('يرجى تحديد المساحة بالمتر المربع.');
+      setErrorMsg('تنبيه: يرجى تحديد المساحة الإجمالية بالمتر المربع بشكل صحيح (أكبر من 0).');
+      setInvalidField('area');
+      triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
+      scrollToError(areaInputRef);
       return;
     }
 
@@ -495,12 +545,22 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
     if (isOffer) {
       if (!price || Number(price) <= 0) {
-        setErrorMsg('يرجى تحديد السعر أو الإيجار.');
+        setErrorMsg(
+          isLand || purpose === 'sale'
+            ? 'تنبيه: يرجى تحديد سعر البيع الإجمالي للعقار بالجنيه المصري.'
+            : 'تنبيه: يرجى تحديد القيمة الإيجارية الشهرية للعقار بالجنيه المصري.'
+        );
+        setInvalidField('price');
+        triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
+        scrollToError(priceInputRef);
         return;
       }
 
       if (!hasAgreedDeclaration) {
-        setErrorMsg('يجب الموافقة على إقرار صحة البيانات والملكية للمتابعة.');
+        setErrorMsg('تنبيه: يجب تفعيل خيار الموافقة على إقرار صحة البيانات والملكية للمتابعة.');
+        setInvalidField('declaration');
+        triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
+        scrollToError(declarationRef);
         return;
       }
 
@@ -578,7 +638,10 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     } else {
       // Add Tenant Request (طلب عقار)
       if (!maxPrice || Number(maxPrice) <= 0) {
-        setErrorMsg('يرجى تحديد الميزانية القصوى.');
+        setErrorMsg('تنبيه: يرجى تحديد أقصى ميزانية مقبولة لطلبك بالجنيه المصري.');
+        setInvalidField('maxPrice');
+        triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
+        scrollToError(maxPriceInputRef);
         return;
       }
 
@@ -773,15 +836,18 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           </button>
         </div>
 
-        {/* Error Alert */}
+        {/* Top Error Alert */}
         {errorMsg && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+          <div 
+            ref={topErrorRef}
+            className="mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 shadow-xs"
+          >
             <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} noValidate className="space-y-5">
           {/* Section 1: نوع العقار والغرض */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-[#002B49] flex items-center gap-2 border-b border-slate-100 pb-2">
@@ -789,12 +855,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               <span>البيانات الأساسية للعقار</span>
             </h3>
 
-            {/* Property Type Dropdown (قائمة منسدلة نظيفة مطابقة لـ DropdownButtonFormField وقائمة المنطقة) */}
+            {/* Property Type Dropdown */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 نوع العقار * <span className="text-slate-500 font-normal">(إجباري)</span>
               </label>
               <select
+                ref={propertyTypeRef}
                 value={propertyType}
                 onChange={(e) => handleTypeChange(e.target.value)}
                 required
@@ -870,6 +937,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   المنطقة / الحي بأسيوط
                 </label>
                 <select
+                  ref={districtRef}
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
@@ -890,12 +958,20 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 <div className="relative">
                   <Maximize2 className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                   <input
+                    ref={areaInputRef}
                     type="number"
                     value={area}
-                    onChange={(e) => setArea(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) => {
+                      setArea(e.target.value ? Number(e.target.value) : '');
+                      if (invalidField === 'area') setInvalidField(null);
+                    }}
                     placeholder="مثال: 120"
                     required
-                    className="w-full pr-9 pl-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                    className={`w-full pr-9 pl-3 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden transition-all ${
+                      invalidField === 'area'
+                        ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
+                        : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#002B49]'
+                    }`}
                   />
                 </div>
               </div>
@@ -942,12 +1018,20 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   <div className="relative">
                     <DollarSign className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                     <input
+                      ref={priceInputRef}
                       type="number"
                       value={price}
-                      onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : '')}
+                      onChange={(e) => {
+                        setPrice(e.target.value ? Number(e.target.value) : '');
+                        if (invalidField === 'price') setInvalidField(null);
+                      }}
                       placeholder="مثال: 3500"
                       required
-                      className="w-full pr-9 pl-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-[#002B49] focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                      className={`w-full pr-9 pl-3 py-2 rounded-xl border text-xs font-bold text-[#002B49] focus:outline-hidden transition-all ${
+                        invalidField === 'price'
+                          ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
+                          : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#002B49]'
+                      }`}
                     />
                   </div>
                 </div>
@@ -986,12 +1070,20 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     أقصى ميزانية مقبولة (ج.م) * <span className="text-slate-500 font-normal">(إجباري)</span>
                   </label>
                   <input
+                    ref={maxPriceInputRef}
                     type="number"
                     value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) => {
+                      setMaxPrice(e.target.value ? Number(e.target.value) : '');
+                      if (invalidField === 'maxPrice') setInvalidField(null);
+                    }}
                     placeholder="مثال: 4500"
                     required
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-[#002B49] focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold text-[#002B49] focus:outline-hidden transition-all ${
+                      invalidField === 'maxPrice'
+                        ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
+                        : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#002B49]'
+                    }`}
                   />
                 </div>
               </div>
@@ -1225,6 +1317,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 <div className="relative">
                   <User className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                   <input
+                    ref={contactNameInputRef}
                     type="text"
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
@@ -1241,16 +1334,22 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 <div className="relative">
                   <Phone className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                   <input
+                    ref={phoneInputRef}
                     type="tel"
                     dir="ltr"
                     value={contactPhone}
                     onChange={(e) => {
                       const norm = normalizeEgyptianPhone(e.target.value);
                       if (norm.length <= 11) setContactPhone(norm);
+                      if (invalidField === 'phone') setInvalidField(null);
                     }}
                     placeholder="01012345678"
                     required
-                    className="w-full pr-9 pl-16 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-[#002B49] text-right"
+                    className={`w-full pr-9 pl-16 py-2 rounded-xl border text-xs font-bold text-slate-800 focus:outline-hidden text-right transition-all ${
+                      invalidField === 'phone'
+                        ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
+                        : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#002B49]'
+                    }`}
                   />
                   {isValidEgyptianPhone(contactPhone) ? (
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
@@ -1335,12 +1434,22 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
             {/* Legal Declaration (إقرار الملكية والصحة) */}
             {isOffer && (
-              <label className="flex items-start gap-3 p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 cursor-pointer text-xs select-none">
+              <label 
+                ref={declarationRef}
+                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer text-xs select-none transition-all ${
+                  invalidField === 'declaration'
+                    ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-300 shadow-xs'
+                    : 'bg-amber-50/70 border-amber-200/80 hover:bg-amber-50'
+                }`}
+              >
                 <input
                   type="checkbox"
                   checked={hasAgreedDeclaration}
-                  onChange={(e) => setHasAgreedDeclaration(e.target.checked)}
-                  className="mt-0.5 rounded text-[#002B49] focus:ring-[#002B49] w-4 h-4"
+                  onChange={(e) => {
+                    setHasAgreedDeclaration(e.target.checked);
+                    if (invalidField === 'declaration') setInvalidField(null);
+                  }}
+                  className="mt-0.5 rounded text-[#002B49] focus:ring-[#002B49] w-4 h-4 cursor-pointer"
                 />
                 <span className="text-amber-950 font-medium leading-relaxed">
                   <strong>إقرار إجباري:</strong> أقر أنا المعلن بأنني المالك أو الوكيل الرسمي المفوض لهذا العقار، وأن جميع البيانات المدخلة صحيحة تماماً ومطابقة للمعاينة على أرض الواقع.
@@ -1348,6 +1457,24 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               </label>
             )}
           </div>
+
+          {/* Form Validation Summary Directly Above Submit Button */}
+          {errorMsg && (
+            <div 
+              ref={bottomErrorRef}
+              className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-400 text-rose-900 text-xs sm:text-sm font-bold flex items-start gap-3 shadow-md animate-in slide-in-from-bottom-2 duration-200"
+            >
+              <div className="w-8 h-8 rounded-xl bg-rose-100 border border-rose-300 flex items-center justify-center shrink-0 text-rose-600 mt-0.5">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="flex-1 space-y-1 text-right">
+                <span className="font-black text-rose-950 block text-xs sm:text-sm">
+                  تنبيه بالبيانات الناقصة أو غير المستوفاة:
+                </span>
+                <p className="text-rose-700 font-semibold leading-relaxed text-xs sm:text-sm">{errorMsg}</p>
+              </div>
+            </div>
+          )}
 
           {/* Submit Action Button */}
           <div className="pt-2">
@@ -1417,6 +1544,21 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               >
                 حسناً
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Validation Toast Notification */}
+      {toastMsg && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-200 pointer-events-none max-w-sm w-full px-4">
+          <div className="bg-[#002B49]/95 text-white p-3.5 rounded-2xl shadow-2xl border border-rose-400/40 flex items-center gap-3 backdrop-blur-md">
+            <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 text-rose-400" />
+            </div>
+            <div className="flex-1 text-right">
+              <span className="text-xs sm:text-sm font-bold block text-white">{toastMsg}</span>
+              <span className="text-[10px] text-amber-300 font-medium block mt-0.5">يرجى مراجعة الحقول المشار إليها باللون الأحمر</span>
             </div>
           </div>
         </div>
