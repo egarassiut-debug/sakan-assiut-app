@@ -29,6 +29,7 @@ import { BottomNavBar, NavTabIndex } from './components/BottomNavBar';
 import { PropertyCard } from './components/PropertyCard';
 import { TenantRequestCard } from './components/TenantRequestCard';
 import { ToastNotification } from './components/ToastNotification';
+import { SupabaseSyncErrorModal } from './components/SupabaseSyncErrorModal';
 import { AuthScreen } from './components/AuthScreen';
 import { MyAdsScreen } from './components/MyAdsScreen';
 import { InAppPushBanner } from './components/InAppPushBanner';
@@ -45,7 +46,8 @@ import {
   dbUpsertTenantRequest, 
   dbDeleteTenantRequest, 
   isSupabaseActive, 
-  getSupabaseClient 
+  getSupabaseClient,
+  SupabaseSyncErrorEventDetail 
 } from './lib/supabase';
 
 // Code-split heavy components & modals for minimal initial bundle and fast startup
@@ -505,6 +507,29 @@ export function App() {
   const dismissToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  // Supabase Sync Error On-Screen Alert Modal State
+  const [supabaseSyncError, setSupabaseSyncError] = useState<SupabaseSyncErrorEventDetail | null>(null);
+
+  useEffect(() => {
+    const handleSbSyncError = (e: Event) => {
+      const customEvent = e as CustomEvent<SupabaseSyncErrorEventDetail>;
+      if (customEvent.detail) {
+        setSupabaseSyncError(customEvent.detail);
+        addToast({
+          type: 'error',
+          title: customEvent.detail.title,
+          message: customEvent.detail.message,
+          duration: 8000,
+        });
+      }
+    };
+
+    window.addEventListener('ardaw_supabase_sync_error', handleSbSyncError);
+    return () => {
+      window.removeEventListener('ardaw_supabase_sync_error', handleSbSyncError);
+    };
+  }, []);
 
   // Filtered list of favorite properties
   const favoriteProperties = useMemo(() => {
@@ -1718,6 +1743,12 @@ export function App() {
           }}
         />
         <ToastNotification toasts={toasts} onDismiss={dismissToast} />
+        {supabaseSyncError && (
+          <SupabaseSyncErrorModal
+            error={supabaseSyncError}
+            onClose={() => setSupabaseSyncError(null)}
+          />
+        )}
         <InAppPushBanner
           notification={activePushBanner}
           onDismiss={() => setActivePushBanner(null)}
@@ -2550,6 +2581,19 @@ export function App() {
           />
         )}
       </Suspense>
+
+      {/* Supabase Database Error / Alert Modal */}
+      {supabaseSyncError && (
+        <SupabaseSyncErrorModal
+          error={supabaseSyncError}
+          onClose={() => setSupabaseSyncError(null)}
+          onOpenSupabaseSettings={() => {
+            setSupabaseSyncError(null);
+            setOverlayScreen('none');
+            setNavIndex(3);
+          }}
+        />
+      )}
 
       {/* In-App Toast Notifications */}
       <ToastNotification toasts={toasts} onDismiss={dismissToast} />

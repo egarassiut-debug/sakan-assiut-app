@@ -413,17 +413,97 @@ export function validateTenantRequestPayload(req: Partial<TenantRequest>): Prope
   return { isValid: true };
 }
 
+export interface SupabaseSyncErrorEventDetail {
+  title: string;
+  message: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+  technicalError?: string;
+  table: string;
+  operation: 'insert' | 'upsert' | 'delete' | 'fetch';
+  entityId?: string;
+  entityCode?: string;
+  payload?: any;
+  timestamp: string;
+  actionRequired?: string;
+}
+
 /**
- * Insert or update a property in Supabase
+ * Dispatches an event to display a clear on-screen alert/modal
+ * whenever Supabase sync fails or encounters an exception.
+ */
+export function notifySupabaseError(detail: SupabaseSyncErrorEventDetail): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ardaw_supabase_sync_error', { detail }));
+  }
+}
+
+/**
+ * Insert or update a property in Supabase with explicit console.error and on-screen alerting
  */
 export async function dbUpsertProperty(prop: Property): Promise<boolean> {
   const client = getSupabaseClient();
-  if (!client) return false;
+  const timestamp = new Date().toLocaleTimeString('ar-EG');
+
+  if (!client) {
+    const config = getSupabaseConfig();
+    const isMissingUrl = !config?.url;
+    const isMissingKey = !config?.anonKey;
+
+    const errMsg = isMissingUrl && isMissingKey
+      ? 'لم يتم ضبط إعدادات الاتصال بـ Supabase (VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY). تم حفظ العقار محلياً فقط في المتصفح.'
+      : isMissingUrl
+      ? 'رابط مشروع Supabase غير مضبوط (VITE_SUPABASE_URL). تم حفظ العقار محلياً فقط.'
+      : 'مفتاح الوصول العام (VITE_SUPABASE_ANON_KEY) غير مضبوط. تم حفظ العقار محلياً فقط.';
+
+    console.error(
+      `%c[Supabase Alert] ⚠️ تعذر إرسال العقار (${prop.code}) إلى قاعدة بيانات Supabase!`,
+      'background: #b45309; color: white; font-weight: bold; font-size: 13px; padding: 4px 8px; border-radius: 4px;',
+      `\n❌ السبب: لم يتم تهيئة عميل Supabase (الرابط أو المفتاح غير متوفر).`,
+      `\n📋 التفاصيل: ${errMsg}`,
+      `\n🛠️ الحل: توجه إلى لوحة الإدارة > إعدادات Supabase وأدخل الرابط ومفتاح الـ Anon Key.`
+    );
+
+    notifySupabaseError({
+      title: '⚠️ قاعدة بيانات Supabase غير متصلة',
+      message: errMsg,
+      code: 'CONFIG_MISSING',
+      table: 'properties',
+      operation: 'upsert',
+      entityId: prop.id,
+      entityCode: prop.code,
+      actionRequired: 'افتح لوحة الإدارة > "إعدادات Supabase" وأدخل عنوان المشروع ومفتاح الوصول (Anon Key).',
+      timestamp,
+    });
+
+    return false;
+  }
 
   // Pre-flight validation against database schema
   const validation = validatePropertyPayload(prop);
   if (!validation.isValid) {
-    console.error('dbUpsertProperty validation failed:', validation.errorMessage);
+    console.error(
+      `%c[Supabase Validation Error] ❌ تم إيقاف إرسال العقار (${prop.code}) لعدم مطابقة الشروط!`,
+      'background: #dc2626; color: white; font-weight: bold; font-size: 13px; padding: 4px 8px; border-radius: 4px;',
+      `\n❌ رسالة التحقق: ${validation.errorMessage}`,
+      `\n📌 الحقل المتأثر: ${validation.field}`,
+      `\n📦 البيانات المرسلة:`, prop
+    );
+
+    notifySupabaseError({
+      title: '❌ خطأ في التحقق من بيانات العقار',
+      message: validation.errorMessage || 'بيانات العقار لا تطابق متطلبات جدول properties.',
+      code: 'VALIDATION_FAILED',
+      table: 'properties',
+      operation: 'upsert',
+      entityId: prop.id,
+      entityCode: prop.code,
+      details: `الحقل المطلوب: ${validation.field || 'غير محدد'}`,
+      actionRequired: 'يرجى مراجعة الحقول المطلوبة (رقم الهاتف، السعر، المساحة، الحي).',
+      timestamp,
+    });
+
     return false;
   }
 
@@ -434,12 +514,82 @@ export async function dbUpsertProperty(prop: Property): Promise<boolean> {
       .upsert(dbPayload, { onConflict: 'id' });
 
     if (error) {
-      console.error('Supabase upsert property error:', error);
+      let arabicExplanation = '';
+      let actionRequired = 'يرجى مراجعة وتطبيق ملف supabase_schema.sql في Supabase SQL Editor.';
+
+      if (error.code === '42P01') {
+        arabicExplanation = 'جدول (properties) غير موجود في قاعدة بيانات Supabase الخاصة بك.';
+        actionRequired = 'انسخ محتوى ملف supabase_schema.sql الموجود بالمشروع وشغله في Supabase > SQL Editor لإنشاء الجدول.';
+      } else if (error.code === '42501') {
+        arabicExplanation = 'تم حظر الإرسال بسبب سياسات الصلاحيات (Row Level Security - RLS). الجدول مفعل به الأمان دون سياسة INSERT.';
+        actionRequired = 'تأكد من تنفيذ أوامر تفعيل سياسات الأمان RLS المرفقة بملف supabase_schema.sql للسماح بالإدراج.';
+      } else if (error.code === '42703') {
+        arabicExplanation = 'يوجد عمود مفقود أو غير مطابق في جدول properties بقاعدة البيانات.';
+        actionRequired = 'تأكد من تطابق أسماء الأعمدة في Supabase مع ملف supabase_schema.sql.';
+      } else if (error.code === '23505') {
+        arabicExplanation = 'تعارض في المفتاح الرئيسي (Primary Key Conflict) أو قيد فريد مسجل مسبقاً.';
+      } else if (error.code === '23502') {
+        arabicExplanation = 'قيمة حقل إلزامي (NOT NULL) غير مرسلة لقاعدة البيانات.';
+      }
+
+      console.error(
+        `%c[Supabase Database Error] ❌ فشل إرسال وحفظ العقار (${prop.code}) في Supabase!`,
+        'background: #b91c1c; color: white; font-weight: bold; font-size: 14px; padding: 6px 10px; border-radius: 6px;',
+        `\n❌ كود الخطأ (Code): ${error.code || 'غير محدد'}`,
+        `\n❌ نص الخطأ الصريح (Message): ${error.message}`,
+        arabicExplanation ? `\n🔍 التفسير العربي: ${arabicExplanation}` : '',
+        error.details ? `\n📋 التفاصيل الفنية (Details): ${error.details}` : '',
+        error.hint ? `\n💡 تلميح الحل (Hint): ${error.hint}` : '',
+        `\n🛠️ الإجراء المقترح: ${actionRequired}`,
+        `\n📦 البيانات المرسلة (Payload):`, dbPayload
+      );
+
+      notifySupabaseError({
+        title: '❌ فشل إرسال العقار لـ Supabase',
+        message: arabicExplanation ? `${arabicExplanation}\n(${error.message})` : error.message,
+        code: error.code || 'POSTGREST_ERROR',
+        details: error.details || undefined,
+        hint: error.hint || undefined,
+        technicalError: error.message,
+        table: 'properties',
+        operation: 'upsert',
+        entityId: prop.id,
+        entityCode: prop.code,
+        payload: dbPayload,
+        actionRequired,
+        timestamp,
+      });
+
       return false;
     }
+
+    console.log(
+      `%c[Supabase Success] ✅ تم إرسال وحفظ العقار (${prop.code}) في Supabase بنجاح!`,
+      'background: #059669; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px;'
+    );
     return true;
-  } catch (err) {
-    console.error('Supabase upsert property network error:', err);
+  } catch (err: any) {
+    const errorMsg = err?.message || String(err);
+    console.error(
+      `%c[Supabase Network/Crash Error] ❌ استثناء أثناء إرسال العقار (${prop.code}) لـ Supabase!`,
+      'background: #881337; color: white; font-weight: bold; font-size: 14px; padding: 6px 10px; border-radius: 6px;',
+      `\n❌ الاستثناء:`, errorMsg,
+      `\n📌 الكائن الكامل:`, err
+    );
+
+    notifySupabaseError({
+      title: '❌ استثناء في الاتصال بخادم Supabase',
+      message: errorMsg || 'تعذر الوصول لخادم Supabase. تحقق من اتصال الإنترنت أو صحة الرابط.',
+      code: 'NETWORK_EXCEPTION',
+      technicalError: String(err),
+      table: 'properties',
+      operation: 'upsert',
+      entityId: prop.id,
+      entityCode: prop.code,
+      actionRequired: 'تأكد من استقرار الإنترنت وصحة رابط VITE_SUPABASE_URL.',
+      timestamp,
+    });
+
     return false;
   }
 }
@@ -458,11 +608,25 @@ export async function dbDeleteProperty(propertyId: string): Promise<boolean> {
       .eq('id', propertyId);
 
     if (error) {
-      console.error('Supabase delete property error:', error);
+      console.error(
+        `%c[Supabase Delete Error] ❌ فشل حذف العقار (${propertyId}) من Supabase:`,
+        'background: #b91c1c; color: white; font-weight: bold;',
+        error
+      );
+      notifySupabaseError({
+        title: '❌ فشل حذف العقار من Supabase',
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        table: 'properties',
+        operation: 'delete',
+        entityId: propertyId,
+        timestamp: new Date().toLocaleTimeString('ar-EG'),
+      });
       return false;
     }
     return true;
-  } catch (err) {
+  } catch (err: any) {
     console.error('Supabase delete property network error:', err);
     return false;
   }
@@ -493,16 +657,69 @@ export async function dbFetchTenantRequests(): Promise<TenantRequest[] | null> {
 }
 
 /**
- * Insert or update a tenant request in Supabase
+ * Insert or update a tenant request in Supabase with explicit console.error and on-screen alerting
  */
 export async function dbUpsertTenantRequest(req: TenantRequest): Promise<boolean> {
   const client = getSupabaseClient();
-  if (!client) return false;
+  const timestamp = new Date().toLocaleTimeString('ar-EG');
+
+  if (!client) {
+    const config = getSupabaseConfig();
+    const isMissingUrl = !config?.url;
+    const isMissingKey = !config?.anonKey;
+
+    const errMsg = isMissingUrl && isMissingKey
+      ? 'لم يتم ضبط إعدادات الاتصال بـ Supabase. تم حفظ طلب العقار محلياً فقط في المتصفح.'
+      : isMissingUrl
+      ? 'رابط مشروع Supabase غير مضبوط (VITE_SUPABASE_URL). تم حفظ الطلب محلياً فقط.'
+      : 'مفتاح الوصول العام (VITE_SUPABASE_ANON_KEY) غير مضبوط. تم حفظ الطلب محلياً فقط.';
+
+    console.error(
+      `%c[Supabase Alert] ⚠️ تعذر إرسال طلب العقار (${req.requestCode || req.id}) لـ Supabase!`,
+      'background: #b45309; color: white; font-weight: bold; font-size: 13px; padding: 4px 8px; border-radius: 4px;',
+      `\n❌ السبب: عميل Supabase غير مهيأ.`,
+      `\n📋 التفاصيل: ${errMsg}`
+    );
+
+    notifySupabaseError({
+      title: '⚠️ قاعدة بيانات Supabase غير متصلة',
+      message: errMsg,
+      code: 'CONFIG_MISSING',
+      table: 'tenant_requests',
+      operation: 'upsert',
+      entityId: req.id,
+      entityCode: req.requestCode,
+      actionRequired: 'افتح لوحة الإدارة > إعدادات Supabase وأدخل الرابط ومفتاح Anon Key.',
+      timestamp,
+    });
+
+    return false;
+  }
 
   // Pre-flight validation against database schema
   const validation = validateTenantRequestPayload(req);
   if (!validation.isValid) {
-    console.error('dbUpsertTenantRequest validation failed:', validation.errorMessage);
+    console.error(
+      `%c[Supabase Validation Error] ❌ تم إيقاف إرسال طلب العقار (${req.requestCode || req.id})!`,
+      'background: #dc2626; color: white; font-weight: bold; font-size: 13px; padding: 4px 8px; border-radius: 4px;',
+      `\n❌ رسالة التحقق: ${validation.errorMessage}`,
+      `\n📌 الحقل المتأثر: ${validation.field}`,
+      `\n📦 البيانات:`, req
+    );
+
+    notifySupabaseError({
+      title: '❌ خطأ في التحقق من بيانات الطلب',
+      message: validation.errorMessage || 'بيانات طلب العقار لا تطابق متطلبات جدول tenant_requests.',
+      code: 'VALIDATION_FAILED',
+      table: 'tenant_requests',
+      operation: 'upsert',
+      entityId: req.id,
+      entityCode: req.requestCode,
+      details: `الحقل المطلوب: ${validation.field || 'غير محدد'}`,
+      actionRequired: 'يرجى مراجعة الحقول المطلوبة (رقم الهاتف، الميزانية، الحي المطلوب).',
+      timestamp,
+    });
+
     return false;
   }
 
@@ -513,12 +730,75 @@ export async function dbUpsertTenantRequest(req: TenantRequest): Promise<boolean
       .upsert(dbPayload, { onConflict: 'id' });
 
     if (error) {
-      console.error('Supabase upsert tenant request error:', error);
+      let arabicExplanation = '';
+      let actionRequired = 'يرجى مراجعة وتطبيق ملف supabase_schema.sql في Supabase SQL Editor.';
+
+      if (error.code === '42P01') {
+        arabicExplanation = 'جدول (tenant_requests) غير موجود في قاعدة بيانات Supabase الخاصة بك.';
+        actionRequired = 'انسخ محتوى ملف supabase_schema.sql الموجود بالمشروع وشغله في Supabase > SQL Editor لإنشاء الجدول.';
+      } else if (error.code === '42501') {
+        arabicExplanation = 'تم حظر الإرسال بسبب سياسات الصلاحيات RLS في جدول tenant_requests.';
+        actionRequired = 'تأكد من تفعيل سياسات الإدراج (INSERT policies) المرفقة بملف supabase_schema.sql.';
+      }
+
+      console.error(
+        `%c[Supabase Database Error] ❌ فشل إرسال وحفظ الطلب (${req.requestCode || req.id}) في Supabase!`,
+        'background: #b91c1c; color: white; font-weight: bold; font-size: 14px; padding: 6px 10px; border-radius: 6px;',
+        `\n❌ كود الخطأ: ${error.code || 'غير محدد'}`,
+        `\n❌ الرسالة الصريحة: ${error.message}`,
+        arabicExplanation ? `\n🔍 التفسير العربي: ${arabicExplanation}` : '',
+        error.details ? `\n📋 التفاصيل: ${error.details}` : '',
+        error.hint ? `\n💡 تلميح: ${error.hint}` : '',
+        `\n🛠️ الإجراء المقترح: ${actionRequired}`,
+        `\n📦 البيانات المرسلة:`, dbPayload
+      );
+
+      notifySupabaseError({
+        title: '❌ فشل إرسال طلب العقار لـ Supabase',
+        message: arabicExplanation ? `${arabicExplanation}\n(${error.message})` : error.message,
+        code: error.code || 'POSTGREST_ERROR',
+        details: error.details || undefined,
+        hint: error.hint || undefined,
+        technicalError: error.message,
+        table: 'tenant_requests',
+        operation: 'upsert',
+        entityId: req.id,
+        entityCode: req.requestCode,
+        payload: dbPayload,
+        actionRequired,
+        timestamp,
+      });
+
       return false;
     }
+
+    console.log(
+      `%c[Supabase Success] ✅ تم إرسال وحفظ طلب العقار (${req.requestCode || req.id}) في Supabase بنجاح!`,
+      'background: #059669; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px;'
+    );
     return true;
-  } catch (err) {
-    console.error('Supabase upsert tenant request network error:', err);
+  } catch (err: any) {
+    const errorMsg = err?.message || String(err);
+    console.error(
+      `%c[Supabase Network/Crash Error] ❌ استثناء أثناء إرسال طلب العقار (${req.requestCode || req.id})!`,
+      'background: #881337; color: white; font-weight: bold; font-size: 14px; padding: 6px 10px; border-radius: 6px;',
+      `\n❌ الاستثناء:`, errorMsg,
+      `\n📌 الكائن الكامل:`, err
+    );
+
+    notifySupabaseError({
+      title: '❌ استثناء في الاتصال بخادم Supabase',
+      message: errorMsg || 'تعذر الوصول لخادم Supabase. تحقق من اتصال الإنترنت أو صحة الرابط.',
+      code: 'NETWORK_EXCEPTION',
+      technicalError: String(err),
+      table: 'tenant_requests',
+      operation: 'upsert',
+      entityId: req.id,
+      entityCode: req.requestCode,
+      actionRequired: 'تأكد من استقرار الإنترنت وصحة رابط VITE_SUPABASE_URL.',
+      timestamp,
+    });
+
     return false;
   }
 }

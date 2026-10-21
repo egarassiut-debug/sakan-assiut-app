@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ToastNotificationItem } from '../types/property';
-import { Sparkles, CheckCircle2, Info, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Sparkles, CheckCircle2, Info, AlertTriangle, ArrowLeft, AlertCircle } from 'lucide-react';
 
 interface ToastNotificationProps {
   toasts: ToastNotificationItem[];
@@ -95,6 +95,12 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           wrapper: 'bg-slate-900/95 border-amber-500/70 text-white shadow-amber-950/30',
           icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />,
           accent: 'text-amber-400',
+        };
+      case 'error':
+        return {
+          wrapper: 'bg-rose-950/95 border-rose-500 text-white shadow-rose-950/40 ring-1 ring-rose-500/50',
+          icon: <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />,
+          accent: 'text-rose-400',
         };
       case 'info':
       default:

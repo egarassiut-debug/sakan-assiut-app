@@ -127,7 +127,7 @@ export interface TenantRequest {
   createdAt: string;
 }
 
-export type ToastType = 'success' | 'info' | 'warning' | 'match';
+export type ToastType = 'success' | 'info' | 'warning' | 'match' | 'error';
 
 export interface ToastNotificationItem {
   id: string;
