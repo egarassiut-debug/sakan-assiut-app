@@ -136,9 +136,17 @@ export const InAppPushBanner: React.FC<InAppPushBannerProps> = ({
               onOpenDetails(notification);
               handleClose();
             }}
-            className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/20 hover:bg-white/30 text-white shrink-0 flex items-center gap-1 transition-colors cursor-pointer"
+            className={`text-[10px] font-black px-2 py-0.5 rounded-full text-white shrink-0 flex items-center gap-1 transition-colors cursor-pointer ${
+              notification.type === 'needs_completion' || notification.type === 'rejected'
+                ? 'bg-amber-600 hover:bg-amber-500'
+                : 'bg-white/20 hover:bg-white/30'
+            }`}
           >
-            <span>عرض</span>
+            <span>
+              {notification.type === 'needs_completion' || notification.type === 'rejected'
+                ? 'الدخول للخطأ والتعديل'
+                : 'عرض'}
+            </span>
             <ExternalLink className="w-2.5 h-2.5" />
           </button>
         )}

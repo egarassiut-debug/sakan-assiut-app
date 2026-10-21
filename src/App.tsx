@@ -864,6 +864,25 @@ export function App() {
     });
 
     if (notif.itemId || notif.itemCode) {
+      // Direct navigation to edit & fix the error for needs_completion or rejected listings
+      if (notif.type === 'needs_completion' || notif.type === 'rejected') {
+        const prop = properties.find((p) => p.id === notif.itemId || p.code === notif.itemCode);
+        if (prop) {
+          setIsNotificationCenterOpen(false);
+          setActivePushBanner(null);
+          handleStartEditProperty(prop);
+          return;
+        }
+
+        const req = tenantRequests.find((r) => r.id === notif.itemId || r.requestCode === notif.itemCode);
+        if (req) {
+          setIsNotificationCenterOpen(false);
+          setActivePushBanner(null);
+          handleStartEditTenantRequest(req);
+          return;
+        }
+      }
+
       // If itemType is explicitly request or found in tenantRequests
       if (notif.itemType === 'request') {
         const req = tenantRequests.find((r) => r.id === notif.itemId || r.requestCode === notif.itemCode);

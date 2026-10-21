@@ -239,11 +239,25 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                         e.stopPropagation();
                         onSelectNotification?.(item);
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-[#002B49] hover:bg-[#001D33] text-[#FFB300] font-black text-xs flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 cursor-pointer"
+                      className={`px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 cursor-pointer ${
+                        item.type === 'needs_completion' || item.type === 'rejected'
+                          ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                          : 'bg-[#002B49] hover:bg-[#001D33] text-[#FFB300]'
+                      }`}
                     >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>{item.itemType === 'request' ? 'عرض التفاصيل' : 'معاينة العقار'}</span>
-                      <ChevronLeft className="w-3.5 h-3.5" />
+                      {item.type === 'needs_completion' || item.type === 'rejected' ? (
+                        <>
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          <span>الدخول لتصحيح واستيفاء الخطأ</span>
+                          <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>{item.itemType === 'request' ? 'عرض التفاصيل' : 'معاينة العقار'}</span>
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </>
+                      )}
                     </button>
                   </div>
                 )}

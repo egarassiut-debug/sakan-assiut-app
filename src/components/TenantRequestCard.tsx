@@ -139,12 +139,34 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
 
         {/* تنبيه استيفاء بيان إذا وجد */}
         {request.status === 'needs_completion' && request.adminNote && (
-          <div className="p-2.5 rounded-[10px] bg-amber-50 border border-amber-300 text-xs text-amber-900 font-semibold flex items-start gap-1.5">
-            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-            <div>
-              <span className="font-bold block">مطلوب استيفاء بيان:</span>
-              <span>{request.adminNote}</span>
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.(request);
+            }}
+            className="p-2.5 rounded-[10px] bg-amber-50 hover:bg-amber-100/90 border border-amber-300 text-xs text-amber-900 font-semibold flex items-center justify-between gap-2 cursor-pointer shadow-2xs transition-all"
+            title="انقر هنا للدخول مباشرة لشاشة التعديل واستيفاء البيانات المطلوبة"
+          >
+            <div className="flex items-start gap-1.5 flex-1">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <span className="font-bold block text-amber-950">مطلوب استيفاء بيان وتصحيح:</span>
+                <span className="text-amber-800 text-[11px] leading-relaxed">{request.adminNote}</span>
+              </div>
             </div>
+            {onEdit && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(request);
+                }}
+                className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shrink-0 shadow-2xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>الدخول للخطأ</span>
+              </button>
+            )}
           </div>
         )}
 

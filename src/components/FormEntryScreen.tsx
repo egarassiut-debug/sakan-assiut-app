@@ -25,7 +25,10 @@ import {
   CheckCircle2,
   Phone,
   User,
-  Clock
+  Clock,
+  Target,
+  ArrowUp,
+  AlertTriangle
 } from 'lucide-react';
 import { RealEstateAgent, Assignment, HourglassTopRounded } from './FlutterIcons';
 import { validatePropertyPayload, validateTenantRequestPayload } from '../lib/supabase';
@@ -152,6 +155,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const phoneInputRef = useRef<HTMLInputElement | null>(null);
   const contactNameInputRef = useRef<HTMLInputElement | null>(null);
   const declarationRef = useRef<HTMLLabelElement | null>(null);
+  const floorLevelRef = useRef<HTMLInputElement | null>(null);
+  const imagesSectionRef = useRef<HTMLDivElement | null>(null);
   const bottomErrorRef = useRef<HTMLDivElement | null>(null);
   const topErrorRef = useRef<HTMLDivElement | null>(null);
 
@@ -166,13 +171,23 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     }
   }, [toastMsg]);
 
-  const scrollToError = (targetRef: React.RefObject<HTMLElement | null>) => {
+  const scrollToError = (targetRef: React.RefObject<HTMLElement | null>, fieldName?: string) => {
+    if (fieldName) {
+      setInvalidField(fieldName);
+    }
     setTimeout(() => {
       if (targetRef && targetRef.current) {
         targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        if ('focus' in targetRef.current && typeof (targetRef.current as HTMLElement).focus === 'function') {
+        // Add animated visual pulse ring to distinctly highlight the field for the user
+        const el = targetRef.current;
+        el.classList.add('ring-4', 'ring-rose-500', 'ring-offset-2', 'transition-all');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-rose-500', 'ring-offset-2');
+        }, 3000);
+
+        if ('focus' in el && typeof (el as HTMLElement).focus === 'function') {
           try {
-            (targetRef.current as HTMLElement).focus({ preventScroll: true });
+            (el as HTMLElement).focus({ preventScroll: true });
           } catch {
             // ignore
           }
@@ -182,6 +197,79 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
       }
     }, 60);
   };
+
+  // Direct Jump to the exact error field when user clicks 'الدخول للخطأ' or the error banner
+  const jumpToCurrentError = () => {
+    if (invalidField === 'phone') {
+      scrollToError(phoneInputRef, 'phone');
+    } else if (invalidField === 'area') {
+      scrollToError(areaInputRef, 'area');
+    } else if (invalidField === 'price') {
+      scrollToError(priceInputRef, 'price');
+    } else if (invalidField === 'maxPrice') {
+      scrollToError(maxPriceInputRef, 'maxPrice');
+    } else if (invalidField === 'district') {
+      scrollToError(districtRef, 'district');
+    } else if (invalidField === 'propertyType') {
+      scrollToError(propertyTypeRef, 'propertyType');
+    } else if (invalidField === 'declaration') {
+      scrollToError(declarationRef, 'declaration');
+    } else {
+      // Intelligently check whichever field is missing or invalid
+      if (!contactPhone || !isValidEgyptianPhone(contactPhone)) {
+        scrollToError(phoneInputRef, 'phone');
+      } else if (!area || Number(area) <= 0) {
+        scrollToError(areaInputRef, 'area');
+      } else if (isOffer && (!price || Number(price) <= 0)) {
+        scrollToError(priceInputRef, 'price');
+      } else if (!isOffer && (!maxPrice || Number(maxPrice) <= 0)) {
+        scrollToError(maxPriceInputRef, 'maxPrice');
+      } else if (!district) {
+        scrollToError(districtRef, 'district');
+      } else if (!propertyType) {
+        scrollToError(propertyTypeRef, 'propertyType');
+      } else if (topErrorRef.current) {
+        topErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  };
+
+  // Direct Jump to the field specified in the admin note (e.g. photos, floor, price, etc.)
+  const jumpToAdminNoteTarget = () => {
+    const note = (editingProperty?.adminNote || editingTenantRequest?.adminNote || '').toLowerCase();
+    if (note.includes('صور') || note.includes('واجهة') || note.includes('صورة') || note.includes('مدخل')) {
+      if (imagesSectionRef.current) {
+        imagesSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        imagesSectionRef.current.classList.add('ring-4', 'ring-amber-500', 'ring-offset-2', 'transition-all');
+        setTimeout(() => imagesSectionRef.current?.classList.remove('ring-4', 'ring-amber-500', 'ring-offset-2'), 3000);
+      }
+    } else if (note.includes('دور') || note.includes('طابق')) {
+      if (floorLevelRef.current) {
+        floorLevelRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        floorLevelRef.current.classList.add('ring-4', 'ring-amber-500', 'ring-offset-2', 'transition-all');
+        setTimeout(() => floorLevelRef.current?.classList.remove('ring-4', 'ring-amber-500', 'ring-offset-2'), 3000);
+        floorLevelRef.current.focus?.({ preventScroll: true });
+      }
+    } else if (note.includes('سعر') || note.includes('إيجار') || note.includes('مبلغ') || note.includes('قيمة')) {
+      scrollToError(priceInputRef, 'price');
+    } else if (note.includes('مساحة')) {
+      scrollToError(areaInputRef, 'area');
+    } else if (note.includes('هاتف') || note.includes('رقم')) {
+      scrollToError(phoneInputRef, 'phone');
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // When opening an ad that needs completion, automatically focus on the note / target field
+  useEffect(() => {
+    if (editingProperty?.status === 'needs_completion' || editingTenantRequest?.status === 'needs_completion') {
+      const timer = setTimeout(() => {
+        jumpToAdminNoteTarget();
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [editingProperty?.id, editingTenantRequest?.id]);
 
   // Draft auto-save indicator state
   const [hasRestoredDraft, setHasRestoredDraft] = useState<boolean>(() => Boolean(initialDraft && (initialDraft.title || initialDraft.address || initialDraft.area || initialDraft.price || initialDraft.notes || initialDraft.maxPrice)));
@@ -794,15 +882,25 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
         {/* ملاحظة الإدارة لاستيفاء البيان عند التعديل */}
         {(editingProperty?.adminNote || editingTenantRequest?.adminNote) && (
-          <div className="bg-amber-50 border-2 border-amber-400 p-4 rounded-2xl text-amber-900 font-semibold space-y-1 shadow-xs animate-in fade-in">
-            <div className="flex items-center gap-2 font-black text-sm text-amber-950">
-              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-              <span>مطلوب استيفاء بيانات من إدارة التطبيق:</span>
+          <div className="bg-amber-50 border-2 border-amber-400 p-4 rounded-2xl text-amber-900 font-semibold space-y-2 shadow-xs animate-in fade-in">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 font-black text-sm text-amber-950">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                <span>مطلوب استيفاء بيانات من إدارة التطبيق:</span>
+              </div>
+              <button
+                type="button"
+                onClick={jumpToAdminNoteTarget}
+                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs inline-flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 cursor-pointer"
+              >
+                <Target className="w-3.5 h-3.5" />
+                <span>مكان الخطأ / المطلوب</span>
+              </button>
             </div>
             <p className="text-xs text-amber-900 pr-7 font-bold">
               "{editingProperty?.adminNote || editingTenantRequest?.adminNote}"
             </p>
-            <p className="text-[11px] text-amber-700 pr-7 pt-1">
+            <p className="text-[11px] text-amber-700 pr-7">
               برجاء تعديل البيانات الناقصة أو توضيحها في النموذج، ثم الضغط على حفظ أسفل الصفحة لإعادة الإرسال للإدارة للمراجعة والاعتماد.
             </p>
           </div>
@@ -893,10 +991,25 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         {errorMsg && (
           <div 
             ref={topErrorRef}
-            className="mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 shadow-xs"
+            onClick={jumpToCurrentError}
+            className="mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-center justify-between gap-2 shadow-xs cursor-pointer hover:bg-rose-100/70 transition-all"
+            title="انقر هنا للانتقال فوراً لمكان الخطأ"
           >
-            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
-            <span>{errorMsg}</span>
+            <div className="flex items-center gap-2 flex-1">
+              <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                jumpToCurrentError();
+              }}
+              className="px-2.5 py-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-[11px] shrink-0 inline-flex items-center gap-1 cursor-pointer transition-transform active:scale-95 shadow-2xs"
+            >
+              <Target className="w-3.5 h-3.5" />
+              <span>الانتقال لمكان الخطأ</span>
+            </button>
           </div>
         )}
 
@@ -1189,6 +1302,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                         رقم الطابق
                       </label>
                       <input
+                        ref={floorLevelRef}
                         type="number"
                         value={floorLevel}
                         onChange={(e) => setFloorLevel(e.target.value ? Number(e.target.value) : '')}
@@ -1441,12 +1555,14 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
             {/* Photos Upload (Optional: Device Camera & Mobile Gallery - up to 4 images, compressed <= 250KB per image) */}
             {isOffer && (
-              <ImageUploadField
-                images={uploadedImages}
-                onChange={setUploadedImages}
-                maxImages={4}
-                maxCompressedSizeKB={250}
-              />
+              <div ref={imagesSectionRef} className="rounded-2xl transition-all">
+                <ImageUploadField
+                  images={uploadedImages}
+                  onChange={setUploadedImages}
+                  maxImages={4}
+                  maxCompressedSizeKB={250}
+                />
+              </div>
             )}
 
             {/* Admin Financial & Inspection Coordination */}
@@ -1515,17 +1631,33 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           {errorMsg && (
             <div 
               ref={bottomErrorRef}
-              className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-400 text-rose-900 text-xs sm:text-sm font-bold flex items-start gap-3 shadow-md animate-in slide-in-from-bottom-2 duration-200"
+              onClick={jumpToCurrentError}
+              className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-400 text-rose-900 text-xs sm:text-sm font-bold flex items-start justify-between gap-3 shadow-md animate-in slide-in-from-bottom-2 duration-200 cursor-pointer hover:bg-rose-100/80 transition-all"
+              title="انقر هنا للانتقال فوراً لمكان الخطأ في النموذج"
             >
-              <div className="w-8 h-8 rounded-xl bg-rose-100 border border-rose-300 flex items-center justify-center shrink-0 text-rose-600 mt-0.5">
-                <AlertCircle className="w-5 h-5" />
+              <div className="flex items-start gap-3 flex-1">
+                <div className="w-8 h-8 rounded-xl bg-rose-100 border border-rose-300 flex items-center justify-center shrink-0 text-rose-600 mt-0.5">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div className="flex-1 space-y-1 text-right">
+                  <span className="font-black text-rose-950 block text-xs sm:text-sm">
+                    تنبيه بالبيانات الناقصة أو غير المستوفاة:
+                  </span>
+                  <p className="text-rose-700 font-semibold leading-relaxed text-xs sm:text-sm">{errorMsg}</p>
+                </div>
               </div>
-              <div className="flex-1 space-y-1 text-right">
-                <span className="font-black text-rose-950 block text-xs sm:text-sm">
-                  تنبيه بالبيانات الناقصة أو غير المستوفاة:
-                </span>
-                <p className="text-rose-700 font-semibold leading-relaxed text-xs sm:text-sm">{errorMsg}</p>
-              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  jumpToCurrentError();
+                }}
+                className="mt-0.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shrink-0 inline-flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 cursor-pointer"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+                <span>مكان الخطأ</span>
+              </button>
             </div>
           )}
 
@@ -1604,15 +1736,32 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
       {/* Floating Validation Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-200 pointer-events-none max-w-sm w-full px-4">
-          <div className="bg-[#002B49]/95 text-white p-3.5 rounded-2xl shadow-2xl border border-rose-400/40 flex items-center gap-3 backdrop-blur-md">
-            <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0">
-              <AlertCircle className="w-5 h-5 text-rose-400" />
+        <div 
+          onClick={jumpToCurrentError}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-200 pointer-events-auto cursor-pointer max-w-sm w-full px-4"
+          title="انقر هنا للانتقال فوراً لمكان الخطأ"
+        >
+          <div className="bg-[#002B49]/95 text-white p-3.5 rounded-2xl shadow-2xl border border-rose-400/40 flex items-center justify-between gap-3 backdrop-blur-md hover:bg-[#001D33] transition-all">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5 text-rose-400" />
+              </div>
+              <div className="flex-1 text-right">
+                <span className="text-xs sm:text-sm font-bold block text-white">{toastMsg}</span>
+                <span className="text-[10px] text-amber-300 font-medium block mt-0.5">انقر هنا للدخول لمكان الخطأ فوراً</span>
+              </div>
             </div>
-            <div className="flex-1 text-right">
-              <span className="text-xs sm:text-sm font-bold block text-white">{toastMsg}</span>
-              <span className="text-[10px] text-amber-300 font-medium block mt-0.5">يرجى مراجعة الحقول المشار إليها باللون الأحمر</span>
-            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                jumpToCurrentError();
+              }}
+              className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+            >
+              <span>مكان الخطأ</span>
+              <Target className="w-3 h-3" />
+            </button>
           </div>
         </div>
       )}

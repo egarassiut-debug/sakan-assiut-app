@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Property } from '../types/property';
-import { X, Copy, Check, MapPin, Zap, Droplets, Flame, ArrowUpDown, MessageSquare, Calendar, ShieldCheck, Edit3, Heart, Star } from 'lucide-react';
+import { X, Copy, Check, MapPin, Zap, Droplets, Flame, ArrowUpDown, MessageSquare, Calendar, ShieldCheck, Edit3, Heart, Star, AlertTriangle } from 'lucide-react';
 
 interface PropertyDetailsModalProps {
   property: Property | null;
@@ -108,6 +108,32 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* تنبيه استيفاء بيان وتصحيح الخطأ */}
+        {property.status === 'needs_completion' && property.adminNote && (
+          <div className="bg-amber-50 border-b border-amber-300 p-3.5 px-5 flex items-center justify-between gap-3 text-right">
+            <div className="flex items-start gap-2 flex-1">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="text-xs font-black text-amber-950 block">مطلوب استيفاء بيانات وتصحيح خطأ من الإدارة:</span>
+                <p className="text-xs text-amber-900 font-medium leading-relaxed mt-0.5">{property.adminNote}</p>
+              </div>
+            </div>
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEdit(property);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shrink-0 flex items-center gap-1.5 shadow-md transition-transform active:scale-95 cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>الدخول للخطأ والتعديل الآن</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Image Gallery */}
         <div className="relative bg-slate-900 aspect-16/9 w-full">
