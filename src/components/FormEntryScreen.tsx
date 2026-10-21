@@ -28,6 +28,7 @@ import {
   Clock
 } from 'lucide-react';
 import { RealEstateAgent, Assignment, HourglassTopRounded } from './FlutterIcons';
+import { validatePropertyPayload, validateTenantRequestPayload } from '../lib/supabase';
 
 interface FormEntryScreenProps {
   isOffer: boolean; // true = عرض عقار (متاح), false = طلب عقار (مطلوب)
@@ -619,20 +620,47 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         viewsCount: 1,
       };
 
+      const propertyPayloadToSave: Property = editingProperty
+        ? {
+            ...editingProperty,
+            ...newListing,
+            id: editingProperty.id,
+            code: editingProperty.code,
+            status: isAdmin ? 'approved' : 'pending',
+            isApproved: isAdmin,
+            adminNote: undefined,
+          }
+        : newListing;
+
+      // 3. Pre-flight schema validation before sending to database
+      const propValidation = validatePropertyPayload(propertyPayloadToSave);
+      if (!propValidation.isValid) {
+        setErrorMsg(propValidation.errorMessage || 'تنبيه: يرجى التحقق من استيفاء جميع بيانات العقار بدقة.');
+        if (propValidation.field) setInvalidField(propValidation.field);
+        triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
+
+        if (propValidation.field === 'phone') {
+          scrollToError(phoneInputRef);
+        } else if (propValidation.field === 'area') {
+          scrollToError(areaInputRef);
+        } else if (propValidation.field === 'price') {
+          scrollToError(priceInputRef);
+        } else if (propValidation.field === 'district') {
+          scrollToError(districtRef);
+        } else if (propValidation.field === 'propertyType') {
+          scrollToError(propertyTypeRef);
+        } else {
+          scrollToError(bottomErrorRef);
+        }
+        return;
+      }
+
       if (editingProperty && onUpdateProperty) {
-        onUpdateProperty({
-          ...editingProperty,
-          ...newListing,
-          id: editingProperty.id,
-          code: editingProperty.code,
-          status: isAdmin ? 'approved' : 'pending',
-          isApproved: isAdmin,
-          adminNote: undefined,
-        });
+        onUpdateProperty(propertyPayloadToSave);
         setSubmittedListingId(editingProperty.code);
         setShowSuccessDialog(true);
       } else {
-        if (onAddProperty) onAddProperty(newListing);
+        if (onAddProperty) onAddProperty(propertyPayloadToSave);
         onBack();
       }
     } else {
@@ -668,20 +696,45 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         createdAt: todayDate,
       };
 
+      const requestPayloadToSave: TenantRequest = editingTenantRequest
+        ? {
+            ...editingTenantRequest,
+            ...newListing,
+            id: editingTenantRequest.id,
+            requestCode: editingTenantRequest.requestCode,
+            status: 'pending_approval',
+            isApproved: false,
+            adminNote: undefined,
+          }
+        : newListing;
+
+      // Pre-flight schema validation before sending to database
+      const reqValidation = validateTenantRequestPayload(requestPayloadToSave);
+      if (!reqValidation.isValid) {
+        setErrorMsg(reqValidation.errorMessage || 'تنبيه: يرجى استيفاء جميع بيانات طلب العقار بشكل صحيح.');
+        if (reqValidation.field) setInvalidField(reqValidation.field);
+        triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
+
+        if (reqValidation.field === 'phone') {
+          scrollToError(phoneInputRef);
+        } else if (reqValidation.field === 'maxPrice') {
+          scrollToError(maxPriceInputRef);
+        } else if (reqValidation.field === 'district') {
+          scrollToError(districtRef);
+        } else if (reqValidation.field === 'propertyType') {
+          scrollToError(propertyTypeRef);
+        } else {
+          scrollToError(bottomErrorRef);
+        }
+        return;
+      }
+
       if (editingTenantRequest && onUpdateTenantRequest) {
-        onUpdateTenantRequest({
-          ...editingTenantRequest,
-          ...newListing,
-          id: editingTenantRequest.id,
-          requestCode: editingTenantRequest.requestCode,
-          status: 'pending_approval',
-          isApproved: false,
-          adminNote: undefined,
-        });
+        onUpdateTenantRequest(requestPayloadToSave);
         setSubmittedListingId(editingTenantRequest.requestCode || editingTenantRequest.id);
         setShowSuccessDialog(true);
       } else {
-        if (onAddTenantRequest) onAddTenantRequest(newListing);
+        if (onAddTenantRequest) onAddTenantRequest(requestPayloadToSave);
         onBack();
       }
     }

@@ -339,12 +339,93 @@ export async function dbFetchProperties(): Promise<Property[] | null> {
   }
 }
 
+export interface PropertyValidationResult {
+  isValid: boolean;
+  errorMessage?: string;
+  field?: string;
+}
+
+/**
+ * Validates a Property object against the required database schema
+ * before attempting to insert or upsert into Supabase 'properties' table.
+ */
+export function validatePropertyPayload(prop: Partial<Property>): PropertyValidationResult {
+  if (!prop.id || typeof prop.id !== 'string' || !prop.id.trim()) {
+    return { isValid: false, errorMessage: 'خطأ في بنية البيانات: معرف العقار (id) مفقود.', field: 'id' };
+  }
+  if (!prop.code || typeof prop.code !== 'string' || !prop.code.trim()) {
+    return { isValid: false, errorMessage: 'خطأ في بنية البيانات: كود العقار (code) مفقود.', field: 'code' };
+  }
+  if (!prop.propertyType || typeof prop.propertyType !== 'string' || !prop.propertyType.trim()) {
+    return { isValid: false, errorMessage: 'تنبيه: نوع العقار (propertyType) حقل إجباري في قاعدة البيانات.', field: 'propertyType' };
+  }
+  if (!prop.purpose || (prop.purpose !== 'rent' && prop.purpose !== 'sale')) {
+    return { isValid: false, errorMessage: 'تنبيه: الغرض (purpose) يجب أن يكون "rent" أو "sale".', field: 'purpose' };
+  }
+  if (!prop.district || typeof prop.district !== 'string' || !prop.district.trim()) {
+    return { isValid: false, errorMessage: 'تنبيه: المنطقة/الحي (district) حقل إجباري بمحافظة أسيوط.', field: 'district' };
+  }
+  if (prop.area === undefined || prop.area === null || isNaN(Number(prop.area)) || Number(prop.area) <= 0) {
+    return { isValid: false, errorMessage: 'تنبيه: المساحة (area) يجب أن تكون رقماً أكبر من صفر بالمتر المربع.', field: 'area' };
+  }
+  if (prop.price === undefined || prop.price === null || isNaN(Number(prop.price)) || Number(prop.price) <= 0) {
+    return { isValid: false, errorMessage: 'تنبيه: السعر/الإيجار (price) يجب أن يكون رقماً أكبر من صفر.', field: 'price' };
+  }
+  if (!prop.ownerPhone || typeof prop.ownerPhone !== 'string' || !prop.ownerPhone.trim()) {
+    return { isValid: false, errorMessage: 'تنبيه: رقم هاتف المالك/المعلن (ownerPhone) إجباري للاتصال والمعاينة.', field: 'phone' };
+  }
+  const cleanPhone = prop.ownerPhone.replace(/\D/g, '');
+  if (cleanPhone.length !== 11 || !['010', '011', '012', '015'].includes(cleanPhone.substring(0, 3))) {
+    return { isValid: false, errorMessage: 'تنبيه: رقم الهاتف يجب أن يتكون من 11 رقماً ويبدأ بـ (010، 011، 012، 015).', field: 'phone' };
+  }
+
+  return { isValid: true };
+}
+
+/**
+ * Validates a TenantRequest object against required database schema
+ * before attempting to insert or upsert into Supabase 'tenant_requests' table.
+ */
+export function validateTenantRequestPayload(req: Partial<TenantRequest>): PropertyValidationResult {
+  if (!req.id || typeof req.id !== 'string' || !req.id.trim()) {
+    return { isValid: false, errorMessage: 'خطأ في بنية البيانات: معرف الطلب (id) مفقود.', field: 'id' };
+  }
+  if (!req.propertyType || typeof req.propertyType !== 'string' || !req.propertyType.trim()) {
+    return { isValid: false, errorMessage: 'تنبيه: نوع العقار المطلوب حقل إجباري.', field: 'propertyType' };
+  }
+  if (!req.purpose || (req.purpose !== 'rent' && req.purpose !== 'sale')) {
+    return { isValid: false, errorMessage: 'تنبيه: الغرض من الطلب يجب أن يكون "rent" أو "sale".', field: 'purpose' };
+  }
+  if (!req.preferredDistrict || typeof req.preferredDistrict !== 'string' || !req.preferredDistrict.trim()) {
+    return { isValid: false, errorMessage: 'تنبيه: المنطقة أو الحي المفضل حقل إجباري.', field: 'district' };
+  }
+  if (req.maxPrice === undefined || req.maxPrice === null || isNaN(Number(req.maxPrice)) || Number(req.maxPrice) <= 0) {
+    return { isValid: false, errorMessage: 'تنبيه: أقصى ميزانية مقبولة يجب أن تكون رقماً أكبر من صفر بالجنيه.', field: 'maxPrice' };
+  }
+  if (!req.tenantPhone || typeof req.tenantPhone !== 'string' || !req.tenantPhone.trim()) {
+    return { isValid: false, errorMessage: 'تنبيه: رقم هاتف صاحب الطلب إجباري للتواصل.', field: 'phone' };
+  }
+  const cleanPhone = req.tenantPhone.replace(/\D/g, '');
+  if (cleanPhone.length !== 11 || !['010', '011', '012', '015'].includes(cleanPhone.substring(0, 3))) {
+    return { isValid: false, errorMessage: 'تنبيه: رقم الهاتف يجب أن يتكون من 11 رقماً ويبدأ بـ (010، 011، 012، 015).', field: 'phone' };
+  }
+
+  return { isValid: true };
+}
+
 /**
  * Insert or update a property in Supabase
  */
 export async function dbUpsertProperty(prop: Property): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
+
+  // Pre-flight validation against database schema
+  const validation = validatePropertyPayload(prop);
+  if (!validation.isValid) {
+    console.error('dbUpsertProperty validation failed:', validation.errorMessage);
+    return false;
+  }
 
   try {
     const dbPayload = mapPropertyToDb(prop);
@@ -417,6 +498,13 @@ export async function dbFetchTenantRequests(): Promise<TenantRequest[] | null> {
 export async function dbUpsertTenantRequest(req: TenantRequest): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
+
+  // Pre-flight validation against database schema
+  const validation = validateTenantRequestPayload(req);
+  if (!validation.isValid) {
+    console.error('dbUpsertTenantRequest validation failed:', validation.errorMessage);
+    return false;
+  }
 
   try {
     const dbPayload = mapTenantRequestToDb(req);
