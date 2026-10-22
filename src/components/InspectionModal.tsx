@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Property, ScheduledInspection } from '../types/property';
 import { X, Calendar, CheckCircle2, MessageSquare, AlertCircle } from 'lucide-react';
 import { validateEgyptianPhone, normalizeEgyptianPhone, isValidEgyptianPhone } from '../utils/phoneValidator';
+import { dbUpsertProfile } from '../lib/supabase';
 
 interface InspectionModalProps {
   property: Property | null;
@@ -59,6 +60,13 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
       notes,
       createdAt: new Date().toISOString().split('T')[0],
     };
+
+    // Auto-save user to profiles table as 'مستأجر'
+    dbUpsertProfile({
+      fullName: tenantName.trim(),
+      phone: cleanPhone,
+      role: 'مستأجر',
+    }).catch((e) => console.warn('Sync inspection profile error:', e));
 
     onScheduleSuccess(inspection);
     setIsSuccess(true);

@@ -31,7 +31,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { RealEstateAgent, Assignment, HourglassTopRounded } from './FlutterIcons';
-import { validatePropertyPayload, validateTenantRequestPayload } from '../lib/supabase';
+import { validatePropertyPayload, validateTenantRequestPayload, dbUpsertProfile } from '../lib/supabase';
 
 interface FormEntryScreenProps {
   isOffer: boolean; // true = عرض عقار (متاح), false = طلب عقار (مطلوب)
@@ -743,6 +743,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         return;
       }
 
+      // Auto-save property owner to profiles table as 'صاحب عقار'
+      dbUpsertProfile({
+        fullName: propertyPayloadToSave.ownerName,
+        phone: propertyPayloadToSave.ownerPhone,
+        role: 'صاحب عقار',
+      }).catch((e) => console.warn('Auto-save owner profile in form error:', e));
+
       if (editingProperty && onUpdateProperty) {
         onUpdateProperty(propertyPayloadToSave);
         setSubmittedListingId(editingProperty.code);
@@ -816,6 +823,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         }
         return;
       }
+
+      // Auto-save tenant to profiles table as 'مستأجر'
+      dbUpsertProfile({
+        fullName: requestPayloadToSave.tenantName,
+        phone: requestPayloadToSave.tenantPhone,
+        role: 'مستأجر',
+      }).catch((e) => console.warn('Auto-save tenant profile in form error:', e));
 
       if (editingTenantRequest && onUpdateTenantRequest) {
         onUpdateTenantRequest(requestPayloadToSave);

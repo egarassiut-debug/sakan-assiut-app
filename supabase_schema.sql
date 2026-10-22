@@ -3,7 +3,24 @@
 -- تم إعداده لتوفير المزامنة اللحظية بين حسابات المستخدمين ولوحة التحكم
 -- ============================================================================
 
--- 1. جدول المستخدمين وحسابات المنظومة (app_users)
+-- 1. جدول الملفات الشخصية المركزي للمستخدمين (profiles)
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id TEXT PRIMARY KEY,
+    full_name TEXT NOT NULL,
+    phone TEXT NOT NULL UNIQUE,
+    role TEXT NOT NULL DEFAULT 'مستأجر', -- 'صاحب عقار' | 'مستأجر' | 'مسؤول'
+    password_hash TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- إضافة العمود في حال كان الجدول منشأ مسبقاً
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
+-- الفهارس لتسريع البحث والاستعلامات بالهاتف ونوع المستخدم
+CREATE INDEX IF NOT EXISTS idx_profiles_phone ON public.profiles(phone);
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
+
+-- 2. جدول المستخدمين وبيانات تسجيل الدخول (app_users)
 CREATE TABLE IF NOT EXISTS public.app_users (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -57,6 +74,7 @@ CREATE TABLE IF NOT EXISTS public.properties (
     inspection_date TEXT,
     created_by_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TEXT NOT NULL DEFAULT CURRENT_DATE::text,
+    ownership_document_url TEXT,
     views_count INTEGER NOT NULL DEFAULT 1
 );
 
@@ -98,11 +116,17 @@ CREATE INDEX IF NOT EXISTS idx_tenant_requests_phone ON public.tenant_requests(t
 -- تفعيل سياسات الأمان على مستوى الصفوف (Row Level Security - RLS)
 -- ============================================================================
 
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tenant_requests ENABLE ROW LEVEL SECURITY;
 
 -- حذف أي سياسات سابقة لتفادي التكرار
+DROP POLICY IF EXISTS "Public select on profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Public insert on profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Public update on profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Public delete on profiles" ON public.profiles;
+
 DROP POLICY IF EXISTS "Public select on app_users" ON public.app_users;
 DROP POLICY IF EXISTS "Public insert on app_users" ON public.app_users;
 DROP POLICY IF EXISTS "Public update on app_users" ON public.app_users;
@@ -118,7 +142,24 @@ DROP POLICY IF EXISTS "Public insert on tenant_requests" ON public.tenant_reques
 DROP POLICY IF EXISTS "Public update on tenant_requests" ON public.tenant_requests;
 DROP POLICY IF EXISTS "Public delete on tenant_requests" ON public.tenant_requests;
 
--- 1. سياسات جدول المستخدمين (app_users)
+-- 1. سياسات جدول الملفات الشخصية (profiles)
+CREATE POLICY "Public select on profiles" 
+ON public.profiles FOR SELECT 
+USING (true);
+
+CREATE POLICY "Public insert on profiles" 
+ON public.profiles FOR INSERT 
+WITH CHECK (true);
+
+CREATE POLICY "Public update on profiles" 
+ON public.profiles FOR UPDATE 
+USING (true);
+
+CREATE POLICY "Public delete on profiles" 
+ON public.profiles FOR DELETE 
+USING (true);
+
+-- 2. سياسات جدول المستخدمين (app_users)
 -- السماح بقراءة المستخدمين للتحقق من تسجيل الدخول وعرض لوحة التحكم
 CREATE POLICY "Public select on app_users" 
 ON public.app_users FOR SELECT 
@@ -181,10 +222,22 @@ CREATE POLICY "Public delete on tenant_requests"
 ON public.tenant_requests FOR DELETE 
 USING (true);
 
--- تفعيل ميزة الاستماع اللحظي (Realtime) للجداول الثلاثة
-ALTER PUBLICATION supabase_realtime ADD TABLE public.app_users;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.properties;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.tenant_requests;
+-- تفعيل ميزة الاستماع اللحظي (Realtime) للجداول
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'profiles') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'app_users') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.app_users;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'properties') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.properties;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'tenant_requests') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tenant_requests;
+  END IF;
+END $$;
 
 -- ============================================================================
 -- حسابات المسؤولين الافتراضية
@@ -194,3 +247,6 @@ VALUES
     ('admin-sec-1', 'مسؤول المنظومة', '01002345678', '1234', 'admin', CURRENT_DATE::text),
     ('admin-sec-2', 'المشرف العام', '01000000000', '1234', 'admin', CURRENT_DATE::text)
 ON CONFLICT (phone) DO NOTHING;
+
+-- إعادة تحميل مخطط PostgREST فورياً
+NOTIFY pgrst, 'reload schema';

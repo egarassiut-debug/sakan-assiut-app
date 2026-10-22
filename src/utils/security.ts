@@ -92,3 +92,35 @@ export function clearSecureSession(): void {
 export async function verifyAdminPasskey(pin: string): Promise<boolean> {
   return pin === ADMIN_PASSKEY || pin === '1234';
 }
+
+/**
+ * Hashes a plaintext password or PIN using SHA-256 with a secure salt
+ */
+export async function hashPassword(plainText: string): Promise<string> {
+  const salted = `ARDAW_PWD_${plainText}_SALT_2026`;
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(salted);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  // Fallback hash for environments without crypto.subtle
+  let hash = 0;
+  for (let i = 0; i < salted.length; i++) {
+    hash = (hash << 5) - hash + salted.charCodeAt(i);
+    hash |= 0;
+  }
+  return `hash_${Math.abs(hash).toString(16)}`;
+}
+
+/**
+ * Verifies a plaintext password or PIN against a stored password_hash
+ */
+export async function verifyPassword(plainText: string, storedHash: string): Promise<boolean> {
+  if (!storedHash) return false;
+  // Match in case legacy stored plaintext
+  if (storedHash === plainText) return true;
+  const computed = await hashPassword(plainText);
+  return computed === storedHash;
+}

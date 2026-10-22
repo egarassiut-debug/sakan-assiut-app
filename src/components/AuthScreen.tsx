@@ -4,10 +4,11 @@ import {
   Building2, Home, User, Lock, Phone, 
   CheckCircle2, AlertCircle, Eye, EyeOff, UserPlus, LogIn, MessageCircle, Sparkles 
 } from 'lucide-react';
-import { verifyAdminPasskey, saveSecureSession } from '../utils/security';
+import { verifyAdminPasskey, saveSecureSession, hashPassword } from '../utils/security';
 import { validateEgyptianPhone, normalizeEgyptianPhone, isValidEgyptianPhone } from '../utils/phoneValidator';
 import { isAuthorizedAdminPhone, findAdminByPhone } from '../utils/adminManager';
 import { registerNewUser, syncUsersWithDatabase } from '../utils/userManager';
+import { dbUpsertProfile, dbAuthenticateProfile, isSupabaseActive } from '../lib/supabase';
 import { PWAInstallButton } from './PWAInstallButton';
 
 interface AuthScreenProps {
@@ -74,6 +75,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [pin, setPin] = useState('');
+  const [profileRole, setProfileRole] = useState<'صاحب عقار' | 'مستأجر'>('مستأجر');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPin, setShowPin] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -194,7 +196,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
         createdAt: new Date().toISOString().split('T')[0],
       };
 
+      const passwordHash = await hashPassword(pin);
+
       await registerNewUser(newUser);
+
+      // Auto-save user to centralized profiles table with hashed password
+      await dbUpsertProfile({
+        id: newUser.id,
+        fullName: newUser.name,
+        phone: newUser.phone,
+        role: isAuthorizedAdmin ? 'مسؤول' : profileRole,
+        passwordHash,
+      }).catch((e) => console.warn('Auto-save profile on register error:', e));
 
       if (rememberMe) {
         localStorage.setItem('ardaw_saved_credentials', JSON.stringify({ phone, pin }));
@@ -203,7 +216,46 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       await saveSecureSession(newUser);
       onLoginSuccess(newUser);
     } else {
-      // Login Mode
+      // 1. Live authentication directly via Supabase 'profiles' table if connected
+      if (isSupabaseActive()) {
+        const authResult = await dbAuthenticateProfile(phone, pin);
+        if (authResult.success && authResult.profile) {
+          const matchedUser = usersDb.find((u) => u.phone === phone || u.phone === normalizedPhone);
+          if (matchedUser?.isBlocked) {
+            setErrorMessage(
+              `هذا الحساب محظور حالياً من قِبل إدارة المنظومة ${
+                matchedUser.blockedReason ? `(السبب: ${matchedUser.blockedReason})` : ''
+              }. برجاء التواصل مع الإدارة عبر الواتساب لإعادة تفعيل الحساب.`
+            );
+            return;
+          }
+
+          const loggedInUser: AppUser = {
+            id: authResult.profile.id,
+            name: authResult.profile.fullName,
+            phone: authResult.profile.phone,
+            pin: pin,
+            role: isAuthorizedAdmin || authResult.profile.role === 'مسؤول' ? 'admin' : 'user',
+            createdAt: authResult.profile.createdAt ? authResult.profile.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+          };
+
+          const updatedDb = [loggedInUser, ...usersDb.filter((u) => u.phone !== phone && u.phone !== normalizedPhone)];
+          localStorage.setItem('ardaw_users_db', JSON.stringify(updatedDb));
+
+          if (rememberMe) {
+            localStorage.setItem('ardaw_saved_credentials', JSON.stringify({ phone, pin }));
+          }
+
+          await saveSecureSession(loggedInUser);
+          onLoginSuccess(loggedInUser);
+          return;
+        } else if (authResult.error === 'INVALID_PASSWORD') {
+          setErrorMessage('كلمة المرور غير صحيحة! تأكد من صحة البيانات.');
+          return;
+        }
+      }
+
+      // 2. Fallback check for local storage users & demo accounts
       let foundUser = usersDb.find(
         (u) => (u.phone === phone || u.phone === normalizedPhone) && u.pin === pin
       );
@@ -350,24 +402,59 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* Full Name (Only shown when creating a new account) */}
+            {/* Full Name & Role (Only shown when creating a new account) */}
             {authMode === 'register' && (
-              <div>
-                <label className="block text-xs font-black text-slate-800 mb-1">
-                  الاسم بالكامل <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="مثال: أحمد عبد الرحيم"
-                    className="w-full pr-10 pl-3 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-medium"
-                  />
+              <>
+                <div>
+                  <label className="block text-xs font-black text-slate-800 mb-1">
+                    الاسم بالكامل <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="مثال: أحمد عبد الرحيم"
+                      className="w-full pr-10 pl-3 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-medium"
+                    />
+                  </div>
                 </div>
-              </div>
+
+                {/* Account Role / Profile Type (صاحب عقار / مستأجر) */}
+                <div>
+                  <label className="block text-xs font-black text-slate-800 mb-1.5">
+                    نوع الحساب في المنظومة <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProfileRole('مستأجر')}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        profileRole === 'مستأجر'
+                          ? 'bg-[#002B49] text-white border-[#002B49] shadow-xs'
+                          : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <User className="w-3.5 h-3.5 text-[#FFB300]" />
+                      <span>مستأجر / باحث عن سكن</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProfileRole('صاحب عقار')}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        profileRole === 'صاحب عقار'
+                          ? 'bg-[#002B49] text-white border-[#002B49] shadow-xs'
+                          : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Home className="w-3.5 h-3.5 text-[#FFB300]" />
+                      <span>صاحب عقار / معلن</span>
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
 
             {/* Phone Number */}

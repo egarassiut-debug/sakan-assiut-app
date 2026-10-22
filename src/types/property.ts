@@ -12,6 +12,15 @@ export interface AppUser {
   blockedAt?: string;
 }
 
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  phone: string; // Egyptian phone number
+  role: 'صاحب عقار' | 'مستأجر' | 'مسؤول' | string;
+  passwordHash?: string;
+  createdAt?: string;
+}
+
 export type PropertyStatus = 'pending' | 'pending_approval' | 'under_review' | 'approved' | 'rejected' | 'rented' | 'sold' | 'needs_completion' | 'archived';
 
 export type PropertyPurpose = 'rent' | 'sale';

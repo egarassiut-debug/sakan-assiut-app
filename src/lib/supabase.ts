@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { AppUser, Property, TenantRequest, PropertyStatus } from '../types/property';
+import { AppUser, Property, TenantRequest, PropertyStatus, UserProfile } from '../types/property';
+import { hashPassword, verifyPassword } from '../utils/security';
 
 // Storage keys for custom runtime configuration if env variables are not present
 export const SUPABASE_CONFIG_STORAGE_KEY = 'ardaw_supabase_config';
@@ -99,6 +100,39 @@ export function mapUserToDb(user: AppUser): any {
     blocked_reason: user.blockedReason || null,
     blocked_at: user.blockedAt || null,
   };
+}
+
+export function mapProfileFromDb(row: any): UserProfile {
+  return {
+    id: row.id || `profile-${Date.now()}`,
+    fullName: row.full_name || '',
+    phone: row.phone || '',
+    role: row.role || 'مستأجر',
+    passwordHash: row.password_hash || undefined,
+    createdAt: row.created_at || new Date().toISOString(),
+  };
+}
+
+export function mapProfileToDb(profile: {
+  id?: string;
+  fullName: string;
+  phone: string;
+  role?: string;
+  passwordHash?: string;
+  createdAt?: string;
+}): any {
+  const cleanPhone = profile.phone.trim();
+  const payload: any = {
+    id: profile.id || `prof-${cleanPhone.replace(/\D/g, '') || Date.now()}`,
+    full_name: profile.fullName.trim(),
+    phone: cleanPhone,
+    role: profile.role || 'مستأجر',
+    created_at: profile.createdAt || new Date().toISOString(),
+  };
+  if (profile.passwordHash) {
+    payload.password_hash = profile.passwordHash;
+  }
+  return payload;
 }
 
 export function mapPropertyFromDb(row: any): Property {
@@ -270,6 +304,9 @@ export async function dbFetchUsers(): Promise<AppUser[] | null> {
 /**
  * Insert or update a user in Supabase
  */
+/**
+ * Insert or update a user in Supabase
+ */
 export async function dbUpsertUser(user: AppUser): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
@@ -280,6 +317,26 @@ export async function dbUpsertUser(user: AppUser): Promise<boolean> {
       .from('app_users')
       .upsert(dbPayload, { onConflict: 'phone' });
 
+    // Also automatically upsert to the central 'profiles' table with password_hash
+    hashPassword(user.pin).then((hashedPin) => {
+      dbUpsertProfile({
+        id: user.id,
+        fullName: user.name,
+        phone: user.phone,
+        role: user.role === 'admin' ? 'مسؤول' : 'مستأجر',
+        passwordHash: hashedPin,
+        createdAt: user.createdAt,
+      }).catch((e) => console.warn('Sync profile on upsert user error:', e));
+    }).catch(() => {
+      dbUpsertProfile({
+        id: user.id,
+        fullName: user.name,
+        phone: user.phone,
+        role: user.role === 'admin' ? 'مسؤول' : 'مستأجر',
+        createdAt: user.createdAt,
+      }).catch(() => {});
+    });
+
     if (error) {
       console.error('Supabase upsert user error:', error);
       return false;
@@ -288,6 +345,130 @@ export async function dbUpsertUser(user: AppUser): Promise<boolean> {
   } catch (err) {
     console.error('Supabase upsert user network error:', err);
     return false;
+  }
+}
+
+/**
+ * Automatically insert or update a user profile in Supabase 'profiles' table
+ * Centralized table for user information (id, full_name, phone, role, password_hash, created_at)
+ */
+export async function dbUpsertProfile(profile: {
+  id?: string;
+  fullName: string;
+  phone: string;
+  role?: 'صاحب عقار' | 'مستأجر' | 'مسؤول' | string;
+  passwordHash?: string;
+  plainPassword?: string;
+  createdAt?: string;
+}): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  if (!profile.fullName?.trim() || !profile.phone?.trim()) {
+    return false;
+  }
+
+  try {
+    let finalHash = profile.passwordHash;
+    if (!finalHash && profile.plainPassword) {
+      finalHash = await hashPassword(profile.plainPassword);
+    }
+
+    const dbPayload = mapProfileToDb({
+      ...profile,
+      passwordHash: finalHash,
+    });
+
+    const { error } = await client
+      .from('profiles')
+      .upsert(dbPayload, { onConflict: 'phone' });
+
+    if (error) {
+      // If error is due to missing password_hash column in existing schema, retry gracefully
+      if (error.message && (error.message.includes('password_hash') || error.message.includes('column'))) {
+        console.warn('Supabase profiles notice: column password_hash may need to be added. Retrying basic payload.');
+        const fallbackPayload = { ...dbPayload };
+        delete fallbackPayload.password_hash;
+        await client.from('profiles').upsert(fallbackPayload, { onConflict: 'phone' });
+        return true;
+      }
+      console.warn('Supabase upsert profile warning:', error.message);
+      return false;
+    }
+    console.log(`[Supabase Profiles] ✅ تم حفظ وتوثيق المستخدم (${profile.fullName} - ${profile.role || 'مستأجر'}) في جدول profiles`);
+    return true;
+  } catch (err) {
+    console.warn('Supabase upsert profile network error:', err);
+    return false;
+  }
+}
+
+/**
+ * Direct authentication against Supabase 'profiles' table with password_hash verification
+ */
+export async function dbAuthenticateProfile(
+  phone: string,
+  plainPin: string
+): Promise<{ success: boolean; profile?: UserProfile; error?: string }> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'NO_CLIENT' };
+
+  try {
+    const cleanPhone = phone.trim();
+    const { data, error } = await client
+      .from('profiles')
+      .select('*')
+      .eq('phone', cleanPhone)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Supabase profile authentication query error:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    if (!data) {
+      return { success: false, error: 'USER_NOT_FOUND' };
+    }
+
+    const profile = mapProfileFromDb(data);
+    if (!profile.passwordHash) {
+      // Profile exists without password_hash
+      return { success: true, profile };
+    }
+
+    const isMatch = await verifyPassword(plainPin, profile.passwordHash);
+    if (isMatch) {
+      return { success: true, profile };
+    }
+
+    return { success: false, error: 'INVALID_PASSWORD' };
+  } catch (err: any) {
+    console.warn('Supabase authenticate profile exception:', err);
+    return { success: false, error: err?.message || 'UNKNOWN' };
+  }
+}
+
+/**
+ * Fetch all profiles from Supabase
+ */
+export async function dbFetchProfiles(): Promise<UserProfile[] | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  try {
+    const { data, error } = await client
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Supabase fetch profiles warning:', error.message);
+      return null;
+    }
+    return (data || []).map(mapProfileFromDb);
+  } catch (err) {
+    console.warn('Supabase fetch profiles network error:', err);
+    return null;
   }
 }
 

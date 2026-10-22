@@ -45,6 +45,7 @@ import {
   dbFetchTenantRequests, 
   dbUpsertTenantRequest, 
   dbDeleteTenantRequest, 
+  dbUpsertProfile,
   isSupabaseActive, 
   getSupabaseClient,
   SupabaseSyncErrorEventDetail 
@@ -1079,6 +1080,17 @@ export function App() {
       console.warn('Supabase upsert property warning:', err);
     });
 
+    // Auto-save property owner to profiles table as 'صاحب عقار'
+    if (newProp.ownerName && newProp.ownerPhone) {
+      dbUpsertProfile({
+        fullName: newProp.ownerName,
+        phone: newProp.ownerPhone,
+        role: 'صاحب عقار',
+      }).catch((err) => {
+        console.warn('Auto-save owner to profiles error:', err);
+      });
+    }
+
     if (newProp.isApproved === false || newProp.status === 'pending_approval') {
       addToast({
         type: 'info',
@@ -1169,6 +1181,17 @@ export function App() {
     dbUpsertTenantRequest(newReq).catch((err) => {
       console.warn('Supabase upsert tenant request warning:', err);
     });
+
+    // Auto-save tenant to profiles table as 'مستأجر'
+    if (newReq.tenantName && newReq.tenantPhone) {
+      dbUpsertProfile({
+        fullName: newReq.tenantName,
+        phone: newReq.tenantPhone,
+        role: 'مستأجر',
+      }).catch((err) => {
+        console.warn('Auto-save tenant to profiles error:', err);
+      });
+    }
 
     addToast({
       type: 'success',
