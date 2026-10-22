@@ -36,9 +36,9 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
   }[request.urgency || 'within_month'];
 
   return (
-    <div className="group bg-white rounded-[14px] border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] transition-all duration-200 overflow-hidden flex flex-col justify-between">
+    <div className="group bg-slate-900 rounded-2xl border-2 border-slate-800 hover:border-slate-750 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden mb-6 flex flex-col justify-between text-slate-100">
       {/* Top Banner / Visual Header matching PropertyCard height */}
-      <div className="relative h-40 bg-gradient-to-br from-[#0F172A]/10 via-[#1D4ED8]/5 to-slate-100 p-3.5 flex flex-col justify-between border-b border-slate-100 select-none">
+      <div className="relative h-40 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-850 p-3.5 flex flex-col justify-between border-b border-slate-800 select-none">
         
         {/* Top Badges Row */}
         <div className="flex items-center justify-between gap-2 z-10">
@@ -46,13 +46,13 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
             <span
               className={`px-2.5 py-1 rounded-[8px] font-bold text-xs shadow-xs ${
                 isRent
-                  ? 'bg-[#1D4ED8] text-white'
-                  : 'bg-emerald-700 text-white'
+                  ? 'bg-sky-600 text-white'
+                  : 'bg-emerald-600 text-white'
               }`}
             >
               {isRent ? 'مطلوب للإيجار' : 'مطلوب للشراء'}
             </span>
-            <span className="px-2 py-1 rounded-[8px] bg-[#0F172A]/80 backdrop-blur-xs text-white text-xs font-semibold">
+            <span className="px-2 py-1 rounded-[8px] bg-slate-900/90 backdrop-blur-xs text-slate-200 text-xs font-semibold border border-slate-700/80">
               {request.propertyType}
             </span>
           </div>
@@ -64,31 +64,31 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
 
         {/* Decorative Watermark Icon in center */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
-          <Building className="w-20 h-20 text-[#0F172A]" />
+          <Building className="w-20 h-20 text-slate-300" />
         </div>
 
         {/* Bottom floating source / district */}
-        <div className="flex items-center justify-between text-slate-800 text-xs z-10">
-          <span className="bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded-[6px] text-[11px] font-bold text-slate-700 border border-slate-200/60 font-mono">
+        <div className="flex items-center justify-between text-slate-200 text-xs z-10">
+          <span className="bg-slate-900/90 backdrop-blur-xs px-2 py-0.5 rounded-[6px] text-[11px] font-bold text-slate-300 border border-slate-700 font-mono">
             كود: {request.requestCode || request.id.slice(0, 7)}
           </span>
-          <span className="flex items-center gap-1 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded-[6px] text-[11px] font-bold text-[#0F172A] border border-blue-100">
-            <MapPin className="w-3 h-3 text-[#1D4ED8] shrink-0" />
+          <span className="flex items-center gap-1 bg-slate-900/90 backdrop-blur-xs px-2 py-0.5 rounded-[6px] text-[11px] font-bold text-white border border-slate-700">
+            <MapPin className="w-3 h-3 text-sky-400 shrink-0" />
             {request.preferredDistrict}
           </span>
         </div>
       </div>
 
       {/* Body Info */}
-      <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between space-y-3">
+      <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between space-y-3 bg-slate-900 text-slate-100">
         <div>
           {/* Title */}
-          <h3 className="font-bold text-[#0F172A] text-sm sm:text-base leading-snug line-clamp-2 group-hover:text-[#1D4ED8] transition-colors">
+          <h3 className="font-bold text-white text-sm sm:text-base leading-snug line-clamp-2 group-hover:text-amber-400 transition-colors">
             مطلوب {request.propertyType} في {request.preferredDistrict}
           </h3>
 
           {/* Subtitle / Notes brief */}
-          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1 line-clamp-1">
+          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1 line-clamp-1">
             <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span>تاريخ الطلب: {request.createdAt}</span>
             {request.furnishingStatus && (
@@ -98,41 +98,41 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
         </div>
 
         {/* Specifications Details Row matching PropertyCard */}
-        <div className="bg-[#F0F6FF] rounded-[10px] p-2.5 border border-blue-100/60 flex items-center justify-around text-xs text-slate-700">
+        <div className="bg-slate-800/90 rounded-[10px] p-2.5 border border-slate-700/80 flex items-center justify-around text-xs text-slate-300">
           {/* Area */}
           <div className="flex items-center gap-1">
-            <Maximize2 className="w-3.5 h-3.5 text-[#1D4ED8] shrink-0" />
-            <span className="font-bold text-slate-800">
+            <Maximize2 className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <span className="font-bold text-white">
               {request.minArea || request.maxArea 
                 ? `${request.minArea || ''}${request.minArea && request.maxArea ? '-' : ''}${request.maxArea || ''}`
                 : 'أي مساحة'}
             </span>
-            <span className="text-[11px] text-slate-500">م²</span>
+            <span className="text-[11px] text-slate-400">م²</span>
           </div>
 
           {/* Bedrooms */}
           <div className="flex items-center gap-1">
-            <Bed className="w-3.5 h-3.5 text-[#1D4ED8] shrink-0" />
-            <span className="font-bold text-slate-800">
+            <Bed className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <span className="font-bold text-white">
               {request.bedrooms ? request.bedrooms : 'مرن'}
             </span>
-            <span className="text-[11px] text-slate-500">غرف</span>
+            <span className="text-[11px] text-slate-400">غرف</span>
           </div>
 
           {/* Bathrooms */}
           <div className="flex items-center gap-1">
-            <Bath className="w-3.5 h-3.5 text-[#1D4ED8] shrink-0" />
-            <span className="font-bold text-slate-800">
+            <Bath className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <span className="font-bold text-white">
               {request.bathrooms ? request.bathrooms : '1+'}
             </span>
-            <span className="text-[11px] text-slate-500">حمام</span>
+            <span className="text-[11px] text-slate-400">حمام</span>
           </div>
         </div>
 
         {/* Privacy Note (Hidden in Admin views) */}
         {!isAdmin && (
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-[8px] border border-slate-200/60">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#1D4ED8] shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-300 bg-slate-800/80 px-2.5 py-1.5 rounded-[8px] border border-slate-700/80">
+            <ShieldCheck className="w-3.5 h-3.5 text-sky-400 shrink-0" />
             <span className="truncate">بيانات الطالب محفوظة بسرية لدى الإدارة</span>
           </div>
         )}
@@ -144,14 +144,14 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
               e.stopPropagation();
               onEdit?.(request);
             }}
-            className="p-2.5 rounded-[10px] bg-amber-50 hover:bg-amber-100/90 border border-amber-300 text-xs text-amber-900 font-semibold flex items-center justify-between gap-2 cursor-pointer shadow-2xs transition-all"
+            className="p-2.5 rounded-[10px] bg-amber-950/70 hover:bg-amber-950 border border-amber-600/70 text-xs text-amber-200 font-semibold flex items-center justify-between gap-2 cursor-pointer shadow-2xs transition-all"
             title="انقر هنا للدخول مباشرة لشاشة التعديل واستيفاء البيانات المطلوبة"
           >
             <div className="flex items-start gap-1.5 flex-1">
-              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
               <div>
-                <span className="font-bold block text-amber-950">مطلوب استيفاء بيان وتصحيح:</span>
-                <span className="text-amber-800 text-[11px] leading-relaxed">{request.adminNote}</span>
+                <span className="font-bold block text-amber-300">مطلوب استيفاء بيان وتصحيح:</span>
+                <span className="text-amber-200 text-[11px] leading-relaxed">{request.adminNote}</span>
               </div>
             </div>
             {onEdit && (
@@ -161,7 +161,7 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
                   e.stopPropagation();
                   onEdit(request);
                 }}
-                className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shrink-0 shadow-2xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] shrink-0 shadow-2xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
               >
                 <Edit3 className="w-3 h-3" />
                 <span>الدخول للخطأ</span>
@@ -171,13 +171,13 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
         )}
 
         {/* Price & Action Buttons */}
-        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+        <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
           {/* Budget */}
           <div>
-            <div className="text-[#1D4ED8] font-bold text-base sm:text-lg leading-none">
+            <div className="text-emerald-400 font-extrabold text-base sm:text-lg leading-none">
               {request.minPrice ? `${request.minPrice.toLocaleString('ar-EG')} - ` : 'حتى '}
               {request.maxPrice.toLocaleString('ar-EG')}
-              <span className="text-xs font-semibold text-slate-500 mr-1">
+              <span className="text-xs font-semibold text-slate-400 mr-1">
                 {isRent ? 'ج.م / شهر' : 'ج.م'}
               </span>
             </div>
@@ -197,8 +197,8 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
                 }}
                 className={`p-2 sm:px-3 sm:py-2 rounded-[10px] text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs ${
                   request.status === 'needs_completion'
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white font-black'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black'
+                    : 'bg-slate-800 hover:bg-slate-750 text-sky-300 border border-slate-700'
                 }`}
                 title="تعديل بيانات هذا الطلب"
               >
@@ -210,7 +210,7 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
             )}
             <button
               onClick={handleWhatsApp}
-              className="p-2 sm:px-3 sm:py-2 rounded-[10px] bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-colors"
+              className="p-2 sm:px-3 sm:py-2 rounded-[10px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-colors"
               title="تواصل مع إدارة التطبيق بشأن هذا الطلب"
             >
               <MessageSquare className="w-3.5 h-3.5" />
@@ -220,7 +220,7 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
             {onOpenDetails && (
               <button
                 onClick={() => onOpenDetails(request)}
-                className="p-2 sm:px-3 sm:py-2 rounded-[10px] bg-[#F0F6FF] hover:bg-blue-100 text-[#1D4ED8] text-xs font-bold flex items-center gap-1 transition-colors border border-blue-200/60"
+                className="p-2 sm:px-3 sm:py-2 rounded-[10px] bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold flex items-center gap-1 transition-colors border border-sky-500/50"
                 title="عرض تفاصيل الطلب"
               >
                 <ArrowUpRight className="w-3.5 h-3.5" />

@@ -178,6 +178,7 @@ export function mapPropertyFromDb(row: any): Property {
     inspectionDate: row.inspection_date || undefined,
     createdByAdmin: Boolean(row.created_by_admin),
     createdAt: row.created_at || new Date().toISOString().split('T')[0],
+    ownershipDocumentUrl: row.ownership_document_url || undefined,
     viewsCount: Number(row.views_count) || 1,
   };
 }
@@ -219,6 +220,7 @@ export function mapPropertyToDb(p: Property): any {
     inspection_date: p.inspectionDate || null,
     created_by_admin: Boolean(p.createdByAdmin),
     created_at: p.createdAt,
+    ownership_document_url: p.ownershipDocumentUrl || null,
     views_count: p.viewsCount || 1,
   };
 }
@@ -241,6 +243,9 @@ export function mapTenantRequestFromDb(row: any): TenantRequest {
     bedrooms: row.bedrooms ?? undefined,
     bathrooms: row.bathrooms ?? undefined,
     furnishingStatus: row.furnishing_status || undefined,
+    utilitiesRequired: Array.isArray(row.utilities_required) ? row.utilities_required : undefined,
+    meterTypesRequired: Array.isArray(row.meter_types_required) ? row.meter_types_required : undefined,
+    urgency: row.urgency || undefined,
     notes: row.notes || '',
     status: row.status || (row.is_approved ? 'approved' : 'pending'),
     adminNote: row.admin_note || undefined,
@@ -266,6 +271,9 @@ export function mapTenantRequestToDb(r: TenantRequest): any {
     bedrooms: r.bedrooms ?? null,
     bathrooms: r.bathrooms ?? null,
     furnishing_status: r.furnishingStatus || null,
+    utilities_required: r.utilitiesRequired || null,
+    meter_types_required: r.meterTypesRequired || null,
+    urgency: r.urgency || null,
     notes: r.notes || null,
     status: r.status,
     admin_note: r.adminNote || null,
