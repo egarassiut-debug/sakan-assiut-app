@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { RealEstateAgent, Assignment, HourglassTopRounded } from './FlutterIcons';
 import { validatePropertyPayload, validateTenantRequestPayload, dbUpsertProfile } from '../lib/supabase';
+import { safeStorageGetItem, safeSaveDraft, safeStorageRemoveItem } from '../utils/storageManager';
 
 interface FormEntryScreenProps {
   isOffer: boolean; // true = عرض عقار (متاح), false = طلب عقار (مطلوب)
@@ -103,21 +104,10 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
   const draftStorageKey = isOffer ? 'asuit_property_form_draft_offer' : 'asuit_property_form_draft_request';
 
-  // 1. Read saved draft from localStorage on initial render if not in editing mode
+  // 1. Read saved draft with safe storage manager if not in editing mode
   const initialDraft = useMemo(() => {
     if (isEditing) return null;
-    try {
-      const saved = localStorage.getItem(draftStorageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to parse draft from localStorage', e);
-    }
-    return null;
+    return safeStorageGetItem<any>(draftStorageKey, null);
   }, [isEditing, draftStorageKey]);
 
   // Common Form State
@@ -318,11 +308,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
   // دالة مسح المسودة والبدء من جديد
   const handleClearDraft = () => {
-    try {
-      localStorage.removeItem(draftStorageKey);
-    } catch {
-      // ignore
-    }
+    safeStorageRemoveItem(draftStorageKey);
     setHasRestoredDraft(false);
     setLastSavedNotice(null);
     setTitle('');
@@ -399,10 +385,10 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           inspectionDate,
           savedAt: timeStr,
         };
-        localStorage.setItem(draftStorageKey, JSON.stringify(draftObj));
+        safeSaveDraft(draftStorageKey, draftObj);
         setLastSavedNotice(`محفوظ تلقائياً في ${timeStr}`);
       } catch (err) {
-        console.error('Error auto-saving draft to localStorage', err);
+        console.warn('Error auto-saving draft to storage', err);
       }
     }, 450);
 

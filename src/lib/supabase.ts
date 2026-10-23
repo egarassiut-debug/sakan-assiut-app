@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AppUser, Property, TenantRequest, PropertyStatus, UserProfile } from '../types/property';
 import { hashPassword, verifyPassword } from '../utils/security';
+import { safeStorageGetItem, safeStorageSetItem } from '../utils/storageManager';
 
 // Storage keys for custom runtime configuration if env variables are not present
 export const SUPABASE_CONFIG_STORAGE_KEY = 'ardaw_supabase_config';
@@ -20,12 +21,9 @@ export function getSupabaseConfig(): SupabaseConfig | null {
     }
 
     // 2. Check local storage overrides (configured by Admin in UI)
-    const stored = localStorage.getItem(SUPABASE_CONFIG_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed.url && parsed.anonKey && typeof parsed.url === 'string' && parsed.url.startsWith('http')) {
-        return { url: parsed.url.trim(), anonKey: parsed.anonKey.trim() };
-      }
+    const stored = safeStorageGetItem<SupabaseConfig | null>(SUPABASE_CONFIG_STORAGE_KEY, null);
+    if (stored && stored.url && stored.anonKey && typeof stored.url === 'string' && stored.url.startsWith('http')) {
+      return { url: stored.url.trim(), anonKey: stored.anonKey.trim() };
     }
   } catch (err) {
     console.warn('Error reading Supabase config:', err);
@@ -35,7 +33,7 @@ export function getSupabaseConfig(): SupabaseConfig | null {
 
 export function saveSupabaseConfig(config: SupabaseConfig): void {
   try {
-    localStorage.setItem(SUPABASE_CONFIG_STORAGE_KEY, JSON.stringify(config));
+    safeStorageSetItem(SUPABASE_CONFIG_STORAGE_KEY, config);
     // Reset client to reinitialize
     activeClient = null;
     window.dispatchEvent(new CustomEvent('ardaw_supabase_config_changed'));

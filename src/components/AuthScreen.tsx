@@ -10,6 +10,7 @@ import { isAuthorizedAdminPhone, findAdminByPhone } from '../utils/adminManager'
 import { registerNewUser, syncUsersWithDatabase } from '../utils/userManager';
 import { dbUpsertProfile, dbAuthenticateProfile, isSupabaseActive } from '../lib/supabase';
 import { PWAInstallButton } from './PWAInstallButton';
+import { safeStorageGetItem, safeStorageSetItem, safeStorageRemoveItem } from '../utils/storageManager';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: AppUser) => void;
@@ -83,13 +84,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   useEffect(() => {
     try {
       // 1. Ensure default users exist in db
-      const existingDb = localStorage.getItem('ardaw_users_db');
+      const existingDb = safeStorageGetItem<AppUser[] | null>('ardaw_users_db', null);
       if (!existingDb) {
-        localStorage.setItem('ardaw_users_db', JSON.stringify(DEFAULT_USERS));
+        safeStorageSetItem('ardaw_users_db', DEFAULT_USERS);
       } else {
         // Ensure admin accounts are populated in db if missing
         try {
-          const parsed: AppUser[] = JSON.parse(existingDb);
+          const parsed: AppUser[] = Array.isArray(existingDb) ? existingDb : [];
           let modified = false;
           DEFAULT_USERS.forEach((defUser) => {
             if (!parsed.some((u) => u.phone === defUser.phone)) {
@@ -98,7 +99,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             }
           });
           if (modified) {
-            localStorage.setItem('ardaw_users_db', JSON.stringify(parsed));
+            safeStorageSetItem('ardaw_users_db', parsed);
           }
         } catch {
           // ignore parsing error
@@ -106,14 +107,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       }
 
       // 2. Load saved credentials if available
-      const savedCreds = localStorage.getItem('ardaw_saved_credentials');
-      if (savedCreds) {
-        const parsed = JSON.parse(savedCreds);
-        if (parsed.phone && parsed.pin) {
-          setPhone(parsed.phone);
-          setPin(parsed.pin);
-          setAuthMode('login');
-        }
+      const savedCreds = safeStorageGetItem<{ phone: string; pin: string } | null>('ardaw_saved_credentials', null);
+      if (savedCreds && savedCreds.phone && savedCreds.pin) {
+        setPhone(savedCreds.phone);
+        setPin(savedCreds.pin);
+        setAuthMode('login');
       }
       // 3. Sync with live database in background
       syncUsersWithDatabase().catch((e) => console.warn('Sync users on auth screen mount failed:', e));
@@ -158,13 +156,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       return;
     }
 
-    let usersDb: AppUser[] = DEFAULT_USERS;
-    try {
-      const stored = localStorage.getItem('ardaw_users_db');
-      if (stored) usersDb = JSON.parse(stored);
-    } catch {
-      usersDb = DEFAULT_USERS;
-    }
+    const usersDb: AppUser[] = safeStorageGetItem<AppUser[]>('ardaw_users_db', DEFAULT_USERS);
 
     // Check if the phone belongs to the authorized admins list
     const isAuthorizedAdmin = isAuthorizedAdminPhone(phone) || isAuthorizedAdminPhone(normalizedPhone);
@@ -209,7 +201,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       }).catch((e) => console.warn('Auto-save profile on register error:', e));
 
       if (rememberMe) {
-        localStorage.setItem('ardaw_saved_credentials', JSON.stringify({ phone, pin }));
+        safeStorageSetItem('ardaw_saved_credentials', { phone, pin });
       }
 
       await saveSecureSession(newUser);
@@ -239,10 +231,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           };
 
           const updatedDb = [loggedInUser, ...usersDb.filter((u) => u.phone !== phone && u.phone !== normalizedPhone)];
-          localStorage.setItem('ardaw_users_db', JSON.stringify(updatedDb));
+          safeStorageSetItem('ardaw_users_db', updatedDb);
 
           if (rememberMe) {
-            localStorage.setItem('ardaw_saved_credentials', JSON.stringify({ phone, pin }));
+            safeStorageSetItem('ardaw_saved_credentials', { phone, pin });
           }
 
           await saveSecureSession(loggedInUser);
@@ -273,7 +265,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             createdAt: matchingAdmin ? matchingAdmin.createdAt : new Date().toISOString().split('T')[0],
           };
           const updatedDb = [foundUser, ...usersDb.filter((u) => u.phone !== phone)];
-          localStorage.setItem('ardaw_users_db', JSON.stringify(updatedDb));
+          safeStorageSetItem('ardaw_users_db', updatedDb);
         }
       }
 
@@ -305,9 +297,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       }
 
       if (rememberMe) {
-        localStorage.setItem('ardaw_saved_credentials', JSON.stringify({ phone, pin }));
+        safeStorageSetItem('ardaw_saved_credentials', { phone, pin });
       } else {
-        localStorage.removeItem('ardaw_saved_credentials');
+        safeStorageRemoveItem('ardaw_saved_credentials');
       }
 
       await saveSecureSession(foundUser);

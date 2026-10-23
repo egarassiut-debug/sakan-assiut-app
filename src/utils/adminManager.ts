@@ -1,4 +1,5 @@
 import { normalizeEgyptianPhone } from './phoneValidator';
+import { safeStorageGetItem, safeStorageSetItem } from './storageManager';
 
 export type AdminActionType =
   | 'admin_management'
@@ -75,28 +76,12 @@ export const DEFAULT_AUTHORIZED_ADMINS: AdminRecord[] = [
 ];
 
 export function getAuthorizedAdmins(): AdminRecord[] {
-  try {
-    const raw = localStorage.getItem(ADMINS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(ADMINS_STORAGE_KEY, JSON.stringify(DEFAULT_AUTHORIZED_ADMINS));
-      return DEFAULT_AUTHORIZED_ADMINS;
-    }
-    const list: AdminRecord[] = JSON.parse(raw);
-    if (!Array.isArray(list) || list.length === 0) {
-      return DEFAULT_AUTHORIZED_ADMINS;
-    }
-    return list;
-  } catch {
-    return DEFAULT_AUTHORIZED_ADMINS;
-  }
+  const list = safeStorageGetItem<AdminRecord[]>(ADMINS_STORAGE_KEY, DEFAULT_AUTHORIZED_ADMINS);
+  return Array.isArray(list) && list.length > 0 ? list : DEFAULT_AUTHORIZED_ADMINS;
 }
 
 export function saveAuthorizedAdmins(admins: AdminRecord[]): void {
-  try {
-    localStorage.setItem(ADMINS_STORAGE_KEY, JSON.stringify(admins));
-  } catch (e) {
-    console.error('Error saving authorized admins:', e);
-  }
+  safeStorageSetItem(ADMINS_STORAGE_KEY, admins);
 }
 
 export function isAuthorizedAdminPhone(phone: string | null | undefined): boolean {
@@ -114,14 +99,8 @@ export function findAdminByPhone(phone: string | null | undefined): AdminRecord 
 }
 
 export function getAdminActivityLogs(): AdminActivityLogItem[] {
-  try {
-    const raw = localStorage.getItem(LOGS_STORAGE_KEY);
-    if (!raw) return [];
-    const logs: AdminActivityLogItem[] = JSON.parse(raw);
-    return Array.isArray(logs) ? logs : [];
-  } catch {
-    return [];
-  }
+  const logs = safeStorageGetItem<AdminActivityLogItem[]>(LOGS_STORAGE_KEY, []);
+  return Array.isArray(logs) ? logs : [];
 }
 
 export function logAdminActivity(
@@ -143,8 +122,9 @@ export function logAdminActivity(
       details,
       timestamp: new Date().toISOString(),
     };
-    const updated = [newLog, ...currentLogs.slice(0, 199)]; // Keep latest 200 logs
-    localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(updated));
+    // Cap at latest 50 logs to protect localStorage from bloat
+    const updated = [newLog, ...currentLogs.slice(0, 49)];
+    safeStorageSetItem(LOGS_STORAGE_KEY, updated);
   } catch (e) {
     console.error('Error recording admin activity log:', e);
   }

@@ -126,7 +126,12 @@ export function runStorageMaintenance(forceEmergency = false): { purgedCount: nu
     // 3. Clean Stale Form Entry Drafts
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith('ardaw_draft_listing_') || key.startsWith('ardaw_draft_request_'))) {
+      if (
+        key &&
+        (key.startsWith('ardaw_draft_') ||
+          key.startsWith('asuit_property_form_draft_') ||
+          key.includes('form_draft'))
+      ) {
         const rawDraft = localStorage.getItem(key);
         if (rawDraft) {
           try {
@@ -239,5 +244,26 @@ export function safeStorageRemoveItem(key: string): void {
     localStorage.removeItem(key);
   } catch (err) {
     console.warn(`[StorageManager] Failed to remove key "${key}":`, err);
+  }
+}
+
+/**
+ * Safely saves form drafts without bloating localStorage with giant base64 image strings
+ */
+export function safeSaveDraft(key: string, draftObj: Record<string, any>): boolean {
+  try {
+    const sanitized = { ...draftObj };
+    if (Array.isArray(sanitized.uploadedImages)) {
+      // In drafts, only keep HTTP URLs or small thumbnails under 100KB to protect quota
+      sanitized.uploadedImages = sanitized.uploadedImages.filter((img: string) => {
+        if (!img || typeof img !== 'string') return false;
+        if (img.startsWith('http://') || img.startsWith('https://')) return true;
+        return img.length < 100000;
+      });
+    }
+    return safeStorageSetItem(key, sanitized);
+  } catch (e) {
+    console.warn('[StorageManager] Error in safeSaveDraft:', e);
+    return false;
   }
 }

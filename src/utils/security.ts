@@ -1,4 +1,5 @@
 import { AppUser } from '../types/property';
+import { safeStorageGetItem, safeStorageSetItem, safeStorageRemoveItem } from './storageManager';
 
 const ADMIN_SESSION_KEY = 'ardaw_admin_session_token';
 const ADMIN_PASSKEY = '9999'; // Master backup passkey for emergency admin access
@@ -33,14 +34,14 @@ export async function isSecureAdminSession(currentUser: AppUser | null): Promise
   }
 
   try {
-    const storedSession = localStorage.getItem(ADMIN_SESSION_KEY);
+    const storedSession = safeStorageGetItem<any>(ADMIN_SESSION_KEY, null);
     if (!storedSession) {
       // Create session if user is a valid authorized admin
       await saveSecureSession(currentUser);
       return true;
     }
 
-    const { hash, phone } = JSON.parse(storedSession);
+    const { hash, phone } = storedSession;
     if (phone !== currentUser.phone) {
       return false;
     }
@@ -61,14 +62,14 @@ export async function saveSecureSession(user: AppUser): Promise<void> {
 
   try {
     const hash = await generateSessionHash(user);
-    localStorage.setItem(
+    safeStorageSetItem(
       ADMIN_SESSION_KEY,
-      JSON.stringify({
+      {
         userId: user.id,
         phone: user.phone,
         hash,
         timestamp: Date.now(),
-      })
+      }
     );
   } catch (e) {
     console.error('Error saving session:', e);
@@ -79,11 +80,7 @@ export async function saveSecureSession(user: AppUser): Promise<void> {
  * Clears admin session
  */
 export function clearSecureSession(): void {
-  try {
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-  } catch (e) {
-    console.error('Error clearing session:', e);
-  }
+  safeStorageRemoveItem(ADMIN_SESSION_KEY);
 }
 
 /**

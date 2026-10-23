@@ -24,28 +24,16 @@ const DEFAULT_USERS_FALLBACK: AppUser[] = [
 ];
 
 import { dbFetchUsers, dbUpsertUser, dbDeleteUser, isSupabaseActive } from '../lib/supabase';
+import { safeStorageGetItem, safeStorageSetItem } from './storageManager';
 
 export function getAllRegisteredUsers(): AppUser[] {
-  try {
-    const raw = localStorage.getItem(USERS_DB_KEY);
-    if (!raw) {
-      localStorage.setItem(USERS_DB_KEY, JSON.stringify(DEFAULT_USERS_FALLBACK));
-      return DEFAULT_USERS_FALLBACK;
-    }
-    const parsed: AppUser[] = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : DEFAULT_USERS_FALLBACK;
-  } catch {
-    return DEFAULT_USERS_FALLBACK;
-  }
+  const users = safeStorageGetItem<AppUser[]>(USERS_DB_KEY, DEFAULT_USERS_FALLBACK);
+  return Array.isArray(users) && users.length > 0 ? users : DEFAULT_USERS_FALLBACK;
 }
 
 export function saveRegisteredUsers(users: AppUser[]): void {
-  try {
-    localStorage.setItem(USERS_DB_KEY, JSON.stringify(users));
-    window.dispatchEvent(new CustomEvent('ardaw_users_updated', { detail: users }));
-  } catch (e) {
-    console.error('Error saving users db:', e);
-  }
+  safeStorageSetItem(USERS_DB_KEY, users);
+  window.dispatchEvent(new CustomEvent('ardaw_users_updated', { detail: users }));
 }
 
 /**
