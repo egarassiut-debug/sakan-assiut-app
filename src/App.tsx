@@ -532,10 +532,13 @@ export function App() {
     };
   }, []);
 
+  // Fast O(1) lookup set for favorites
+  const favoriteIdsSet = useMemo(() => new Set(favoritePropertyIds), [favoritePropertyIds]);
+
   // Filtered list of favorite properties
   const favoriteProperties = useMemo(() => {
-    return properties.filter((p) => favoritePropertyIds.includes(p.id));
-  }, [properties, favoritePropertyIds]);
+    return properties.filter((p) => favoriteIdsSet.has(p.id));
+  }, [properties, favoriteIdsSet]);
 
   // Handle toggling favorite status with Toast and localStorage sync
   const handleToggleFavorite = (propertyId: string) => {
@@ -569,15 +572,25 @@ export function App() {
     });
   };
 
+  // Pre-computed ratings summary map for instant O(1) lookups during card rendering
+  const ratingsSummaryMap = useMemo(() => {
+    const map = new Map<string, { average: number; count: number }>();
+    for (const r of propertyRatings) {
+      const entry = map.get(r.propertyId);
+      if (!entry) {
+        map.set(r.propertyId, { average: r.score, count: 1 });
+      } else {
+        const newCount = entry.count + 1;
+        const newAvg = Number(((entry.average * entry.count + r.score) / newCount).toFixed(1));
+        map.set(r.propertyId, { average: newAvg, count: newCount });
+      }
+    }
+    return map;
+  }, [propertyRatings]);
+
   // Helper to compute average rating and count for any property
   const getPropertyRatingSummary = (propertyId: string) => {
-    const relevant = propertyRatings.filter((r) => r.propertyId === propertyId);
-    if (relevant.length === 0) return { average: 0, count: 0 };
-    const sum = relevant.reduce((acc, curr) => acc + curr.score, 0);
-    return {
-      average: Number((sum / relevant.length).toFixed(1)),
-      count: relevant.length,
-    };
+    return ratingsSummaryMap.get(propertyId) || { average: 0, count: 0 };
   };
 
   // Handle submitting or updating a 5-star rating for an inspected property
@@ -2091,7 +2104,7 @@ export function App() {
                       setSelectedPropertyForInspection(p);
                       setIsInspectionModalOpen(true);
                     }}
-                    isFavorite={favoritePropertyIds.includes(prop.id)}
+                    isFavorite={favoriteIdsSet.has(prop.id)}
                     onToggleFavorite={handleToggleFavorite}
                     ratingSummary={getPropertyRatingSummary(prop.id)}
                     onOpenRatingModal={(p) => setRatingModalProperty(p)}

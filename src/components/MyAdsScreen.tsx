@@ -849,6 +849,10 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
                           alt={prop.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           loading="lazy"
+                          decoding="async"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
+                          }}
                         />
                         <span className="absolute bottom-1 right-1 text-[9px] bg-black/70 text-white font-mono px-1.5 py-0.2 rounded-md">
                           {prop.code}

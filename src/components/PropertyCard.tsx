@@ -124,6 +124,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           alt={`${property.title} - صورة ${currentImageIndex + 1}`}
           className="w-full h-full object-cover transition-all duration-300 group-hover:scale-102"
           loading="lazy"
+          decoding="async"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
+          }}
         />
 
         {/* Gradient Overlay */}

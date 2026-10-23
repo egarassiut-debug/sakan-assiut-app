@@ -138,9 +138,14 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
         {/* Image Gallery */}
         <div className="relative bg-slate-900 aspect-16/9 w-full">
           <img
-            src={property.images[activeImageIndex] || property.images[0]}
+            src={property.images[activeImageIndex] || property.images[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80'}
             alt={property.title}
             className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
+            }}
           />
           {property.images.length > 1 && (
             <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2 z-10">
