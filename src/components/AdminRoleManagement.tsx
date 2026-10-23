@@ -364,7 +364,7 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
               value={adminSearch}
               onChange={(e) => setAdminSearch(e.target.value)}
               placeholder="ابحث بالاسم أو رقم هاتف الأدمن..."
-              className="w-full pr-10 pl-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-[#002B49] shadow-2xs"
+              className="w-full pr-10 pl-4 py-2.5 bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-[#002B49] shadow-2xs"
             />
           </div>
 
@@ -479,17 +479,17 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                 value={logSearch}
                 onChange={(e) => setLogSearch(e.target.value)}
                 placeholder="ابحث في سجل الأنشطة (اسم الأدمن، رقم الهاتف، أو نص الإجراء)..."
-                className="w-full pr-10 pl-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
+                className="w-full pr-10 pl-4 py-2 bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
               />
             </div>
 
             {/* Action Type Filter Dropdown */}
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-500 whitespace-nowrap">نوع النشاط:</span>
+              <span className="text-xs font-bold text-slate-700 whitespace-nowrap">نوع النشاط:</span>
               <select
                 value={selectedActionFilter}
                 onChange={(e) => setSelectedActionFilter(e.target.value)}
-                className="bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 py-2 px-3 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
+                className="bg-white border border-slate-300 text-xs font-bold text-slate-900 py-2 px-3 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
               >
                 <option value="all">كل الأنشطة ({activityLogs.length})</option>
                 <option value="approval">اعتمادات العقارات</option>
@@ -606,7 +606,7 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="مثال: م. محمود عثمان"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
+                  className="w-full px-3.5 py-2.5 bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 rounded-xl text-xs font-bold focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
                 />
               </div>
 
@@ -622,9 +622,9 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
                   placeholder="01012345678"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-right focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
+                  className="w-full px-3.5 py-2.5 bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 rounded-xl text-xs font-mono font-bold text-right focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
                 />
-                <span className="text-[10px] text-slate-400 block mt-1">
+                <span className="text-[10px] text-slate-500 block mt-1">
                   يبدأ بـ (010، 011، 012، 015) وسيعتمد فوراً لتسجيل الدخول كأدمن
                 </span>
               </div>
@@ -643,7 +643,7 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                     value={newPin}
                     onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
                     placeholder="1234"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-center tracking-widest focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
+                    className="w-full px-3.5 py-2.5 bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 rounded-xl text-xs font-mono font-bold text-center tracking-widest focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
                   />
                   <button
                     type="button"
@@ -720,7 +720,7 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                   required
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
+                  className="w-full px-3.5 py-2.5 bg-white text-slate-900 border border-slate-300 rounded-xl text-xs font-bold focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
                 />
               </div>
 
@@ -732,7 +732,7 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                   required
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-right focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
+                  className="w-full px-3.5 py-2.5 bg-white text-slate-900 border border-slate-300 rounded-xl text-xs font-mono font-bold text-right focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
                 />
               </div>
 
@@ -746,7 +746,7 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                     maxLength={4}
                     value={editPin}
                     onChange={(e) => setEditPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-center tracking-widest focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
+                    className="w-full px-3.5 py-2.5 bg-white text-slate-900 border border-slate-300 rounded-xl text-xs font-mono font-bold text-center tracking-widest focus:outline-hidden focus:ring-2 focus:ring-[#002B49]"
                   />
                   <button
                     type="button"

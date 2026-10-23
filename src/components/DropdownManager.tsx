@@ -275,7 +275,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
                 placeholder={selectedCatKey === 'districts' ? 'اسم الحي أو المنطقة (مثال: سيتي، الوليدية)' : 'اسم العنصر الجديد...'}
-                className="px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600"
+                className="px-3 py-2 rounded-xl bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600 focus:outline-hidden"
                 required
               />
               <input
@@ -283,7 +283,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                 value={newItemDesc}
                 onChange={(e) => setNewItemDesc(e.target.value)}
                 placeholder="الوصف التوضيحي (اختياري)"
-                className="px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600"
+                className="px-3 py-2 rounded-xl bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600 focus:outline-hidden"
               />
             </div>
             <button
@@ -376,7 +376,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                   value={newUtilityName}
                   onChange={(e) => setNewUtilityName(e.target.value)}
                   placeholder="اسم المرفق (مثال: جراج خاص، خط تليفون أرضي)"
-                  className="px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600"
+                  className="px-3 py-2 rounded-xl bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600 focus:outline-hidden"
                   required
                 />
                 <input
@@ -384,7 +384,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                   value={newUtilityInitialOption}
                   onChange={(e) => setNewUtilityInitialOption(e.target.value)}
                   placeholder="الحالة الأولى المقترحة (مثال: متوفر مع رسوم شهرية)"
-                  className="px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600"
+                  className="px-3 py-2 rounded-xl bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600 focus:outline-hidden"
                 />
               </div>
               <div className="flex gap-2">
@@ -472,7 +472,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                       setNewSubOptionText({ ...newSubOptionText, [util.key]: e.target.value })
                     }
                     placeholder={`إضافة حالة أو نوع عداد جديد لـ (${util.name})...`}
-                    className="flex-1 px-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-teal-600"
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600 focus:outline-hidden"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();

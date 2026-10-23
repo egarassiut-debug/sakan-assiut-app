@@ -398,7 +398,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ابحث بالاسم، رقم الموبايل أو المعرف..."
-              className="w-full pr-10 pl-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-medium"
+              className="w-full pr-10 pl-3 py-2 text-xs bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-medium"
             />
             {searchQuery && (
               <button
@@ -756,7 +756,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                       }
                     }}
                     placeholder="••••"
-                    className="w-full pr-10 pl-10 py-3 text-center text-base tracking-widest bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-mono font-black"
+                    className="w-full pr-10 pl-10 py-3 text-center text-base tracking-widest bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#002B49] font-mono font-black"
                   />
                   <button
                     type="button"
@@ -881,7 +881,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                       value={blockReason}
                       onChange={(e) => setBlockReason(e.target.value)}
                       placeholder="اكتب سبب الحظر..."
-                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-600 font-medium"
+                      className="w-full px-3 py-2 text-xs bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-600 font-medium"
                     />
 
                     <div className="flex flex-wrap gap-1.5 mt-2">

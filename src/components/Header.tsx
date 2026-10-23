@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppUser } from '../types/property';
-import { LogOut, User, ShieldCheck, Bell, Building2, Home, Heart, Menu } from 'lucide-react';
+import { LogOut, Bell, Heart, Menu } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 
 export interface HeaderProps {
@@ -17,11 +17,11 @@ export interface HeaderProps {
 }
 
 /**
- * Top AppBar with Clean Flexbox Layout:
- * - Background: Dark Navy #0F172A
- * - Zone 1 (Right): When on Admin view -> Menu button (☰) in far right + "لوحة التحكم والإدارة". Otherwise System Brand Name.
- * - Zone 2 (Center): Single-line page title in crisp white
- * - Zone 3 (Left): Action Controls (Favorites, Admin/Home switch, Notifications, Logout)
+ * Top AppBar with Clean, Decluttered Layout:
+ * 1. Logo: No background, no padding, no circle/frame, full crisp clarity
+ * 2. Greeting (on the side): User Name in crisp white, "أهلاً بك في" underneath in slate-400
+ * 3. Centered Title: "سكن أسيوط" in prominent text-2xl font-black in amber-400
+ * 4. Action Toolbar (Left): Favorites, Notifications, Logout (Admin button removed - retained only in BottomNavBar)
  */
 export const Header: React.FC<HeaderProps> = ({ 
   currentUser, 
@@ -31,7 +31,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNotifications,
   favoritesCount = 0,
   onOpenFavorites,
-  pageTitle = 'عروض الايجار والبيع',
   isAdminView = false,
   onToggleAdminDrawer,
 }) => {
@@ -39,17 +38,17 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-[#0F172A] text-white shadow-md sticky top-0 z-40 border-b border-slate-800 select-none">
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 h-14 sm:h-15 flex items-center justify-between gap-2 sm:gap-4">
+      <div className="relative max-w-6xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between gap-2 sm:gap-4">
         
         {/* ================================================================= */}
-        {/* Zone 1 (Right): Menu Drawer Trigger (☰) if Admin + Fixed Brand "سكن أسيوط" */}
+        {/* Zone 1 (Right): Clean Logo (No bg, no padding, no frame) + User Greeting */}
         {/* ================================================================= */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {isAdminView && (
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 z-10">
+          {isAdminView && onToggleAdminDrawer && (
             <button
               type="button"
               onClick={onToggleAdminDrawer}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white flex items-center justify-center border border-blue-400/40 transition-all cursor-pointer shadow-xs group"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white flex items-center justify-center border border-slate-700 transition-all cursor-pointer shadow-xs group"
               title="فتح القائمة الجانبية للوحة التحكم ☰"
               aria-label="القائمة الجانبية للوحة التحكم"
             >
@@ -57,79 +56,52 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Persistent Brand Logo & Title: سكن أسيوط */}
+          {/* Logo & Greeting on the side */}
           <div 
             onClick={() => onSelectTab && onSelectTab('home')}
-            className="flex items-center gap-2 sm:gap-2.5 cursor-pointer py-1 group select-none"
-            title="سكن أسيوط - العودة للرئيسية"
+            className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group select-none"
+            title="سكن أسيوط - الرئيسية"
           >
-            {/* Official Sakan Logo Image - Fixed in Top Right */}
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-amber-400/90 shadow-md shadow-black/40 group-hover:ring-amber-300 group-hover:scale-105 transition-all shrink-0 bg-[#0A1D1A] flex items-center justify-center p-0.5">
-              <img 
-                src="/sakan-logo.png" 
-                alt="شعار تطبيق سكن أسيوط" 
-                className="w-full h-full object-cover rounded-lg sm:rounded-xl" 
-                loading="eager"
-              />
-            </div>
+            {/* Logo: No white bg, no padding, no circular frame, full original sharpness */}
+            <img 
+              src="/sakan-logo.png" 
+              alt="شعار سكن أسيوط" 
+              className="h-11 sm:h-13 w-auto object-contain transition-transform group-hover:scale-105 shrink-0" 
+              loading="eager"
+            />
 
-            <div className="flex flex-col text-right leading-tight">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm sm:text-base font-black text-white tracking-tight drop-shadow-xs">
-                  سكن <span className="text-amber-400">أسيوط</span>
-                </span>
-                {isAdminView ? (
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-1.5 py-0.5 rounded-md border border-amber-400/30">
-                    لوحة التحكم
-                  </span>
-                ) : (
-                  <span className="text-[9px] bg-amber-400/15 text-amber-300 font-bold px-1.5 py-0.5 rounded-md border border-amber-400/30">
-                    عقارات
-                  </span>
-                )}
-              </div>
-              <span className="text-[10px] text-slate-300 font-medium hidden xs:inline">
-                المنظومة العقارية المعتمدة
+            {/* Greeting and User Name on the side */}
+            <div className="flex flex-col text-right leading-tight select-none">
+              <span className="text-[11px] sm:text-xs font-bold text-white truncate max-w-[95px] sm:max-w-[150px]">
+                {currentUser?.name || 'ضيفنا الكريم'}
+              </span>
+              <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium">
+                أهلاً بك في
               </span>
             </div>
           </div>
         </div>
 
-        {/* Center spacing spacer */}
-        <div className="flex-1" />
+        {/* ================================================================= */}
+        {/* Zone 2 (Center): Prominent "سكن أسيوط" (text-2xl font-black in amber-400) */}
+        {/* ================================================================= */}
+        <div 
+          onClick={() => onSelectTab && onSelectTab('home')}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-pointer select-none text-center pointer-events-auto"
+          title="سكن أسيوط"
+        >
+          <span className="text-xl sm:text-2xl font-black text-amber-400 tracking-tight drop-shadow-md whitespace-nowrap">
+            سكن أسيوط
+          </span>
+        </div>
 
         {/* ================================================================= */}
-        {/* Zone 3 (Left): Independent Action Toolbar */}
+        {/* Zone 3 (Left): Action Toolbar (Favorites, Notifications, Logout) */}
+        {/* Note: Admin dashboard icon removed completely to prevent clutter */}
         {/* ================================================================= */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap z-10">
           {/* PWA Install Button */}
           <PWAInstallButton />
-
-          {/* Admin Dashboard shortcut / Return to Home for Admins */}
-          {isAdmin && onSelectTab && (
-            <button
-              type="button"
-              onClick={() => onSelectTab(isAdminView ? 'home' : 'admin')}
-              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer active:scale-95 border shrink-0 ${
-                isAdminView
-                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/20'
-                  : 'bg-[#1D4ED8] hover:bg-[#1E40AF] text-white border-blue-500'
-              }`}
-              title={isAdminView ? "العودة لتصفح العقارات" : "لوحة التحكم الإدارية"}
-            >
-              {isAdminView ? (
-                <>
-                  <Building2 className="w-3.5 h-3.5 shrink-0 text-blue-300" />
-                  <span className="hidden sm:inline">الرئيسية</span>
-                </>
-              ) : (
-                <>
-                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden sm:inline">لوحة التحكم</span>
-                </>
-              )}
-            </button>
-          )}
 
           {/* Favorites Heart Button for Regular Users */}
           {onOpenFavorites && !isAdmin && (
@@ -156,7 +128,7 @@ export const Header: React.FC<HeaderProps> = ({
               title="مركز الإشعارات والتنبيهات"
               aria-label="مركز الإشعارات"
             >
-              <Bell className="w-4 h-4 text-blue-300" />
+              <Bell className="w-4 h-4 text-amber-300" />
               {unreadNotificationCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-bold text-[9px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs">
                   {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}

@@ -796,7 +796,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     value={moderationSearch}
                     onChange={(e) => setModerationSearch(e.target.value)}
                     placeholder="بحث بالكود، الحي، الهاتف..."
-                    className="w-full pr-9 pl-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                    className="w-full pr-9 pl-3 py-1.5 text-xs rounded-xl bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-[#002B49] shadow-2xs"
                   />
                 </div>
               </div>
@@ -944,7 +944,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   value={customNote}
                                   onChange={(e) => setCustomNote(e.target.value)}
                                   placeholder="اكتب البيان المطلوب استكماله بالتحديد..."
-                                  className="flex-1 p-2 bg-white rounded-lg border border-amber-300 text-xs focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                                  className="flex-1 p-2 bg-white text-slate-900 placeholder:text-slate-500 rounded-lg border border-amber-300 text-xs focus:outline-hidden focus:ring-1 focus:ring-amber-500"
                                 />
                                 <button
                                   type="button"
@@ -1209,7 +1209,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   value={customNote}
                                   onChange={(e) => setCustomNote(e.target.value)}
                                   placeholder="اكتب البيان المطلوب استكماله بالتحديد..."
-                                  className="flex-1 p-2 bg-white rounded-lg border border-amber-300 text-xs focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                                  className="flex-1 p-2 bg-white text-slate-900 placeholder:text-slate-500 rounded-lg border border-amber-300 text-xs focus:outline-hidden focus:ring-1 focus:ring-amber-500"
                                 />
                                 <button
                                   type="button"
@@ -1368,7 +1368,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         onChange={(e) => setBlockName(e.target.value)}
                         placeholder="مثال: أحمد مصطفى"
                         required
-                        className="w-full p-2 text-xs rounded-xl bg-white border border-rose-200 focus:outline-hidden focus:ring-1 focus:ring-rose-500"
+                        className="w-full p-2 text-xs rounded-xl bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-rose-500"
                       />
                     </div>
                     <div>
@@ -1386,7 +1386,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         }}
                         placeholder="01012345678"
                         required
-                        className="w-full p-2 text-xs rounded-xl bg-white border border-rose-200 focus:outline-hidden focus:ring-1 focus:ring-rose-500 font-mono text-right"
+                        className="w-full p-2 text-xs rounded-xl bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-rose-500 font-mono text-right"
                       />
                       {blockPhoneError && (
                         <p className="text-[10px] text-rose-600 font-bold mt-1">{blockPhoneError}</p>
@@ -1397,7 +1397,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <select
                         value={blockRole}
                         onChange={(e) => setBlockRole(e.target.value as any)}
-                        className="w-full p-2 text-xs rounded-xl bg-white border border-rose-200 focus:outline-hidden focus:ring-1 focus:ring-rose-500"
+                        className="w-full p-2 text-xs rounded-xl bg-white text-slate-900 border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-rose-500 font-medium"
                       >
                         <option value="owner">مالك عقار</option>
                         <option value="broker">سمسار / وسيط</option>
@@ -1412,7 +1412,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       value={blockReason}
                       onChange={(e) => setBlockReason(e.target.value)}
                       placeholder="مثال: نشر عقار وهمي في حي الجامعة، أو تكرار الإلغاء في المعاينات"
-                      className="w-full p-2 text-xs rounded-xl bg-white border border-rose-200 focus:outline-hidden focus:ring-1 focus:ring-rose-500"
+                      className="w-full p-2 text-xs rounded-xl bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-rose-500"
                     />
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-1">
@@ -1714,7 +1714,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       value={sbUrl}
                       onChange={(e) => setSbUrl(e.target.value)}
                       placeholder="https://xyzcompany.supabase.co"
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-[#1D4ED8] focus:ring-1 focus:ring-[#1D4ED8]"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 focus:outline-hidden focus:border-[#1D4ED8] focus:ring-1 focus:ring-[#1D4ED8]"
                     />
                   </div>
 
@@ -1728,7 +1728,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       value={sbAnonKey}
                       onChange={(e) => setSbAnonKey(e.target.value)}
                       placeholder="eyJhbGciOi..."
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-[#1D4ED8] focus:ring-1 focus:ring-[#1D4ED8]"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-white text-slate-900 placeholder:text-slate-500 border border-slate-300 focus:outline-hidden focus:border-[#1D4ED8] focus:ring-1 focus:ring-[#1D4ED8]"
                     />
                   </div>
                 </div>
