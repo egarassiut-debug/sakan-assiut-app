@@ -50,6 +50,12 @@ import {
   getSupabaseClient,
   SupabaseSyncErrorEventDetail 
 } from './lib/supabase';
+import { 
+  safeStorageSetItem, 
+  safeStorageGetItem, 
+  safeStorageRemoveItem, 
+  runStorageMaintenance 
+} from './utils/storageManager';
 
 // Code-split heavy components & modals for minimal initial bundle and fast startup
 const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
@@ -100,15 +106,14 @@ import {
  *      * لوحة التحكم (Tab 3)
  */
 export function App() {
-  // Current Logged-in User (Stored in LocalStorage)
+  // Proactively manage local storage quota and purge expired/stale records on startup
+  useEffect(() => {
+    runStorageMaintenance();
+  }, []);
+
+  // Current Logged-in User (Stored in LocalStorage with Safe Manager)
   const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_current_user');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading current user:', e);
-    }
-    return null;
+    return safeStorageGetItem<AppUser | null>('ardaw_current_user', null);
   });
 
   const isAdmin = currentUser?.role === 'admin';
@@ -118,15 +123,8 @@ export function App() {
   // For Admin: 0 = عروض الإيجار, 1 = طلبات الإيجار, 3 = لوحة التحكم
   const [navIndex, setNavIndex] = useState<NavTabIndex>(() => {
     if (typeof window !== 'undefined' && window.location.pathname === '/admin') {
-      try {
-        const saved = localStorage.getItem('ardaw_current_user');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.role === 'admin') return 3;
-        }
-      } catch (e) {
-        console.error(e);
-      }
+      const savedUser = safeStorageGetItem<AppUser | null>('ardaw_current_user', null);
+      if (savedUser?.role === 'admin') return 3;
       // Silently rewrite unauthorized URL to '/'
       window.history.replaceState(null, '', '/');
     }
@@ -191,45 +189,21 @@ export function App() {
     }
   }, [currentUser]);
 
-  // Application Data States with Persistence
+  // Application Data States with Persistence & Quota Protection
   const [properties, setProperties] = useState<Property[]>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_properties');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading properties from localStorage', e);
-    }
-    return INITIAL_PROPERTIES;
+    return safeStorageGetItem<Property[]>('ardaw_properties', INITIAL_PROPERTIES);
   });
 
   const [tenantRequests, setTenantRequests] = useState<TenantRequest[]>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_tenant_requests');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading tenant requests from localStorage', e);
-    }
-    return INITIAL_TENANT_REQUESTS;
+    return safeStorageGetItem<TenantRequest[]>('ardaw_tenant_requests', INITIAL_TENANT_REQUESTS);
   });
 
   const [scheduledInspections, setScheduledInspections] = useState<ScheduledInspection[]>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_scheduled_inspections');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading inspections from localStorage', e);
-    }
-    return INITIAL_SCHEDULED_INSPECTIONS;
+    return safeStorageGetItem<ScheduledInspection[]>('ardaw_scheduled_inspections', INITIAL_SCHEDULED_INSPECTIONS);
   });
 
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_blocked_users');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading blocked users from localStorage', e);
-    }
-    return INITIAL_BLOCKED_USERS;
+    return safeStorageGetItem<BlockedUser[]>('ardaw_blocked_users', INITIAL_BLOCKED_USERS);
   });
 
   // Live Database Sync for Properties & Tenant Requests
@@ -253,11 +227,7 @@ export function App() {
             prev.forEach((p) => propMap.set(p.id, p));
             dbProps.forEach((p) => propMap.set(p.id, p));
             const merged = Array.from(propMap.values());
-            try {
-              localStorage.setItem('ardaw_properties', JSON.stringify(merged));
-            } catch (e) {
-              console.warn(e);
-            }
+            safeStorageSetItem('ardaw_properties', merged);
             return merged;
           });
         }
@@ -269,11 +239,7 @@ export function App() {
             prev.forEach((r) => reqMap.set(r.id, r));
             dbReqs.forEach((r) => reqMap.set(r.id, r));
             const merged = Array.from(reqMap.values());
-            try {
-              localStorage.setItem('ardaw_tenant_requests', JSON.stringify(merged));
-            } catch (e) {
-              console.warn(e);
-            }
+            safeStorageSetItem('ardaw_tenant_requests', merged);
             return merged;
           });
         }
@@ -306,7 +272,7 @@ export function App() {
             dbFetchProperties().then((fresh) => {
               if (fresh && isMounted) {
                 setProperties(fresh);
-                localStorage.setItem('ardaw_properties', JSON.stringify(fresh));
+                safeStorageSetItem('ardaw_properties', fresh);
               }
             });
           })
@@ -314,7 +280,7 @@ export function App() {
             dbFetchTenantRequests().then((fresh) => {
               if (fresh && isMounted) {
                 setTenantRequests(fresh);
-                localStorage.setItem('ardaw_tenant_requests', JSON.stringify(fresh));
+                safeStorageSetItem('ardaw_tenant_requests', fresh);
               }
             });
           })
@@ -333,24 +299,12 @@ export function App() {
     };
   }, []);
   const [dropdownCategories, setDropdownCategories] = useState<Record<string, DropdownCategory>>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_dropdown_categories');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading dropdown categories from localStorage', e);
-    }
-    return INITIAL_DROPDOWN_CATEGORIES;
+    return safeStorageGetItem<Record<string, DropdownCategory>>('ardaw_dropdown_categories', INITIAL_DROPDOWN_CATEGORIES);
   });
 
   // Dynamic utilities and meter options with localStorage persistence
   const [utilityDefinitions, setUtilityDefinitions] = useState<UtilityOptionDefinition[]>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_utility_definitions');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading utility definitions from localStorage', e);
-    }
-    return INITIAL_UTILITY_DEFINITIONS;
+    return safeStorageGetItem<UtilityOptionDefinition[]>('ardaw_utility_definitions', INITIAL_UTILITY_DEFINITIONS);
   });
 
   // Search & Filter State for Listings
@@ -358,63 +312,25 @@ export function App() {
   const [purposeFilter, setPurposeFilter] = useState<'all' | 'rent' | 'sale'>('rent');
   const [excludeEnded, setExcludeEnded] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_last_search_criteria');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.district) return parsed.district;
-      }
-    } catch (e) {
-      // ignore
-    }
-    return 'all';
+    const saved = safeStorageGetItem<any>('ardaw_last_search_criteria', null);
+    return saved?.district || 'all';
   });
   const [selectedPropertyType, setSelectedPropertyType] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_last_search_criteria');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.propertyType) return parsed.propertyType;
-      }
-    } catch (e) {
-      // ignore
-    }
-    return 'all';
+    const saved = safeStorageGetItem<any>('ardaw_last_search_criteria', null);
+    return saved?.propertyType || 'all';
   });
   const [minPrice, setMinPrice] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_last_search_criteria');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.minPrice) return String(parsed.minPrice);
-      }
-    } catch (e) {
-      // ignore
-    }
-    return '';
+    const saved = safeStorageGetItem<any>('ardaw_last_search_criteria', null);
+    return saved?.minPrice ? String(saved.minPrice) : '';
   });
   const [maxPrice, setMaxPrice] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_last_search_criteria');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.maxPrice) return String(parsed.maxPrice);
-      }
-    } catch (e) {
-      // ignore
-    }
-    return '';
+    const saved = safeStorageGetItem<any>('ardaw_last_search_criteria', null);
+    return saved?.maxPrice ? String(saved.maxPrice) : '';
   });
 
   // Saved Search Criteria (localStorage)
   const [savedSearches, setSavedSearches] = useState<SavedSearchCriteria[]>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_saved_search_criteria');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading saved searches from localStorage', e);
-    }
-    return [
+    return safeStorageGetItem<SavedSearchCriteria[]>('ardaw_saved_search_criteria', [
       {
         id: 'saved-default-1',
         title: 'شقق سكنية بحي الجامعة (إيجار)',
@@ -435,7 +351,7 @@ export function App() {
         purpose: 'all',
         createdAt: '12/10/2026',
       },
-    ];
+    ]);
   });
 
   const [isSavedSearchModalOpen, setIsSavedSearchModalOpen] = useState(false);
@@ -459,24 +375,12 @@ export function App() {
 
   // Favorite Properties system with localStorage persistence
   const [favoritePropertyIds, setFavoritePropertyIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_favorites');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading favorites from localStorage', e);
-    }
-    return ['prop-1'];
+    return safeStorageGetItem<string[]>('ardaw_favorites', ['prop-1']);
   });
 
   // Verified 5-Star Ratings System with localStorage persistence
   const [propertyRatings, setPropertyRatings] = useState<PropertyRating[]>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_property_ratings');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading ratings from localStorage', e);
-    }
-    return INITIAL_PROPERTY_RATINGS;
+    return safeStorageGetItem<PropertyRating[]>('ardaw_property_ratings', INITIAL_PROPERTY_RATINGS);
   });
   const [ratingModalProperty, setRatingModalProperty] = useState<Property | null>(null);
 
@@ -547,11 +451,7 @@ export function App() {
       const updated = exists 
         ? prev.filter((id) => id !== propertyId) 
         : [...prev, propertyId];
-      try {
-        localStorage.setItem('ardaw_favorites', JSON.stringify(updated));
-      } catch (e) {
-        console.error('Error saving favorites to localStorage', e);
-      }
+      safeStorageSetItem('ardaw_favorites', updated);
 
       const target = properties.find((p) => p.id === propertyId);
       const title = target ? target.title : 'العقار';
@@ -632,11 +532,7 @@ export function App() {
         updated = [newRating, ...prev];
       }
 
-      try {
-        localStorage.setItem('ardaw_property_ratings', JSON.stringify(updated));
-      } catch (e) {
-        console.error('Error saving ratings to localStorage', e);
-      }
+      safeStorageSetItem('ardaw_property_ratings', updated);
 
       addToast({
         title: 'تم اعتماد التقييم الموثق بنجاح ⭐',
@@ -658,7 +554,7 @@ export function App() {
         maxPrice: maxPrice ? Number(maxPrice) : null,
         purpose: purposeFilter,
       };
-      localStorage.setItem('ardaw_last_search_criteria', JSON.stringify(current));
+      safeStorageSetItem('ardaw_last_search_criteria', current);
     } catch (e) {
       console.error('Error persisting last search criteria', e);
     }
@@ -666,11 +562,7 @@ export function App() {
 
   const saveSearchesToStorage = (updated: SavedSearchCriteria[]) => {
     setSavedSearches(updated);
-    try {
-      localStorage.setItem('ardaw_saved_search_criteria', JSON.stringify(updated));
-    } catch (e) {
-      console.error('Error saving search criteria to localStorage', e);
-    }
+    safeStorageSetItem('ardaw_saved_search_criteria', updated);
   };
 
   const handleSaveCurrentCriteria = (customTitle?: string) => {
@@ -768,15 +660,9 @@ export function App() {
     });
   };
 
-  // In-App Push Notifications System
+  // In-App Push Notifications System with Auto-Pruning
   const [inAppNotifications, setInAppNotifications] = useState<InAppPushNotification[]>(() => {
-    try {
-      const saved = localStorage.getItem('ardaw_inapp_notifications');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading push notifications:', e);
-    }
-    return [
+    return safeStorageGetItem<InAppPushNotification[]>('ardaw_inapp_notifications', [
       {
         id: 'push-welcome-default',
         recipientPhone: 'all',
@@ -787,7 +673,7 @@ export function App() {
         createdAt: 'اليوم',
         isRead: false,
       },
-    ];
+    ]);
   });
 
   const [activePushBanner, setActivePushBanner] = useState<InAppPushNotification | null>(null);
@@ -802,12 +688,9 @@ export function App() {
     };
 
     setInAppNotifications((prev) => {
-      const updated = [newPush, ...prev];
-      try {
-        localStorage.setItem('ardaw_inapp_notifications', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      // Auto-pruning: Keep max 40 notifications to prevent storage quota exhaustion
+      const updated = [newPush, ...prev].slice(0, 40);
+      safeStorageSetItem('ardaw_inapp_notifications', updated);
       return updated;
     });
 
@@ -854,26 +737,20 @@ export function App() {
   const handleMarkAllNotificationsAsRead = () => {
     setInAppNotifications((prev) => {
       const updated = prev.map((n) => ({ ...n, isRead: true }));
-      try {
-        localStorage.setItem('ardaw_inapp_notifications', JSON.stringify(updated));
-      } catch (e) {}
+      safeStorageSetItem('ardaw_inapp_notifications', updated);
       return updated;
     });
   };
 
   const handleClearAllNotifications = () => {
     setInAppNotifications([]);
-    try {
-      localStorage.removeItem('ardaw_inapp_notifications');
-    } catch (e) {}
+    safeStorageRemoveItem('ardaw_inapp_notifications');
   };
 
   const handleSelectNotification = (notif: InAppPushNotification) => {
     setInAppNotifications((prev) => {
       const updated = prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n));
-      try {
-        localStorage.setItem('ardaw_inapp_notifications', JSON.stringify(updated));
-      } catch (e) {}
+      safeStorageSetItem('ardaw_inapp_notifications', updated);
       return updated;
     });
 
@@ -1080,11 +957,7 @@ export function App() {
   const handleAddProperty = (newProp: Property) => {
     setProperties((prev) => {
       const updated = [newProp, ...prev];
-      try {
-        localStorage.setItem('ardaw_properties', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_properties', updated);
       return updated;
     });
 
@@ -1182,11 +1055,7 @@ export function App() {
   const handleAddTenantRequest = (newReq: TenantRequest) => {
     setTenantRequests((prev) => {
       const updated = [newReq, ...prev];
-      try {
-        localStorage.setItem('ardaw_tenant_requests', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_tenant_requests', updated);
       return updated;
     });
 
@@ -1289,11 +1158,7 @@ export function App() {
   const handleUpdateProperty = (updatedProp: Property) => {
     setProperties((prev) => {
       const updated = prev.map((p) => (p.id === updatedProp.id ? updatedProp : p));
-      try {
-        localStorage.setItem('ardaw_properties', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_properties', updated);
       return updated;
     });
     dbUpsertProperty(updatedProp).catch((err) => {
@@ -1313,11 +1178,7 @@ export function App() {
   const handleUpdateTenantRequest = (updatedReq: TenantRequest) => {
     setTenantRequests((prev) => {
       const updated = prev.map((r) => (r.id === updatedReq.id ? updatedReq : r));
-      try {
-        localStorage.setItem('ardaw_tenant_requests', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_tenant_requests', updated);
       return updated;
     });
     dbUpsertTenantRequest(updatedReq).catch((err) => {
@@ -1353,11 +1214,7 @@ export function App() {
         }
         return r;
       });
-      try {
-        localStorage.setItem('ardaw_tenant_requests', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_tenant_requests', updated);
       return updated;
     });
 
@@ -1414,11 +1271,7 @@ export function App() {
   const handleDeleteTenantRequest = (reqId: string) => {
     setTenantRequests((prev) => {
       const updated = prev.filter((r) => r.id !== reqId);
-      try {
-        localStorage.setItem('ardaw_tenant_requests', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_tenant_requests', updated);
       return updated;
     });
     dbDeleteTenantRequest(reqId).catch((e) => console.warn('Supabase delete tenant request failed:', e));
@@ -1450,11 +1303,7 @@ export function App() {
         }
         return p;
       });
-      try {
-        localStorage.setItem('ardaw_properties', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_properties', updated);
       return updated;
     });
 
@@ -1524,11 +1373,7 @@ export function App() {
   const handleDeleteProperty = (propId: string) => {
     setProperties((prev) => {
       const updated = prev.filter((p) => p.id !== propId);
-      try {
-        localStorage.setItem('ardaw_properties', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_properties', updated);
       return updated;
     });
     dbDeleteProperty(propId).catch((e) => console.warn('Supabase delete property failed:', e));
@@ -1547,11 +1392,7 @@ export function App() {
   const handleArchiveProperty = (propId: string) => {
     setProperties((prev) => {
       const updated = prev.map((p) => (p.id === propId ? { ...p, status: 'archived' as PropertyStatus } : p));
-      try {
-        localStorage.setItem('ardaw_properties', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_properties', updated);
       return updated;
     });
     addToast({
@@ -1566,11 +1407,7 @@ export function App() {
   const handleRepublishProperty = (propId: string) => {
     setProperties((prev) => {
       const updated = prev.map((p) => (p.id === propId ? { ...p, status: 'approved' as PropertyStatus, isApproved: true } : p));
-      try {
-        localStorage.setItem('ardaw_properties', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_properties', updated);
       return updated;
     });
     addToast({
@@ -1587,11 +1424,7 @@ export function App() {
     const newStatus: PropertyStatus = isCurrentlyRented ? 'approved' : 'rented';
     setProperties((prev) => {
       const updated = prev.map((p) => (p.id === propId ? { ...p, status: newStatus } : p));
-      try {
-        localStorage.setItem('ardaw_properties', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_properties', updated);
       return updated;
     });
     addToast({
@@ -1612,11 +1445,7 @@ export function App() {
     };
     setScheduledInspections((prev) => {
       const updated = [newInspection, ...prev];
-      try {
-        localStorage.setItem('ardaw_scheduled_inspections', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_scheduled_inspections', updated);
       return updated;
     });
     addToast({
@@ -1646,11 +1475,7 @@ export function App() {
         }
         return i;
       });
-      try {
-        localStorage.setItem('ardaw_scheduled_inspections', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_scheduled_inspections', updated);
       return updated;
     });
     addToast({
@@ -1672,11 +1497,7 @@ export function App() {
     };
     setBlockedUsers((prev) => {
       const updated = [newBlocked, ...prev];
-      try {
-        localStorage.setItem('ardaw_blocked_users', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_blocked_users', updated);
       return updated;
     });
     addToast({
@@ -1690,11 +1511,7 @@ export function App() {
   const handleRemoveBlockedUser = (id: string) => {
     setBlockedUsers((prev) => {
       const updated = prev.filter((b) => b.id !== id);
-      try {
-        localStorage.setItem('ardaw_blocked_users', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_blocked_users', updated);
       return updated;
     });
     addToast({
@@ -1712,11 +1529,7 @@ export function App() {
         ...prev,
         [catKey]: updatedCat,
       };
-      try {
-        localStorage.setItem('ardaw_dropdown_categories', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+      safeStorageSetItem('ardaw_dropdown_categories', updated);
       return updated;
     });
   };
@@ -1724,11 +1537,7 @@ export function App() {
   // Update Utility Definitions with persistence
   const handleUpdateUtilityDefinitions = (updatedUtils: UtilityOptionDefinition[]) => {
     setUtilityDefinitions(updatedUtils);
-    try {
-      localStorage.setItem('ardaw_utility_definitions', JSON.stringify(updatedUtils));
-    } catch (e) {
-      console.error(e);
-    }
+    safeStorageSetItem('ardaw_utility_definitions', updatedUtils);
   };
 
   // Reset to Assiut Presets Defaults
@@ -1736,8 +1545,8 @@ export function App() {
     setDropdownCategories(INITIAL_DROPDOWN_CATEGORIES);
     setUtilityDefinitions(INITIAL_UTILITY_DEFINITIONS);
     try {
-      localStorage.removeItem('ardaw_dropdown_categories');
-      localStorage.removeItem('ardaw_utility_definitions');
+      safeStorageRemoveItem('ardaw_dropdown_categories');
+      safeStorageRemoveItem('ardaw_utility_definitions');
     } catch (e) {
       console.error(e);
     }
@@ -1752,7 +1561,7 @@ export function App() {
   // Logout Handler: Removes user from session, clears cryptographic tokens, and redirects to '/'
   const handleLogout = () => {
     clearSecureSession();
-    localStorage.removeItem('ardaw_current_user');
+    safeStorageRemoveItem('ardaw_current_user');
     setCurrentUser(null);
     setOverlayScreen('none');
     setNavIndex(0);

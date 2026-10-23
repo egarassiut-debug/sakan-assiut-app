@@ -13,10 +13,11 @@ import {
   UserX, Ban, AlertTriangle, Calendar, Plus, Search,
   Edit3, MessageSquare, Users, UserCheck, Download, FileSpreadsheet, Printer, ChevronDown,
   SlidersHorizontal, BarChart3, RotateCcw, Building2, Menu, X, ChevronLeft,
-  Phone, MessageCircle, User, Database, RefreshCw
+  Phone, MessageCircle, User, Database, RefreshCw, HardDrive
 } from 'lucide-react';
 import { UserManagement } from './UserManagement';
 import { exportToCSV, exportToPrintablePDF } from '../utils/exportUtils';
+import { getStorageUsage, runStorageMaintenance } from '../utils/storageManager';
 import { 
   isSupabaseActive, 
   getSupabaseConfig, 
@@ -198,6 +199,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setIsPushingAllToSb(false);
       setTimeout(() => setSbSaveMsg(null), 5000);
     }
+  };
+
+  // LocalStorage Quota & Stale Data Manager State
+  const [storageReport, setStorageReport] = useState(() => getStorageUsage());
+  const [cleanStorageMsg, setCleanStorageMsg] = useState<string | null>(null);
+
+  const handleCleanStorage = () => {
+    const result = runStorageMaintenance(true);
+    const updated = getStorageUsage();
+    setStorageReport(updated);
+    setCleanStorageMsg(
+      result.purgedCount > 0
+        ? `تم بنجاح تنظيف ${result.purgedCount} سجل قديم/مؤقت وتوفير مساحة في ذاكرة المتصفح!`
+        : 'الذاكرة نظيفة ومثالية بالفعل، لا توجد سجلات قديمة متراكمة.'
+    );
+    setTimeout(() => setCleanStorageMsg(null), 4000);
   };
 
   // Recharts Data
@@ -1742,7 +1759,73 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
-              {/* Card 4: إعدادات إعادة الضبط وتأمين الجلسة */}
+              {/* Card 4: إدارة حجم التخزين المحلي (LocalStorage Quota & Maintenance) */}
+              <div className="bg-white p-4 sm:p-5 rounded-[14px] border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center shrink-0">
+                      <HardDrive className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm sm:text-base">
+                        إدارة حجم التخزين المحلي وحماية سعة المتصفح
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        مراقبة استهلاك ذاكرة المتصفح (LocalStorage) وحذف الإشعارات والسجلات القديمة لمنع بطء الأداء
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+                      {storageReport.usedKB} KB ({storageReport.percentUsed}% من السعة)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress bar of quota */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[11px] text-slate-500 font-bold">
+                    <span>مستوى امتلاء الذاكرة المؤقتة:</span>
+                    <span>{storageReport.usedKB} KB / 5120 KB (الحد المقدر 5MB)</span>
+                  </div>
+                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                    <div 
+                      className={`h-full transition-all duration-500 rounded-full ${
+                        storageReport.percentUsed > 80 
+                          ? 'bg-rose-500' 
+                          : storageReport.percentUsed > 50 
+                            ? 'bg-amber-500' 
+                            : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${Math.min(100, Math.max(3, storageReport.percentUsed))}%` }}
+                    />
+                  </div>
+                </div>
+
+                {cleanStorageMsg && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold rounded-xl flex items-center gap-2 animate-in fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{cleanStorageMsg}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                  <span className="text-xs text-slate-500">
+                    يتم تلقائياً تنظيف الإشعارات المقروءة والمسودات وسجلات النشاط القديمة للحفاظ على سرعة المتصفح واستقراره.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCleanStorage}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-400" />
+                    <span>تنظيف البيانات القديمة والمؤقتة الآن</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Card 5: إعدادات إعادة الضبط وتأمين الجلسة */}
               <div className="bg-white p-4 sm:p-5 rounded-[14px] border border-[#E5E7EB] shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <span className="font-bold text-slate-900 text-sm block">استعادة الإعدادات الافتراضية للقوائم</span>
