@@ -1639,7 +1639,7 @@ export function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-slate-950 flex flex-col justify-between text-slate-100 font-['Tajawal','Cairo',sans-serif] ${isFormEntry ? 'pb-0' : 'pb-24'}`}>
+    <div className={`min-h-screen bg-[#0B132B] flex flex-col justify-between text-slate-100 font-['Tajawal','Cairo',sans-serif] ${isFormEntry ? 'pb-0' : 'pb-24'}`}>
       
       {/* 1. Top Global Header (hidden in FormEntryScreen which has its own AppBar) */}
       {!isFormEntry && (
@@ -1655,8 +1655,6 @@ export function App() {
           favoritesCount={favoritePropertyIds.length}
           onOpenFavorites={() => setIsFavoritesModalOpen(true)}
           pageTitle={getHeaderTitle()}
-          isAdminView={isAdmin && navIndex === 3}
-          onToggleAdminDrawer={() => setIsAdminDrawerOpen((prev) => !prev)}
         />
       )}
 
@@ -1717,13 +1715,13 @@ export function App() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="ابحث عن عقارك (المنطقة، نوع الوحدة، كود العقار، المواصفات)..."
-                className="w-full pr-12 pl-10 py-3.5 rounded-[14px] bg-slate-900 text-white placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-slate-800 shadow-md focus:outline-hidden focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all"
+                className="w-full pr-12 pl-10 py-3.5 rounded-[14px] bg-slate-900 text-white placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-slate-800 shadow-md focus:outline-hidden focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all"
               />
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-sky-400" />
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-1 cursor-pointer"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1739,13 +1737,13 @@ export function App() {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-                    <MapPin className="w-3.5 h-3.5 text-sky-400" />
+                    <MapPin className="w-3.5 h-3.5 text-amber-400" />
                   </div>
                   <span className="text-xs font-semibold text-white truncate">
                     {selectedDistrict === 'all' ? 'فلتر المناطق' : selectedDistrict}
                   </span>
                 </div>
-                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-sky-400 transition-colors" />
+                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-amber-400 transition-colors" />
                 <select
                   value={selectedDistrict}
                   onChange={(e) => setSelectedDistrict(e.target.value)}
@@ -1768,13 +1766,13 @@ export function App() {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-                    <Building className="w-3.5 h-3.5 text-sky-400" />
+                    <Building className="w-3.5 h-3.5 text-amber-400" />
                   </div>
                   <span className="text-xs font-semibold text-white truncate">
                     {selectedPropertyType === 'all' ? 'فلتر الوحدات' : selectedPropertyType}
                   </span>
                 </div>
-                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-sky-400 transition-colors" />
+                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-amber-400 transition-colors" />
                 <select
                   value={selectedPropertyType}
                   onChange={(e) => setSelectedPropertyType(e.target.value)}
@@ -1791,56 +1789,47 @@ export function App() {
               </div>
             </div>
 
-            {/* Purpose Filter Pills & Available Count */}
-            <div className="flex items-center justify-between gap-2 pt-0.5">
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {/* Purpose Filter Bar: 3 Tabs (كل المعروض | عروض الإيجار | عروض البيع) */}
+            <div className="w-full pt-0.5">
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 w-full">
+                {/* 1. على اليمين: كل المعروض */}
                 <button
+                  type="button"
+                  onClick={() => setPurposeFilter('all')}
+                  className={`py-2 px-1 text-center rounded-[12px] text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    purposeFilter === 'all'
+                      ? 'bg-slate-800 text-white border border-slate-700 shadow-sm ring-1 ring-slate-700'
+                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-800/80 hover:text-white'
+                  }`}
+                >
+                  كل المعروض ({properties.filter((p) => isAdmin || p.status === 'approved' || p.status === 'rented' || p.status === 'sold').length})
+                </button>
+
+                {/* 2. في الوسط: عروض الإيجار */}
+                <button
+                  type="button"
                   onClick={() => setPurposeFilter('rent')}
-                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
+                  className={`py-2 px-1 text-center rounded-[12px] text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     purposeFilter === 'rent'
-                      ? 'bg-sky-600 text-white shadow-xs'
-                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-850 hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-500'
+                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-800/80 hover:text-white'
                   }`}
                 >
                   عروض الإيجار ({properties.filter((p) => p.purpose === 'rent' && (isAdmin || p.status === 'approved')).length})
                 </button>
+
+                {/* 3. على اليسار: عروض البيع */}
                 <button
+                  type="button"
                   onClick={() => setPurposeFilter('sale')}
-                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
+                  className={`py-2 px-1 text-center rounded-[12px] text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     purposeFilter === 'sale'
-                      ? 'bg-sky-600 text-white shadow-xs'
-                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-850 hover:text-white'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm ring-1 ring-amber-400 font-black'
+                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-800/80 hover:text-white'
                   }`}
                 >
                   عروض البيع ({properties.filter((p) => p.purpose === 'sale' && (isAdmin || p.status === 'approved')).length})
                 </button>
-                <button
-                  onClick={() => setPurposeFilter('all')}
-                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
-                    purposeFilter === 'all'
-                      ? 'bg-sky-600 text-white shadow-xs'
-                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-850 hover:text-white'
-                  }`}
-                >
-                  الكل ({properties.filter((p) => isAdmin || p.status === 'approved' || p.status === 'rented' || p.status === 'sold').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExcludeEnded(!excludeEnded)}
-                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                    excludeEnded
-                      ? 'bg-amber-500 text-slate-950 border border-amber-400 font-bold shadow-xs ring-1 ring-amber-400/50'
-                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-850 hover:text-white'
-                  }`}
-                  title="استبعاد العقارات المنتهية (المؤجرة والمباعة)"
-                >
-                  <span className={`w-2 h-2 rounded-full ${excludeEnded ? 'bg-slate-950' : 'bg-slate-400'}`} />
-                  <span>استبعاد المنتهي</span>
-                </button>
-              </div>
-
-              <div className="text-xs text-slate-400 font-medium shrink-0">
-                المعروض: <span className="text-sky-400 font-bold">{filteredProperties.length}</span>
               </div>
             </div>
 
@@ -1850,17 +1839,17 @@ export function App() {
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-slate-400 font-medium">الفلاتر المحددة:</span>
                   {selectedDistrict !== 'all' && (
-                    <span className="bg-sky-950 text-sky-300 font-semibold px-2 py-0.5 rounded-lg border border-sky-800">
+                    <span className="bg-slate-800 text-amber-400 font-semibold px-2 py-0.5 rounded-lg border border-slate-700">
                       {selectedDistrict}
                     </span>
                   )}
                   {selectedPropertyType !== 'all' && (
-                    <span className="bg-sky-950 text-sky-300 font-semibold px-2 py-0.5 rounded-lg border border-sky-800">
+                    <span className="bg-slate-800 text-amber-400 font-semibold px-2 py-0.5 rounded-lg border border-slate-700">
                       {selectedPropertyType}
                     </span>
                   )}
                   {excludeEnded && (
-                    <span className="bg-amber-950 text-amber-300 font-semibold px-2 py-0.5 rounded-lg border border-amber-700">
+                    <span className="bg-amber-950/80 text-amber-300 font-semibold px-2 py-0.5 rounded-lg border border-amber-800">
                       استبعاد المنتهي (مؤجر/مباع)
                     </span>
                   )}
@@ -1881,8 +1870,8 @@ export function App() {
 
             {/* Property Cards List */}
             {filteredProperties.length === 0 ? (
-              <div className="bg-slate-900 p-12 rounded-[14px] text-center border border-slate-800 shadow-lg space-y-3 text-slate-200">
-                <div className="w-14 h-14 rounded-2xl bg-slate-800 text-sky-400 flex items-center justify-center mx-auto border border-slate-700">
+              <div className="bg-slate-900 p-12 rounded-[14px] text-center border border-slate-800 shadow-md space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-slate-800 text-amber-400 flex items-center justify-center mx-auto border border-slate-700">
                   <Building2 className="w-8 h-8" />
                 </div>
                 <h3 className="font-bold text-white text-base">لا توجد عقارات مطابقة للبحث</h3>
@@ -1896,7 +1885,7 @@ export function App() {
                     setSelectedPropertyType('all');
                     setPurposeFilter('all');
                   }}
-                  className="px-4 py-2 rounded-[10px] bg-slate-800 hover:bg-slate-750 text-white font-bold text-xs transition-colors cursor-pointer border border-slate-700"
+                  className="px-4 py-2 rounded-[10px] bg-slate-800 hover:bg-slate-750 text-white font-bold text-xs transition-colors border border-slate-700 cursor-pointer"
                 >
                   إعادة ضبط الفلاتر
                 </button>
@@ -1954,13 +1943,13 @@ export function App() {
                 value={requestSearchQuery}
                 onChange={(e) => setRequestSearchQuery(e.target.value)}
                 placeholder="ابحث في طلبات السكن (المنطقة، نوع الوحدة، كود الطلب، المواصفات)..."
-                className="w-full pr-12 pl-10 py-3.5 rounded-[14px] bg-slate-900 text-white placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-slate-800 shadow-md focus:outline-hidden focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all"
+                className="w-full pr-12 pl-10 py-3.5 rounded-[14px] bg-slate-900 text-white placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-slate-800 shadow-md focus:outline-hidden focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all"
               />
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-sky-400" />
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
               {requestSearchQuery && (
                 <button
                   onClick={() => setRequestSearchQuery('')}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-1 cursor-pointer"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1976,13 +1965,13 @@ export function App() {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-                    <MapPin className="w-3.5 h-3.5 text-sky-400" />
+                    <MapPin className="w-3.5 h-3.5 text-amber-400" />
                   </div>
                   <span className="text-xs font-semibold text-white truncate">
                     {requestDistrict === 'all' ? 'فلتر المناطق' : requestDistrict}
                   </span>
                 </div>
-                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-sky-400 transition-colors" />
+                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-amber-400 transition-colors" />
                 <select
                   value={requestDistrict}
                   onChange={(e) => setRequestDistrict(e.target.value)}
@@ -2005,13 +1994,13 @@ export function App() {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-                    <Building className="w-3.5 h-3.5 text-sky-400" />
+                    <Building className="w-3.5 h-3.5 text-amber-400" />
                   </div>
                   <span className="text-xs font-semibold text-white truncate">
                     {requestPropertyType === 'all' ? 'فلتر الوحدات' : requestPropertyType}
                   </span>
                 </div>
-                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-sky-400 transition-colors" />
+                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-amber-400 transition-colors" />
                 <select
                   value={requestPropertyType}
                   onChange={(e) => setRequestPropertyType(e.target.value)}
@@ -2028,49 +2017,46 @@ export function App() {
               </div>
             </div>
 
-            {/* Purpose Filter Pills & Quick Add Request */}
-            <div className="flex items-center justify-between gap-2 pt-0.5">
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {/* Purpose Filter Bar: 3 Tabs (كل الطلبات | طلبات الإيجار | طلبات البيع) */}
+            <div className="w-full pt-0.5">
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 w-full">
+                {/* 1. على اليمين: كل الطلبات */}
                 <button
+                  type="button"
+                  onClick={() => setRequestPurpose('all')}
+                  className={`py-2 px-1 text-center rounded-[12px] text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    requestPurpose === 'all'
+                      ? 'bg-slate-800 text-white border border-slate-700 shadow-sm ring-1 ring-slate-700'
+                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-800/80 hover:text-white'
+                  }`}
+                >
+                  كل الطلبات ({tenantRequests.filter((r) => isAdmin || r.status === 'approved' || r.isApproved !== false).length})
+                </button>
+
+                {/* 2. في الوسط: طلبات الإيجار */}
+                <button
+                  type="button"
                   onClick={() => setRequestPurpose('rent')}
-                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
+                  className={`py-2 px-1 text-center rounded-[12px] text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     requestPurpose === 'rent'
-                      ? 'bg-sky-600 text-white shadow-xs'
-                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-850 hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-500'
+                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-800/80 hover:text-white'
                   }`}
                 >
                   طلبات الإيجار ({tenantRequests.filter((r) => r.purpose === 'rent' && (isAdmin || r.status === 'approved' || r.isApproved !== false)).length})
                 </button>
-                <button
-                  onClick={() => setRequestPurpose('sale')}
-                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
-                    requestPurpose === 'sale'
-                      ? 'bg-sky-600 text-white shadow-xs'
-                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-850 hover:text-white'
-                  }`}
-                >
-                  طلبات الشراء ({tenantRequests.filter((r) => r.purpose === 'sale' && (isAdmin || r.status === 'approved' || r.isApproved !== false)).length})
-                </button>
-                <button
-                  onClick={() => setRequestPurpose('all')}
-                  className={`px-3.5 py-1.5 rounded-[12px] text-xs font-semibold transition-all cursor-pointer ${
-                    requestPurpose === 'all'
-                      ? 'bg-sky-600 text-white shadow-xs'
-                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-850 hover:text-white'
-                  }`}
-                >
-                  الكل ({tenantRequests.filter((r) => isAdmin || r.status === 'approved' || r.isApproved !== false).length})
-                </button>
-              </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+                {/* 3. على اليسار: طلبات البيع */}
                 <button
-                  onClick={() => setOverlayScreen('form_entry_request')}
-                  className="px-3.5 py-1.5 rounded-[10px] bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
-                  title="أضف طلبك العقاري"
+                  type="button"
+                  onClick={() => setRequestPurpose('sale')}
+                  className={`py-2 px-1 text-center rounded-[12px] text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    requestPurpose === 'sale'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm ring-1 ring-amber-400 font-black'
+                      : 'bg-slate-900 text-slate-300 border border-slate-800 shadow-sm hover:bg-slate-800/80 hover:text-white'
+                  }`}
                 >
-                  <PersonSearch className="w-3.5 h-3.5 text-white" />
-                  <span>أضف طلبك</span>
+                  طلبات البيع ({tenantRequests.filter((r) => r.purpose === 'sale' && (isAdmin || r.status === 'approved' || r.isApproved !== false)).length})
                 </button>
               </div>
             </div>
@@ -2081,12 +2067,12 @@ export function App() {
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-slate-400 font-medium">الفلاتر المحددة:</span>
                   {requestDistrict !== 'all' && (
-                    <span className="bg-sky-950 text-sky-300 font-semibold px-2 py-0.5 rounded-[8px] border border-sky-800">
+                    <span className="bg-slate-800 text-amber-400 font-semibold px-2 py-0.5 rounded-[8px] border border-slate-700">
                       {requestDistrict}
                     </span>
                   )}
                   {requestPropertyType !== 'all' && (
-                    <span className="bg-sky-950 text-sky-300 font-semibold px-2 py-0.5 rounded-[8px] border border-sky-800">
+                    <span className="bg-slate-800 text-amber-400 font-semibold px-2 py-0.5 rounded-[8px] border border-slate-700">
                       {requestPropertyType}
                     </span>
                   )}
@@ -2107,8 +2093,8 @@ export function App() {
 
             {/* Requests Cards List: Unified 3-column responsive grid matching PropertyCard */}
             {filteredTenantRequests.length === 0 ? (
-              <div className="bg-slate-900 p-12 rounded-[14px] text-center border border-slate-800 shadow-lg space-y-3 text-slate-200">
-                <div className="w-14 h-14 rounded-2xl bg-slate-800 text-sky-400 flex items-center justify-center mx-auto border border-slate-700">
+              <div className="bg-slate-900 p-12 rounded-[14px] text-center border border-slate-800 shadow-md space-y-3 text-slate-300">
+                <div className="w-14 h-14 rounded-2xl bg-slate-800 text-amber-400 flex items-center justify-center mx-auto border border-slate-700">
                   <Users className="w-8 h-8" />
                 </div>
                 <h3 className="font-bold text-white text-base">لا توجد طلبات مسجلة مطابقة</h3>
@@ -2117,9 +2103,9 @@ export function App() {
                 </p>
                 <button
                   onClick={() => setOverlayScreen('form_entry_request')}
-                  className="px-4 py-2 rounded-[10px] bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-[10px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                 >
-                  <PersonSearch className="w-3.5 h-3.5 text-white" />
+                  <PersonSearch className="w-3.5 h-3.5 text-slate-950" />
                   <span>إضافة طلب جديد</span>
                 </button>
               </div>

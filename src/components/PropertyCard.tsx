@@ -109,8 +109,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   return (
     <div 
       onClick={handleCardClick}
-      className={`bg-slate-900 rounded-2xl border-2 border-slate-800 hover:border-slate-750 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden mb-6 cursor-pointer group flex flex-col text-slate-100 ${
-        isExpanded ? 'border-sky-500 ring-2 ring-sky-500/20' : ''
+      className={`bg-slate-900 rounded-2xl border-2 border-slate-800 shadow-md hover:shadow-xl hover:border-slate-700 transition-all duration-300 overflow-hidden mb-6 cursor-pointer group flex flex-col ${
+        isExpanded ? 'border-amber-400/60 ring-2 ring-amber-400/20' : ''
       }`}
     >
       {/* Top Media Slider & Badges */}
@@ -131,7 +131,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         />
 
         {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/40 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/40 pointer-events-none" />
 
         {/* Multi-Image Slider Controls */}
         {hasMultipleImages && (
@@ -141,7 +141,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               type="button"
               onClick={handlePrevImage}
               aria-label="الصورة السابقة"
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-slate-950/70 hover:bg-slate-900 text-white flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 hover:scale-110 shadow-md z-10 cursor-pointer border border-slate-700/60"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 hover:scale-110 shadow-md z-10 cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -151,14 +151,14 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               type="button"
               onClick={handleNextImage}
               aria-label="الصورة التالية"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-slate-950/70 hover:bg-slate-900 text-white flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 hover:scale-110 shadow-md z-10 cursor-pointer border border-slate-700/60"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 hover:scale-110 shadow-md z-10 cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
 
             {/* Photos Counter Badge */}
-            <div className="absolute top-12 left-2.5 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-950/80 backdrop-blur-xs text-white text-[10px] font-semibold pointer-events-none shadow-xs border border-slate-750">
-              <Camera className="w-3 h-3 text-sky-400" />
+            <div className="absolute top-12 left-2.5 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-semibold pointer-events-none shadow-xs border border-white/10">
+              <Camera className="w-3 h-3 text-white" />
               <span>{currentImageIndex + 1} / {images.length}</span>
             </div>
 
@@ -172,7 +172,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                   aria-label={`الانتقال للصورة ${idx + 1}`}
                   className={`h-1.5 rounded-full transition-all cursor-pointer ${
                     idx === currentImageIndex 
-                      ? 'w-5 bg-sky-400 shadow-xs' 
+                      ? 'w-5 bg-amber-400 shadow-xs' 
                       : 'w-1.5 bg-white/50 hover:bg-white'
                   }`}
                 />
@@ -183,7 +183,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Status Overlay Watermark for Rented / Sold properties */}
         {(property.status === 'rented' || property.status === 'sold') && (
-          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] z-10 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[1px] z-10 flex items-center justify-center pointer-events-none">
             <div className={`px-4 py-2 rounded-2xl shadow-xl font-black text-sm sm:text-base tracking-wide flex items-center gap-2 border ${
               property.status === 'sold'
                 ? 'bg-rose-600/95 text-white border-rose-300/60 shadow-rose-950/40'
@@ -210,7 +210,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           <div className="flex items-center gap-1.5 pointer-events-auto">
             <div 
               onClick={handleCopyCode}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-700 font-bold text-xs shadow-sm hover:bg-slate-800 transition-colors cursor-pointer select-none"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 backdrop-blur-xs text-white font-bold text-xs shadow-sm hover:bg-slate-800 transition-colors cursor-pointer select-none border border-slate-700"
               title="انقر لنسخ الكود"
             >
               <span>كود: {property.code}</span>
@@ -229,10 +229,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                   e.stopPropagation();
                   onToggleFavorite(property.id);
                 }}
-                className={`w-7.5 h-7.5 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-125 cursor-pointer backdrop-blur-md border border-slate-700/80 ${
+                className={`w-7.5 h-7.5 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-125 cursor-pointer backdrop-blur-md border border-slate-750 ${
                   isFavorite
-                    ? 'bg-rose-500 text-white border-rose-400'
-                    : 'bg-slate-900/90 text-slate-300 hover:bg-slate-800 hover:text-rose-400'
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-rose-400'
                 }`}
                 title={isFavorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}
                 aria-label="إضافة للمفضلة"
@@ -257,19 +257,19 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               </span>
             )}
             {(property.status === 'pending' || property.status === 'pending_approval' || property.status === 'under_review') && (
-              <span className="px-2 py-1 rounded-xl bg-amber-600/90 text-white font-bold text-[10px] shadow-sm flex items-center gap-1">
+              <span className="px-2 py-1 rounded-xl bg-amber-600/90 text-white font-bold text-[10px] shadow-sm flex items-center gap-1 border border-amber-500">
                 <AlertTriangle className="w-3 h-3 text-amber-200" />
                 <span>قيد المراجعة</span>
               </span>
             )}
             <span className={`px-2.5 py-1 rounded-xl font-bold text-xs shadow-xs ${
               property.purpose === 'rent'
-                ? 'bg-[#002B49] text-white'
-                : 'bg-amber-600 text-white'
+                ? 'bg-blue-600 text-white'
+                : 'bg-amber-500 text-slate-950'
             }`}>
               {property.purpose === 'rent' ? 'للإيجار' : 'للبيع'}
             </span>
-            <span className="px-2 py-1 rounded-xl bg-black/60 backdrop-blur-xs text-white text-xs font-medium">
+            <span className="px-2 py-1 rounded-xl bg-slate-900/80 backdrop-blur-xs text-slate-200 text-xs font-medium border border-slate-700">
               {property.propertyType}
             </span>
           </div>
@@ -277,18 +277,18 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Bottom floating source / district */}
         <div className="absolute bottom-2 right-2.5 left-2.5 flex items-center justify-between text-white text-xs pointer-events-none z-10">
-          <span className="bg-black/45 backdrop-blur-xs px-2 py-0.5 rounded-lg text-[10px] font-medium">
+          <span className="bg-slate-900/80 backdrop-blur-xs px-2 py-0.5 rounded-lg text-[10px] font-medium border border-slate-750 text-slate-300">
             المصدر: {property.source}
           </span>
-          <span className="flex items-center gap-1 bg-black/45 backdrop-blur-xs px-2 py-0.5 rounded-lg text-[10px] font-semibold text-white">
-            <MapPin className="w-3 h-3 text-amber-300" />
+          <span className="flex items-center gap-1 bg-slate-900/80 backdrop-blur-xs px-2 py-0.5 rounded-lg text-[10px] font-semibold text-white border border-slate-750">
+            <MapPin className="w-3 h-3 text-amber-400" />
             {property.district}
           </span>
         </div>
       </div>
 
       {/* Body Info */}
-      <div className="p-4 flex-1 flex flex-col justify-between space-y-3 bg-slate-900 text-slate-100">
+      <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
         <div>
           {/* Title */}
           <h3 className="font-bold text-white text-sm sm:text-base leading-snug line-clamp-2 group-hover:text-amber-400 transition-colors">
@@ -297,8 +297,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
           {/* Address & Verified 5-Star Rating Row */}
           <div className="flex items-center justify-between gap-2 mt-1.5 flex-wrap">
-            <p className="text-xs text-slate-300 flex items-center gap-1 line-clamp-1 min-w-0">
-              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <p className="text-xs text-slate-400 flex items-center gap-1 line-clamp-1 min-w-0">
+              <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               <span className="truncate">{property.address}</span>
             </p>
 
@@ -312,8 +312,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               }}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                 ratingSummary && ratingSummary.count > 0
-                  ? 'bg-amber-950/40 border-amber-500/40 text-amber-300 shadow-2xs'
-                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750'
+                  ? 'bg-slate-800 border-amber-500/40 text-amber-400 shadow-2xs'
+                  : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-slate-750'
               }`}
               title="تقييمات المعاينة الميدانية الموثقة (اضغط للمعاينة والتقييم)"
             >
@@ -331,7 +331,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
 
         {/* Specifications Details Row */}
-        <div className="bg-slate-800/90 rounded-2xl p-2.5 border border-slate-700/80 flex items-center justify-around text-xs text-slate-250">
+        <div className="bg-slate-800/90 rounded-2xl p-2.5 border border-slate-700/80 flex items-center justify-around text-xs text-slate-300">
           {/* Area */}
           <div className="flex items-center gap-1.5">
             <Maximize2 className="w-3.5 h-3.5 text-sky-400 shrink-0" />
@@ -384,29 +384,29 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           }}
           className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-all select-none cursor-pointer ${
             isExpanded 
-              ? 'bg-slate-800 text-sky-300 border border-slate-700 shadow-2xs font-bold' 
-              : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300 border border-slate-700/60'
+              ? 'bg-slate-800 text-amber-400 border border-amber-400/30 shadow-2xs font-bold' 
+              : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300 border border-slate-700/70'
           }`}
           title={isExpanded ? 'انقر لطي التفاصيل المختصرة' : 'انقر لعرض تفاصيل إضافية مختصرة'}
         >
           <span className="flex items-center gap-1.5">
-            <Layers className={`w-3.5 h-3.5 shrink-0 ${isExpanded ? 'text-sky-400' : 'text-slate-400'}`} />
+            <Layers className={`w-3.5 h-3.5 shrink-0 ${isExpanded ? 'text-amber-400' : 'text-slate-400'}`} />
             <span>
               {isExpanded ? 'تفاصيل مختصرة معروضة (انقر للطي)' : 'انقر على أي مساحة لعرض تفاصيل إضافية مختصرة'}
             </span>
           </span>
-          <ChevronDown className={`w-4 h-4 transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180 text-sky-400' : 'text-slate-400'}`} />
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180 text-amber-400' : 'text-slate-400'}`} />
         </div>
 
         {/* Expanded Concise Details Panel (المساحة، الغرف، الحمامات، الدور، المصعد، المرافق) */}
         {isExpanded && (
           <div 
-            className="p-3 rounded-xl bg-slate-800/95 border border-slate-700 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200"
+            className="p-3 rounded-xl bg-slate-800 border border-slate-700 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-1.5 border-b border-slate-700 text-xs">
-              <span className="font-bold text-sky-300 flex items-center gap-1">
-                <Building className="w-3.5 h-3.5 text-sky-400" />
+              <span className="font-bold text-amber-400 flex items-center gap-1">
+                <Building className="w-3.5 h-3.5 text-amber-400" />
                 <span>ملخص مواصفات العقار كود ({property.code})</span>
               </span>
               <span className="text-[11px] text-sky-300 font-bold bg-slate-900 px-2 py-0.5 rounded-md border border-slate-700">
@@ -416,7 +416,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
             {/* Quick Specs Grid */}
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-slate-900 p-2 rounded-lg border border-slate-700/80 flex items-center justify-between">
+              <div className="bg-slate-900 p-2 rounded-lg border border-slate-750 flex items-center justify-between">
                 <span className="text-slate-400 flex items-center gap-1">
                   <Maximize2 className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                   <span>المساحة:</span>
@@ -424,7 +424,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 <span className="font-extrabold text-white">{property.area} م²</span>
               </div>
 
-              <div className="bg-slate-900 p-2 rounded-lg border border-slate-700/80 flex items-center justify-between">
+              <div className="bg-slate-900 p-2 rounded-lg border border-slate-750 flex items-center justify-between">
                 <span className="text-slate-400 flex items-center gap-1">
                   <Bed className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                   <span>عدد الغرف:</span>
@@ -434,7 +434,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 </span>
               </div>
 
-              <div className="bg-slate-900 p-2 rounded-lg border border-slate-700/80 flex items-center justify-between">
+              <div className="bg-slate-900 p-2 rounded-lg border border-slate-750 flex items-center justify-between">
                 <span className="text-slate-400 flex items-center gap-1">
                   <Bath className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                   <span>الحمامات:</span>
@@ -444,7 +444,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 </span>
               </div>
 
-              <div className="bg-slate-900 p-2 rounded-lg border border-slate-700/80 flex items-center justify-between">
+              <div className="bg-slate-900 p-2 rounded-lg border border-slate-750 flex items-center justify-between">
                 <span className="text-slate-400 flex items-center gap-1">
                   <Building className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                   <span>الدور / الطابق:</span>
@@ -456,7 +456,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 </span>
               </div>
 
-              <div className="bg-slate-900 p-2 rounded-lg border border-slate-700/80 flex items-center justify-between col-span-2">
+              <div className="bg-slate-900 p-2 rounded-lg border border-slate-750 flex items-center justify-between col-span-2">
                 <span className="text-slate-400 flex items-center gap-1">
                   <Compass className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                   <span>الواجهة والمصعد:</span>
@@ -469,27 +469,27 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
             {/* Utilities Chips */}
             {property.utilities && (
-              <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-700/80">
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 border ${
-                  property.utilities.electricity?.available ? 'bg-amber-950/60 text-amber-300 border-amber-600/40' : 'bg-slate-900 text-slate-500 border-slate-800'
+              <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-700">
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 ${
+                  property.utilities.electricity?.available ? 'bg-amber-950/80 text-amber-300 border border-amber-800' : 'bg-slate-900 text-slate-500 border border-slate-750'
                 }`}>
                   <Zap className="w-3 h-3" />
                   <span>كهرباء</span>
                 </span>
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 border ${
-                  property.utilities.water?.available ? 'bg-sky-950/60 text-sky-300 border-sky-600/40' : 'bg-slate-900 text-slate-500 border-slate-800'
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 ${
+                  property.utilities.water?.available ? 'bg-sky-950/80 text-sky-300 border border-sky-800' : 'bg-slate-900 text-slate-500 border border-slate-750'
                 }`}>
                   <Droplets className="w-3 h-3" />
                   <span>مياه</span>
                 </span>
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 border ${
-                  property.utilities.gas?.available ? 'bg-orange-950/60 text-orange-300 border-orange-600/40' : 'bg-slate-900 text-slate-500 border-slate-800'
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 ${
+                  property.utilities.gas?.available ? 'bg-orange-950/80 text-orange-300 border border-orange-800' : 'bg-slate-900 text-slate-500 border border-slate-750'
                 }`}>
                   <Flame className="w-3 h-3" />
                   <span>غاز طبيعي</span>
                 </span>
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 border ${
-                  property.utilities.internet?.available ? 'bg-emerald-950/60 text-emerald-300 border-emerald-600/40' : 'bg-slate-900 text-slate-500 border-slate-800'
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 ${
+                  property.utilities.internet?.available ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800' : 'bg-slate-900 text-slate-500 border border-slate-750'
                 }`}>
                   <Wifi className="w-3 h-3" />
                   <span>إنترنت</span>
@@ -499,8 +499,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
             {/* Description excerpt */}
             {property.description && (
-              <div className="text-[11px] text-slate-300 bg-slate-900 p-2 rounded-lg border border-slate-700/80 leading-relaxed line-clamp-2">
-                <span className="font-bold text-slate-200 block mb-0.5">نبذة مختصرة:</span>
+              <div className="text-[11px] text-slate-300 bg-slate-900 p-2 rounded-lg border border-slate-750 leading-relaxed line-clamp-2">
+                <span className="font-bold text-amber-400 block mb-0.5">نبذة مختصرة:</span>
                 {property.description}
               </div>
             )}
@@ -542,7 +542,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between gap-2">
           {/* Price */}
           <div>
-            <div className="text-emerald-400 font-extrabold text-base sm:text-lg leading-none">
+            <div className="text-amber-400 font-bold text-base sm:text-lg leading-none">
               {formatPrice(property.price)}
               <span className="text-xs font-semibold text-slate-400 mr-1">
                 {property.purpose === 'rent' ? 'ج.م / شهر' : 'ج.م إجمالي'}
@@ -566,8 +566,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 }}
                 className={`h-9 px-3 rounded-xl text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 transition-colors shadow-2xs ${
                   property.status === 'needs_completion'
-                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black'
-                    : 'bg-slate-800 hover:bg-slate-750 text-sky-300 border border-slate-700'
+                    ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold'
+                    : 'bg-slate-800 hover:bg-slate-750 text-sky-400 border border-slate-700'
                 }`}
                 title="تعديل بيانات الإعلان"
               >
@@ -580,7 +580,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             <button
               type="button"
               onClick={handleWhatsApp}
-              className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
               title="تواصل مع إدارة التطبيق عبر واتساب"
             >
               <MessageSquare className="w-4 h-4 shrink-0" />
@@ -593,7 +593,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 e.stopPropagation();
                 onOpenDetails(property);
               }}
-              className="h-9 px-3.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              className="h-9 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
               title="عرض التفاصيل"
             >
               <ArrowUpRight className="w-4 h-4 shrink-0" />
@@ -609,7 +609,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               e.stopPropagation();
               onEdit?.(property);
             }}
-            className="mt-2 p-2.5 rounded-xl bg-amber-950/70 hover:bg-amber-950 border border-amber-600/70 text-xs text-amber-200 font-semibold flex items-center justify-between gap-2 cursor-pointer shadow-2xs transition-all"
+            className="mt-2 p-2.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/60 border border-amber-600/80 text-xs text-amber-300 font-semibold flex items-center justify-between gap-2 cursor-pointer shadow-2xs transition-all"
             title="انقر هنا للدخول مباشرة لشاشة التعديل واستيفاء البيانات المطلوبة"
           >
             <div className="flex items-start gap-1.5 flex-1">
