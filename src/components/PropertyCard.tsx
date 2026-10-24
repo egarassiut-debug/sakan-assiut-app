@@ -115,7 +115,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     >
       {/* Top Media Slider & Badges */}
       <div 
-        className="relative aspect-16/9 w-full bg-slate-950 overflow-hidden select-none"
+        className="relative h-44 sm:h-48 w-full bg-slate-950 overflow-hidden select-none"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -262,15 +262,17 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 <span>قيد المراجعة</span>
               </span>
             )}
+            {/* نوع العقار: بجوار شارة الإيجار/البيع من جهة اليمين */}
+            <span className="px-2 py-1 rounded-xl bg-slate-900/80 backdrop-blur-xs text-slate-200 text-xs font-medium border border-slate-700">
+              {property.propertyType}
+            </span>
+            {/* شارة للإيجار / للبيع: في أقصى اليسار تماماً */}
             <span className={`px-2.5 py-1 rounded-xl font-bold text-xs shadow-xs ${
               property.purpose === 'rent'
                 ? 'bg-blue-600 text-white'
                 : 'bg-amber-500 text-slate-950'
             }`}>
               {property.purpose === 'rent' ? 'للإيجار' : 'للبيع'}
-            </span>
-            <span className="px-2 py-1 rounded-xl bg-slate-900/80 backdrop-blur-xs text-slate-200 text-xs font-medium border border-slate-700">
-              {property.propertyType}
             </span>
           </div>
         </div>
@@ -376,29 +378,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           )}
         </div>
 
-        {/* Expandable Concise Details Hint & Toggle */}
-        <div 
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsExpanded(!isExpanded);
-          }}
-          className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-all select-none cursor-pointer ${
-            isExpanded 
-              ? 'bg-slate-800 text-amber-400 border border-amber-400/30 shadow-2xs font-bold' 
-              : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300 border border-slate-700/70'
-          }`}
-          title={isExpanded ? 'انقر لطي التفاصيل المختصرة' : 'انقر لعرض تفاصيل إضافية مختصرة'}
-        >
-          <span className="flex items-center gap-1.5">
-            <Layers className={`w-3.5 h-3.5 shrink-0 ${isExpanded ? 'text-amber-400' : 'text-slate-400'}`} />
-            <span>
-              {isExpanded ? 'تفاصيل مختصرة معروضة (انقر للطي)' : 'انقر على أي مساحة لعرض تفاصيل إضافية مختصرة'}
-            </span>
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180 text-amber-400' : 'text-slate-400'}`} />
-        </div>
-
-        {/* Expanded Concise Details Panel (المساحة، الغرف، الحمامات، الدور، المصعد، المرافق) */}
+        {/* Concise Specs & Details: toggled via direct card container click without visual banner clutter */}
         {isExpanded && (
           <div 
             className="p-3 rounded-xl bg-slate-800 border border-slate-700 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200"
@@ -538,25 +518,25 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
         )}
 
-        {/* Price & Action Buttons */}
+        {/* Price & Action Buttons: Resilient flex layout that never breaks with large figures */}
         <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between gap-2">
-          {/* Price */}
-          <div>
-            <div className="text-amber-400 font-bold text-base sm:text-lg leading-none">
+          {/* Price: Max-width constraint so large numbers (e.g. 5,000,000 ج.م) never crush buttons */}
+          <div className="min-w-0 max-w-[46%] sm:max-w-[48%]">
+            <div className="text-amber-400 font-bold text-base sm:text-lg leading-tight truncate">
               {formatPrice(property.price)}
-              <span className="text-xs font-semibold text-slate-400 mr-1">
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-400 mr-1">
                 {property.purpose === 'rent' ? 'ج.م / شهر' : 'ج.م إجمالي'}
               </span>
             </div>
             {property.deposit && (
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[10px] text-slate-400 block truncate mt-0.5">
                 تأمين: {formatPrice(property.deposit)} ج.م
               </span>
             )}
           </div>
 
-          {/* Actions Container */}
-          <div className="flex flex-row flex-wrap items-center justify-start gap-2">
+          {/* Actions Container: flex-shrink-0 ensures action buttons never get squeezed or deformed */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {onEdit && (
               <button
                 type="button"
@@ -564,7 +544,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                   e.stopPropagation();
                   onEdit(property);
                 }}
-                className={`h-9 px-3 rounded-xl text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 transition-colors shadow-2xs ${
+                className={`h-9 px-2.5 sm:px-3 rounded-xl text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors shadow-2xs shrink-0 cursor-pointer ${
                   property.status === 'needs_completion'
                     ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold'
                     : 'bg-slate-800 hover:bg-slate-750 text-sky-400 border border-slate-700'
@@ -580,7 +560,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             <button
               type="button"
               onClick={handleWhatsApp}
-              className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              className="h-9 px-2.5 sm:px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
               title="تواصل مع إدارة التطبيق عبر واتساب"
             >
               <MessageSquare className="w-4 h-4 shrink-0" />
@@ -593,7 +573,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 e.stopPropagation();
                 onOpenDetails(property);
               }}
-              className="h-9 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              className="h-9 px-3 sm:px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
               title="عرض التفاصيل"
             >
               <ArrowUpRight className="w-4 h-4 shrink-0" />

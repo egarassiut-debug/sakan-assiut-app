@@ -36,13 +36,25 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
   }[request.urgency || 'within_month'];
 
   return (
-    <div className="group bg-slate-900 rounded-2xl border-2 border-slate-800 shadow-md hover:shadow-xl hover:border-slate-700 transition-all duration-300 overflow-hidden mb-6 flex flex-col justify-between">
+    <div 
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('a')) return;
+        onOpenDetails?.(request);
+      }}
+      className="group bg-slate-900 rounded-2xl border-2 border-slate-800 shadow-md hover:shadow-xl hover:border-slate-700 transition-all duration-300 overflow-hidden mb-6 flex flex-col justify-between cursor-pointer"
+    >
       {/* Top Banner / Visual Header matching PropertyCard height */}
       <div className="relative h-40 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-850 p-3.5 flex flex-col justify-between border-b border-slate-800 select-none">
         
         {/* Top Badges Row */}
         <div className="flex items-center justify-between gap-2 z-10">
           <div className="flex items-center gap-1.5 flex-wrap">
+            {/* نوع الوحدة على اليمين */}
+            <span className="px-2 py-1 rounded-[8px] bg-slate-800/90 backdrop-blur-xs text-slate-200 text-xs font-semibold border border-slate-700">
+              {request.propertyType}
+            </span>
+            {/* شارة الغرض في أقصى اليسار */}
             <span
               className={`px-2.5 py-1 rounded-[8px] font-bold text-xs shadow-xs ${
                 isRent
@@ -51,9 +63,6 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
               }`}
             >
               {isRent ? 'مطلوب للإيجار' : 'مطلوب للشراء'}
-            </span>
-            <span className="px-2 py-1 rounded-[8px] bg-slate-800/90 backdrop-blur-xs text-slate-200 text-xs font-semibold border border-slate-700">
-              {request.propertyType}
             </span>
           </div>
 
@@ -132,21 +141,21 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
 
         {/* Price & Action Buttons matching PropertyCard layout */}
         <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between gap-2">
-          {/* Price / Budget */}
-          <div>
-            <div className="text-amber-400 font-bold text-base sm:text-lg leading-none">
+          {/* Price / Budget: Resilient max-width */}
+          <div className="min-w-0 max-w-[46%] sm:max-w-[48%]">
+            <div className="text-amber-400 font-bold text-base sm:text-lg leading-tight truncate">
               {request.maxPrice > 0 ? request.maxPrice.toLocaleString('ar-EG') : 'حسب العرض'}
-              <span className="text-xs font-semibold text-slate-400 mr-1">
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-400 mr-1">
                 {request.maxPrice > 0 ? (isRent ? 'ج.م / حد أقصى' : 'ج.م إجمالي') : ''}
               </span>
             </div>
-            <span className="text-[10px] text-slate-400 block mt-0.5">
+            <span className="text-[10px] text-slate-400 block truncate mt-0.5">
               ميزانية العميل المطلوبة
             </span>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-row flex-wrap items-center justify-start gap-2">
+          {/* Action Buttons: flex-shrink-0 */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {onEdit && (
               <button
                 type="button"
@@ -154,7 +163,7 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
                   e.stopPropagation();
                   onEdit(request);
                 }}
-                className="h-9 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-sky-400 border border-slate-700 text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                className="h-9 px-2.5 sm:px-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-sky-400 border border-slate-700 text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
                 title="تعديل بيانات طلب السكن"
               >
                 <Edit3 className="w-4 h-4 shrink-0" />
@@ -165,7 +174,7 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
             <button
               type="button"
               onClick={handleWhatsApp}
-              className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              className="h-9 px-2.5 sm:px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
               title="تواصل مع إدارة التطبيق بخصوص هذا الطلب"
             >
               <MessageSquare className="w-4 h-4 shrink-0" />
@@ -180,7 +189,7 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
                   e.stopPropagation();
                   onOpenDetails(request);
                 }}
-                className="h-9 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold inline-flex flex-row items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                className="h-9 px-3 sm:px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
                 title="عرض تفاصيل الطلب الكاملة"
               >
                 <ArrowUpRight className="w-4 h-4 shrink-0" />

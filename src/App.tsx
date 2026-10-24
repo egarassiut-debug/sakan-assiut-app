@@ -33,6 +33,7 @@ import { SupabaseSyncErrorModal } from './components/SupabaseSyncErrorModal';
 import { AuthScreen } from './components/AuthScreen';
 import { MyAdsScreen } from './components/MyAdsScreen';
 import { InAppPushBanner } from './components/InAppPushBanner';
+import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { isSecureAdminSession, clearSecureSession } from './utils/security';
 import { playPushChime } from './utils/pushSound';
@@ -57,17 +58,31 @@ import {
   runStorageMaintenance 
 } from './utils/storageManager';
 
-// Code-split heavy components & modals for minimal initial bundle and fast startup
-const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
-const FormEntryScreen = lazy(() => import('./components/FormEntryScreen').then(m => ({ default: m.FormEntryScreen })));
-const PropertyDetailsModal = lazy(() => import('./components/PropertyDetailsModal').then(m => ({ default: m.PropertyDetailsModal })));
-const TenantRequestDetailsModal = lazy(() => import('./components/TenantRequestDetailsModal').then(m => ({ default: m.TenantRequestDetailsModal })));
-const InspectionModal = lazy(() => import('./components/InspectionModal').then(m => ({ default: m.InspectionModal })));
-const NotificationCenterModal = lazy(() => import('./components/NotificationCenterModal').then(m => ({ default: m.NotificationCenterModal })));
-const SmartMatchingResultsModal = lazy(() => import('./components/SmartMatchingResultsModal').then(m => ({ default: m.SmartMatchingResultsModal })));
-const SavedSearchModal = lazy(() => import('./components/SavedSearchModal').then(m => ({ default: m.SavedSearchModal })));
-const FavoritesModal = lazy(() => import('./components/FavoritesModal').then(m => ({ default: m.FavoritesModal })));
-const PropertyRatingModal = lazy(() => import('./components/PropertyRatingModal').then(m => ({ default: m.PropertyRatingModal })));
+// Resilient dynamic chunk loader with automatic retry for transient network hiccups
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    try {
+      return await factory();
+    } catch (err) {
+      console.warn('Chunk loading failed, retrying module load...', err);
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      return await factory();
+    }
+  });
+}
+
+// Code-split heavy components & modals for optimal runtime performance
+const AdminPanel = lazyWithRetry(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
+const FormEntryScreen = lazyWithRetry(() => import('./components/FormEntryScreen').then(m => ({ default: m.FormEntryScreen })));
+const PropertyDetailsModal = lazyWithRetry(() => import('./components/PropertyDetailsModal').then(m => ({ default: m.PropertyDetailsModal })));
+const TenantRequestDetailsModal = lazyWithRetry(() => import('./components/TenantRequestDetailsModal').then(m => ({ default: m.TenantRequestDetailsModal })));
+const InspectionModal = lazyWithRetry(() => import('./components/InspectionModal').then(m => ({ default: m.InspectionModal })));
+const SmartMatchingResultsModal = lazyWithRetry(() => import('./components/SmartMatchingResultsModal').then(m => ({ default: m.SmartMatchingResultsModal })));
+const SavedSearchModal = lazyWithRetry(() => import('./components/SavedSearchModal').then(m => ({ default: m.SavedSearchModal })));
+const FavoritesModal = lazyWithRetry(() => import('./components/FavoritesModal').then(m => ({ default: m.FavoritesModal })));
+const PropertyRatingModal = lazyWithRetry(() => import('./components/PropertyRatingModal').then(m => ({ default: m.PropertyRatingModal })));
 import { 
   Search, 
   Building2, 
@@ -1833,23 +1848,33 @@ export function App() {
               </div>
             </div>
 
-            {/* Active Filters Clear Badge */}
-            {(selectedDistrict !== 'all' || selectedPropertyType !== 'all' || searchQuery || excludeEnded) && (
+            {/* Active Filters Summary Chips Bar */}
+            {(selectedDistrict !== 'all' || selectedPropertyType !== 'all' || searchQuery || purposeFilter !== 'all' || excludeEnded) && (
               <div className="flex items-center justify-between text-xs px-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-slate-400 font-medium">الفلاتر المحددة:</span>
                   {selectedDistrict !== 'all' && (
-                    <span className="bg-slate-800 text-amber-400 font-semibold px-2 py-0.5 rounded-lg border border-slate-700">
+                    <span className="bg-slate-800 text-amber-400 font-semibold px-2 py-0.5 rounded-[8px] border border-slate-700">
                       {selectedDistrict}
                     </span>
                   )}
                   {selectedPropertyType !== 'all' && (
-                    <span className="bg-slate-800 text-amber-400 font-semibold px-2 py-0.5 rounded-lg border border-slate-700">
+                    <span className="bg-slate-800 text-amber-400 font-semibold px-2 py-0.5 rounded-[8px] border border-slate-700">
                       {selectedPropertyType}
                     </span>
                   )}
+                  {purposeFilter === 'rent' && (
+                    <span className="bg-blue-900/60 text-blue-300 font-semibold px-2 py-0.5 rounded-[8px] border border-blue-700">
+                      عروض الإيجار
+                    </span>
+                  )}
+                  {purposeFilter === 'sale' && (
+                    <span className="bg-amber-950/80 text-amber-300 font-semibold px-2 py-0.5 rounded-[8px] border border-amber-800">
+                      عروض البيع
+                    </span>
+                  )}
                   {excludeEnded && (
-                    <span className="bg-amber-950/80 text-amber-300 font-semibold px-2 py-0.5 rounded-lg border border-amber-800">
+                    <span className="bg-amber-950/80 text-amber-300 font-semibold px-2 py-0.5 rounded-[8px] border border-amber-800">
                       استبعاد المنتهي (مؤجر/مباع)
                     </span>
                   )}
@@ -1859,6 +1884,7 @@ export function App() {
                     setSelectedDistrict('all');
                     setSelectedPropertyType('all');
                     setSearchQuery('');
+                    setPurposeFilter('all');
                     setExcludeEnded(false);
                   }}
                   className="text-xs text-rose-400 hover:underline font-semibold cursor-pointer shrink-0"
