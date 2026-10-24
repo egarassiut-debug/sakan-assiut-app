@@ -16,6 +16,7 @@ import {
   Phone, MessageCircle, User, Database, RefreshCw
 } from 'lucide-react';
 import { UserManagement } from './UserManagement';
+import { AdminDrawer, AdminSectionId, ADMIN_NAVIGATION_ITEMS } from './AdminDrawer';
 import { exportToCSV, exportToPrintablePDF } from '../utils/exportUtils';
 import { 
   isSupabaseActive, 
@@ -92,10 +93,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onToggleDrawer,
   onCloseDrawer,
 }) => {
-  // Active Section & Slide-over Drawer State
-  const [activeSection, setActiveSection] = useState<
-    'dropdowns' | 'moderation' | 'inspections' | 'users' | 'admins' | 'analytics' | 'blocks' | 'export_settings'
-  >('dropdowns');
+  // Active Section & Slide-over Drawer State (Defaults to #1 priority: moderation)
+  const [activeSection, setActiveSection] = useState<AdminSectionId>('moderation');
   const [internalDrawerOpen, setInternalDrawerOpen] = useState(false);
 
   const isDrawerOpen = propIsDrawerOpen !== undefined ? propIsDrawerOpen : internalDrawerOpen;
@@ -115,6 +114,47 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDrawerOpen]);
+
+  // Swipe gesture: Swipe from right edge to left to open drawer, or swipe left-to-right to close
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      touchStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        time: Date.now(),
+      };
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!touchStartRef.current) return;
+      const touch = e.changedTouches[0];
+      const deltaX = touchStartRef.current.x - touch.clientX; // positive when dragging right to left
+      const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+      const deltaTime = Date.now() - touchStartRef.current.time;
+
+      // In RTL Arabic layout:
+      // If user drags from right towards left by at least 40px and horizontal motion is dominant:
+      if (!isDrawerOpen && deltaX > 40 && deltaX > deltaY * 1.1 && deltaTime < 700) {
+        setIsDrawerOpen(true);
+      } else if (isDrawerOpen && deltaX < -40 && Math.abs(deltaX) > deltaY * 1.1) {
+        // Swiping left-to-right closes the drawer
+        setIsDrawerOpen(false);
+      }
+
+      touchStartRef.current = null;
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
   }, [isDrawerOpen]);
 
   const pendingModerationCount = useMemo(() => {
@@ -387,187 +427,150 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setIsExportOpen(false);
   };
 
-  const menuItems = [
-    {
-      id: 'dropdowns' as const,
-      title: 'أدوات الواجهة والفلاتر',
-      subtitle: 'الأحياء، أنواع الوحدات، والمرافق',
-      icon: SlidersHorizontal,
-    },
-    {
-      id: 'moderation' as const,
-      title: 'الموافقات ومراجعة الإعلانات',
-      subtitle: 'اعتماد عروض العقارات وطلبات السكن',
-      icon: VerifiedUserIcon,
-      badge: pendingModerationCount > 0 ? pendingModerationCount : null,
-      badgeColor: 'bg-rose-500 text-white animate-pulse',
-    },
-    {
-      id: 'inspections' as const,
-      title: 'المعاينات الميدانية',
-      subtitle: 'مواعيد المعاينات وتأكيد الرسوم',
-      icon: Calendar,
-      badge: pendingInspectionsCount > 0 ? pendingInspectionsCount : null,
-      badgeColor: 'bg-amber-500 text-white',
-    },
-    {
-      id: 'users' as const,
-      title: 'إدارة المستخدمين',
-      subtitle: 'حسابات العملاء والوسطاء والملاك',
-      icon: UserCheck,
-    },
-    {
-      id: 'admins' as const,
-      title: 'إدارة المدراء والصلاحيات',
-      subtitle: 'فريق الإدارة وسجل العمليات',
-      icon: Users,
-    },
-    {
-      id: 'analytics' as const,
-      title: 'إحصائيات العقارات',
-      subtitle: 'تحليلات الأسعار والرسوم البيانية',
-      icon: BarChart3,
-    },
-    {
-      id: 'blocks' as const,
-      title: 'حظر المستخدمين (البلوكات)',
-      subtitle: 'قائمة الأرقام المحظورة',
-      icon: Ban,
-      badge: blockedUsers.length > 0 ? blockedUsers.length : null,
-      badgeColor: 'bg-slate-200 text-slate-800',
-    },
-    {
-      id: 'export_settings' as const,
-      title: 'الإعدادات وتصدير البيانات',
-      subtitle: 'تصدير Excel/PDF وضبط النظام',
-      icon: Download,
-    },
-  ];
+  // Active Section Metadata lookup from ADMIN_NAVIGATION_ITEMS
+  const activeNavItem = useMemo(() => {
+    return ADMIN_NAVIGATION_ITEMS.find((m) => m.id === activeSection) || ADMIN_NAVIGATION_ITEMS[0];
+  }, [activeSection]);
+
   return (
     <div className="space-y-4">
       {/* ========================================================================= */}
-      {/* Slide-over Drawer (القائمة الجانبية المنزلقة) & Backdrop Overlay */}
+      {/* 1. القائمة الجانبية المنزلقة للموبايل (Mobile Slide-over Drawer) */}
       {/* ========================================================================= */}
-      {/* 1. Backdrop Overlay */}
-      <div
-        onClick={() => setIsDrawerOpen(false)}
-        className={`fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 transition-opacity duration-300 ease-in-out ${
-          isDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-        aria-hidden="true"
+      <AdminDrawer
+        variant="drawer"
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        activeSection={activeSection}
+        onSelectSection={(sec) => setActiveSection(sec)}
+        currentUser={currentUser}
+        pendingModerationCount={pendingModerationCount}
+        pendingInspectionsCount={pendingInspectionsCount}
+        blockedUsersCount={blockedUsers.length}
+        onLockAdmin={onLockAdmin}
       />
 
-      {/* 2. Slide-over Drawer Panel (في حدود نصف الشاشة: 50% من عرض الشاشة) */}
-      <aside
-        className={`fixed inset-y-0 right-0 z-50 h-full w-[50vw] max-w-[50vw] bg-slate-900 shadow-2xl flex flex-col border-l border-slate-800 transform transition-transform duration-300 ease-out ${
-          isDrawerOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
-        }`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="قائمة لوحة التحكم"
-      >
-        {/* Drawer Header */}
-        <div className="bg-[#0F172A] text-white p-3 sm:p-4 flex items-center justify-between border-b border-slate-800 shrink-0">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/10 flex items-center justify-center text-amber-400 shrink-0">
-              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h3 className="text-xs sm:text-base font-bold text-white truncate">لوحة التحكم</h3>
-                <span className="hidden sm:inline-block text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold">إدارة</span>
+      {/* ========================================================================= */}
+      {/* 2-Column Responsive Layout: Persistent Sidebar (Desktop) + Main Content */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
+        {/* ========================================================================= */}
+        {/* 2. القائمة الجانبية الثابتة على شاشات الديسكتوب (Desktop Sidebar) */}
+        {/* ========================================================================= */}
+        <div className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-20">
+          <AdminDrawer
+            variant="sidebar"
+            isOpen={true}
+            onClose={() => {}}
+            activeSection={activeSection}
+            onSelectSection={(sec) => setActiveSection(sec)}
+            currentUser={currentUser}
+            pendingModerationCount={pendingModerationCount}
+            pendingInspectionsCount={pendingInspectionsCount}
+            blockedUsersCount={blockedUsers.length}
+            onLockAdmin={onLockAdmin}
+          />
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 3. Main Content View (العمود الرئيسي للمحتوى) */}
+        {/* ========================================================================= */}
+        <div className="flex-1 min-w-0 w-full space-y-4">
+          {/* Top Admin Bar: Single Compact, Flat Horizontal Strip in Royal Dark Navy */}
+          <div className="bg-[#0F172A] border border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-md flex items-center justify-between gap-2.5">
+            {/* Right: Sleek mini Drawer Trigger Button (located right under header/logo) + Active Section */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsDrawerOpen(true)}
+                className="w-8 h-8 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-2xs shrink-0"
+                title="فتح القائمة الجانبية للأقسام (أو اسحب الشاشة من اليمين)"
+              >
+                <Menu className="w-4 h-4 text-blue-400 stroke-[2.5]" />
+              </button>
+
+              <div className="h-5 w-px bg-slate-800 shrink-0 hidden sm:block" />
+
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-400/30 flex items-center justify-center shrink-0">
+                  {React.createElement(activeNavItem.icon, { className: 'w-3.5 h-3.5' })}
+                </div>
+                <span className="text-xs font-bold text-white truncate hidden md:inline max-w-[140px]">
+                  {activeNavItem.title}
+                </span>
               </div>
-              <p className="text-[10px] sm:text-xs text-slate-300 truncate hidden sm:block">أقسام وإعدادات سكن أسيوط</p>
+            </div>
+
+            {/* Center: Scrollable Horizontal Flat Tabs (شريط مسطح منظم لكافة أقسام الإدارة) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1 min-w-0">
+              {ADMIN_NAVIGATION_ITEMS.map((item) => {
+                const isActive = activeSection === item.id;
+                const Icon = item.icon;
+                const badge =
+                  item.id === 'moderation'
+                    ? pendingModerationCount > 0 ? pendingModerationCount : null
+                    : item.id === 'inspections'
+                    ? pendingInspectionsCount > 0 ? pendingInspectionsCount : null
+                    : item.id === 'blocks'
+                    ? blockedUsers.length > 0 ? blockedUsers.length : null
+                    : null;
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveSection(item.id)}
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      isActive
+                        ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-xs'
+                        : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-amber-400' : 'text-slate-400'}`} />
+                    <span className="whitespace-nowrap">{item.title}</span>
+                    {badge !== null && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          item.id === 'moderation'
+                            ? 'bg-rose-500 text-white animate-pulse'
+                            : 'bg-amber-500 text-slate-950 font-black'
+                        }`}
+                      >
+                        {badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Left: Quick Status Alert & Lock button */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {pendingModerationCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('moderation')}
+                  className="px-2 py-1 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[11px] font-bold flex items-center gap-1 animate-pulse cursor-pointer shrink-0"
+                  title="عناصر بانتظار المراجعة"
+                >
+                  <AlertTriangle className="w-3 h-3 text-rose-400" />
+                  <span className="hidden sm:inline">{pendingModerationCount} للمراجعة</span>
+                  <span className="sm:hidden">{pendingModerationCount}</span>
+                </button>
+              )}
+
+              {onLockAdmin && (
+                <button
+                  type="button"
+                  onClick={onLockAdmin}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-700 shrink-0"
+                  title="قفل لوحة التحكم"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
-          <button
-            onClick={() => setIsDrawerOpen(false)}
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
-            title="إغلاق القائمة"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Drawer Menu Items List */}
-        <div className="flex-1 overflow-y-auto p-2.5 sm:p-3.5 space-y-1.5 divide-y divide-slate-800">
-          <div className="text-[10px] sm:text-xs font-bold text-slate-400 px-2 py-1 uppercase tracking-wider flex items-center justify-between">
-            <span className="truncate">أقسام الإدارة</span>
-            <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono font-bold shrink-0">
-              {menuItems.length}
-            </span>
-          </div>
-
-          <nav className="space-y-1.5 pt-2">
-            {menuItems.map((item) => {
-              const isActive = activeSection === item.id;
-              const IconComponent = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveSection(item.id);
-                    setIsDrawerOpen(false); // Closes automatically when any option is pressed
-                  }}
-                  className={`w-full p-2.5 sm:p-3 rounded-xl flex items-center justify-between gap-2 text-right transition-all cursor-pointer border ${
-                    isActive
-                      ? 'bg-blue-600/20 border-blue-500/40 text-white font-bold shadow-xs ring-1 ring-blue-500/20'
-                      : 'bg-slate-900 border-transparent text-slate-300 hover:bg-slate-800 hover:text-white font-medium'
-                  }`}
-                  title={item.title}
-                >
-                  <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                    <div
-                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                        isActive ? 'bg-[#1D4ED8] text-white shadow-2xs' : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      <IconComponent className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className={`text-xs sm:text-sm truncate ${isActive ? 'text-white font-bold' : 'text-slate-200 font-semibold'}`}>
-                        {item.title}
-                      </div>
-                      <div className="text-[10px] sm:text-xs text-slate-400 truncate hidden sm:block">
-                        {item.subtitle}
-                      </div>
-                    </div>
-                  </div>
-
-                  {item.badge !== undefined && item.badge !== null && (
-                    <span
-                      className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                        item.badgeColor || 'bg-slate-800 text-slate-300'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Drawer Footer */}
-        <div className="p-2.5 sm:p-3 bg-slate-950 border-t border-slate-800 shrink-0 flex items-center justify-between gap-1.5">
-          <div className="flex items-center gap-1.5 text-slate-400 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span className="text-[10px] font-medium truncate">جلسة نشطة</span>
-          </div>
-          <button
-            onClick={() => setIsDrawerOpen(false)}
-            className="text-[11px] sm:text-xs font-bold text-slate-400 hover:text-white px-2 py-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-          >
-            إغلاق
-          </button>
-        </div>
-      </aside>
-
-      {/* ========================================================================= */}
-      {/* Main Content View (الآن بعرض كامل ووافر للمحتوى) */}
-      {/* ========================================================================= */}
-      <div className="w-full space-y-4">
           {/* القسم 1: أدوات الواجهة والفلاتر */}
           {activeSection === 'dropdowns' && (
             <div className="space-y-4 animate-in fade-in duration-150">
@@ -674,33 +677,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {/* القسم 3: الموافقات ومراجعة الإعلانات */}
           {activeSection === 'moderation' && (
             <div className="space-y-3">
-              {/* Toggle Between Offers and Requests */}
-              <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 gap-1">
+              {/* Toggle Between Offers and Requests - Dark Theme */}
+              <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 gap-1.5 shadow-sm">
                 <button
                   type="button"
                   onClick={() => setModerationType('properties')}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     moderationType === 'properties'
-                      ? 'bg-[#002B49] text-[#FFB300] shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-amber-500 text-slate-950 shadow-xs'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                   }`}
                 >
                   <span>عروض العقارات (المعروض)</span>
-                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
+                    moderationType === 'properties' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-300'
+                  }`}>
                     {properties.length}
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setModerationType('requests')}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     moderationType === 'requests'
-                      ? 'bg-blue-600 text-amber-300 shadow-xs'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-amber-500 text-slate-950 shadow-xs'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                   }`}
                 >
                   <span>طلبات السكن والمطلوب</span>
-                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
+                    moderationType === 'requests' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-300'
+                  }`}>
                     {tenantRequests.length}
                   </span>
                 </button>
@@ -1554,7 +1561,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {/* القسم 6: إدارة المدراء والصلاحيات */}
           {activeSection === 'admins' && (
             <div className="animate-in fade-in duration-150">
-              <AdminRoleManagement currentUser={currentUser} />
+              <AdminRoleManagement currentUser={currentUser} initialSubTab="admins" />
+            </div>
+          )}
+
+          {/* القسم: سجلات النشاط */}
+          {activeSection === 'logs' && (
+            <div className="animate-in fade-in duration-150">
+              <AdminRoleManagement currentUser={currentUser} initialSubTab="logs" />
             </div>
           )}
 
@@ -1761,6 +1775,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
         </div>
+      </div>
     </div>
   );
 };

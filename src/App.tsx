@@ -57,6 +57,7 @@ import {
   safeStorageRemoveItem, 
   runStorageMaintenance 
 } from './utils/storageManager';
+import { logAdminActivity } from './utils/adminManager';
 
 // Resilient dynamic chunk loader with automatic retry for transient network hiccups
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -372,6 +373,8 @@ export function App() {
   const [isSavedSearchModalOpen, setIsSavedSearchModalOpen] = useState(false);
   const [isPriceFilterOpen, setIsPriceFilterOpen] = useState(false);
   const [isSearchMenuOpen, setIsSearchMenuOpen] = useState(false);
+  const [isOffersFilterOpen, setIsOffersFilterOpen] = useState(false);
+  const [isRequestsFilterOpen, setIsRequestsFilterOpen] = useState(false);
 
   // Search & Filter State for Requests
   const [requestSearchQuery, setRequestSearchQuery] = useState('');
@@ -1179,6 +1182,16 @@ export function App() {
     dbUpsertProperty(updatedProp).catch((err) => {
       console.warn('Supabase update property failed:', err);
     });
+
+    // Audit log for admin modifications
+    logAdminActivity(
+      currentUser?.name || 'مدير المنظومة',
+      currentUser?.phone || '01002345678',
+      'edit_operation',
+      `تعديل بيانات عقار (كود: ${updatedProp.code})`,
+      `العنوان: "${updatedProp.title}" - المنطقة: ${updatedProp.district} - السعر: ${updatedProp.price.toLocaleString()} ج.م - النوع: ${updatedProp.propertyType}`
+    );
+
     setEditingProperty(null);
     setOverlayScreen('none');
     addToast({
@@ -1199,6 +1212,16 @@ export function App() {
     dbUpsertTenantRequest(updatedReq).catch((err) => {
       console.warn('Supabase update tenant request failed:', err);
     });
+
+    // Audit log for admin modifications
+    logAdminActivity(
+      currentUser?.name || 'مدير المنظومة',
+      currentUser?.phone || '01002345678',
+      'edit_operation',
+      `تعديل طلب سكن (كود: ${updatedReq.requestCode || updatedReq.id})`,
+      `المطلوب: ${updatedReq.propertyType} في حي ${updatedReq.preferredDistrict} - الحد الأقصى للسعر: ${updatedReq.maxPrice.toLocaleString()} ج.م - العميل: ${updatedReq.tenantName}`
+    );
+
     setEditingTenantRequest(null);
     setOverlayScreen('none');
     addToast({
@@ -1274,6 +1297,15 @@ export function App() {
 
     const statusLabel = (newStatus && labelMap[newStatus]) || newStatus || 'قيد المراجعة';
 
+    // Audit log for tenant request status change
+    logAdminActivity(
+      currentUser?.name || 'مدير المنظومة',
+      currentUser?.phone || '01002345678',
+      newStatus === 'approved' ? 'approval' : newStatus === 'rejected' ? 'rejection' : 'edit_operation',
+      `تحديث حالة طلب سكن (كود: ${targetReq?.requestCode || reqId}) إلى (${statusLabel})`,
+      `العميل: ${targetReq?.tenantName || ''} (${targetReq?.tenantPhone || ''})${note ? ` - ملاحظة الإدارة: ${note}` : ''}`
+    );
+
     addToast({
       type: newStatus === 'approved' ? 'success' : 'warning',
       title: 'تم تحديث حالة الطلب',
@@ -1284,12 +1316,23 @@ export function App() {
 
   // Delete Tenant Request
   const handleDeleteTenantRequest = (reqId: string) => {
+    const targetReq = tenantRequests.find((r) => r.id === reqId);
     setTenantRequests((prev) => {
       const updated = prev.filter((r) => r.id !== reqId);
       safeStorageSetItem('ardaw_tenant_requests', updated);
       return updated;
     });
     dbDeleteTenantRequest(reqId).catch((e) => console.warn('Supabase delete tenant request failed:', e));
+
+    // Audit log for deletion
+    logAdminActivity(
+      currentUser?.name || 'مدير المنظومة',
+      currentUser?.phone || '01002345678',
+      'delete_operation',
+      `حذف طلب سكن (كود: ${targetReq?.requestCode || reqId})`,
+      `تم حذف طلب ${targetReq?.propertyType || ''} بحي ${targetReq?.preferredDistrict || ''} - صاحب الطلب: ${targetReq?.tenantName || ''} (${targetReq?.tenantPhone || ''})`
+    );
+
     addToast({
       type: 'info',
       title: 'تم حذف الطلب',
@@ -1376,6 +1419,15 @@ export function App() {
       pending: 'قيد الانتظار',
     };
 
+    // Audit log for property status change
+    logAdminActivity(
+      currentUser?.name || 'مدير المنظومة',
+      currentUser?.phone || '01002345678',
+      newStatus === 'approved' ? 'approval' : newStatus === 'rejected' ? 'rejection' : 'edit_operation',
+      `تحديث حالة عقار (كود: ${targetProp?.code || propId}) إلى (${labelMap[newStatus] || newStatus})`,
+      `العنوان: "${targetProp?.title || ''}" - المالك: ${targetProp?.ownerName || ''}${adminNote ? ` - ملاحظة الإدارة: ${adminNote}` : ''}`
+    );
+
     addToast({
       type: newStatus === 'approved' ? 'success' : 'warning',
       title: 'تم تحديث حالة العقار',
@@ -1386,6 +1438,7 @@ export function App() {
 
   // Delete Property
   const handleDeleteProperty = (propId: string) => {
+    const targetProp = properties.find((p) => p.id === propId);
     setProperties((prev) => {
       const updated = prev.filter((p) => p.id !== propId);
       safeStorageSetItem('ardaw_properties', updated);
@@ -1395,6 +1448,16 @@ export function App() {
     if (selectedProperty?.id === propId) {
       setSelectedProperty(null);
     }
+
+    // Audit log for property deletion
+    logAdminActivity(
+      currentUser?.name || 'مدير المنظومة',
+      currentUser?.phone || '01002345678',
+      'delete_operation',
+      `حذف عقار معروض (كود: ${targetProp?.code || propId})`,
+      `العنوان: "${targetProp?.title || ''}" في منطقة ${targetProp?.district || ''} - السعر: ${targetProp?.price?.toLocaleString() || 0} ج.م - المالك: ${targetProp?.ownerName || ''} (${targetProp?.ownerPhone || ''})`
+    );
+
     addToast({
       type: 'info',
       title: 'تم حذف العقار',
@@ -1515,6 +1578,16 @@ export function App() {
       safeStorageSetItem('ardaw_blocked_users', updated);
       return updated;
     });
+
+    // Audit log for blocking
+    logAdminActivity(
+      currentUser?.name || 'مدير المنظومة',
+      currentUser?.phone || '01002345678',
+      'block',
+      `حظر مستخدم (بلوك: ${newBlocked.name})`,
+      `رقم الهاتف: ${newBlocked.phone} - الدور: ${newBlocked.role} - سبب الحظر: ${newBlocked.reason}`
+    );
+
     addToast({
       type: 'warning',
       title: 'تم تطبيق الحظر (بلوك)',
@@ -1524,11 +1597,22 @@ export function App() {
   };
 
   const handleRemoveBlockedUser = (id: string) => {
+    const targetBlocked = blockedUsers.find((b) => b.id === id);
     setBlockedUsers((prev) => {
       const updated = prev.filter((b) => b.id !== id);
       safeStorageSetItem('ardaw_blocked_users', updated);
       return updated;
     });
+
+    // Audit log for unblocking (edit_operation)
+    logAdminActivity(
+      currentUser?.name || 'مدير المنظومة',
+      currentUser?.phone || '01002345678',
+      'edit_operation',
+      `إلغاء حظر مستخدم (فك بلوك: ${targetBlocked?.name || 'مستخدم'})`,
+      `تم فك الحظر عن رقم الهاتف: ${targetBlocked?.phone || ''}`
+    );
+
     addToast({
       type: 'info',
       title: 'تم فك الحظر',
@@ -1670,6 +1754,8 @@ export function App() {
           favoritesCount={favoritePropertyIds.length}
           onOpenFavorites={() => setIsFavoritesModalOpen(true)}
           pageTitle={getHeaderTitle()}
+          isAdminView={navIndex === 3}
+          onToggleAdminDrawer={() => setIsAdminDrawerOpen((prev) => !prev)}
         />
       )}
 
@@ -1723,85 +1809,182 @@ export function App() {
               </span>
             </div>
 
-            {/* Search Bar: Single streamlined search input bar with integrated parameters */}
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ابحث عن عقارك (المنطقة، نوع الوحدة، كود العقار، المواصفات)..."
-                className="w-full pr-12 pl-10 py-3.5 rounded-[14px] bg-slate-900 text-white placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-slate-800 shadow-md focus:outline-hidden focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all"
-              />
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
-              {searchQuery && (
+            {/* Unified Compact Search Bar with Integrated Filter Dropdown */}
+            <div className="relative w-full">
+              <div className="relative flex items-center h-12 bg-slate-900 border border-slate-800 rounded-[14px] shadow-md px-3.5 focus-within:border-amber-400/80 focus-within:ring-2 focus-within:ring-amber-400/20 transition-all">
+                {/* Search Icon on Right (RTL start) */}
+                <Search className="w-5 h-5 text-amber-400 shrink-0 ml-2.5" />
+
+                {/* Search Input with user's requested clear placeholder */}
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="ابحث بالمنطقة، نوع العقار، أو الكود..."
+                  className="w-full bg-transparent text-white placeholder:text-slate-400 text-xs sm:text-sm font-medium focus:outline-hidden py-2"
+                />
+
+                {/* Clear search text button */}
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="p-1 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0 ml-1.5"
+                    title="مسح البحث"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+
+                {/* Subtle vertical separator */}
+                <div className="h-6 w-px bg-slate-800 shrink-0 mx-1.5 sm:mx-2" />
+
+                {/* Integrated Filter Toggle Button */}
                 <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 cursor-pointer"
+                  type="button"
+                  onClick={() => setIsOffersFilterOpen(!isOffersFilterOpen)}
+                  className={`relative flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                    (selectedDistrict !== 'all' || selectedPropertyType !== 'all')
+                      ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-xs'
+                      : isOffersFilterOpen
+                        ? 'bg-slate-800 text-white border border-slate-700'
+                        : 'bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800/80'
+                  }`}
+                  title="تصفية حسب المنطقة ونوع العقار"
                 >
-                  <X className="w-4 h-4" />
+                  <SlidersHorizontal className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="hidden xs:inline sm:inline">تصفية</span>
+                  {(selectedDistrict !== 'all' || selectedPropertyType !== 'all') && (
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                  )}
                 </button>
+              </div>
+
+              {/* Integrated Dropdown Popover for Districts & Property Types */}
+              {isOffersFilterOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-30" 
+                    onClick={() => setIsOffersFilterOpen(false)} 
+                  />
+                  <div className="absolute left-0 right-0 top-full mt-2 z-40 bg-[#0F172A] border border-slate-800 rounded-xl p-3.5 shadow-2xl space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <div className="flex items-center gap-2">
+                        <SlidersHorizontal className="w-4 h-4 text-amber-400" />
+                        <span className="text-xs font-bold text-white">تصفية العروض (المناطق + نوع العقار)</span>
+                      </div>
+                      {(selectedDistrict !== 'all' || selectedPropertyType !== 'all') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDistrict('all');
+                            setSelectedPropertyType('all');
+                          }}
+                          className="text-[11px] text-amber-400 hover:text-amber-300 underline font-medium cursor-pointer"
+                        >
+                          إعادة ضبط
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* Filter 1: Districts (المناطق) */}
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-amber-400" />
+                          <span>المنطقة أو الحي:</span>
+                        </label>
+                        <select
+                          value={selectedDistrict}
+                          onChange={(e) => setSelectedDistrict(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg px-3 py-2 text-xs font-medium focus:outline-hidden focus:border-amber-400 transition-colors"
+                        >
+                          <option value="all">جميع أحياء ومناطق أسيوط</option>
+                          {activeDistrictOptions.map((opt) => (
+                            <option key={opt.id} value={opt.name}>
+                              {opt.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Filter 2: Property Type (نوع الوحدة) */}
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                          <Building className="w-3.5 h-3.5 text-amber-400" />
+                          <span>نوع الوحدة:</span>
+                        </label>
+                        <select
+                          value={selectedPropertyType}
+                          onChange={(e) => setSelectedPropertyType(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg px-3 py-2 text-xs font-medium focus:outline-hidden focus:border-amber-400 transition-colors"
+                        >
+                          <option value="all">جميع أنواع الوحدات</option>
+                          {activePropertyTypeOptions.map((opt) => (
+                            <option key={opt.id} value={opt.name}>
+                              {opt.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-xs text-slate-400">
+                        النتائج المطابقة: <strong className="text-amber-400">{filteredProperties.length}</strong> عقار
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsOffersFilterOpen(false)}
+                        className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs transition-colors cursor-pointer text-center"
+                      >
+                        تم وعرض النتائج
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
-            </div>
 
-            {/* Filters Layout: Exactly two filter dropdown buttons side-by-side in a single row */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Button 1: فلتر المناطق */}
-              <div 
-                className="relative h-12 rounded-[14px] bg-slate-900 hover:bg-slate-850 border border-slate-800 transition-all shadow-md flex items-center justify-between px-3.5 cursor-pointer group"
-                title="فلتر المناطق"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-                    <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                  </div>
-                  <span className="text-xs font-semibold text-white truncate">
-                    {selectedDistrict === 'all' ? 'فلتر المناطق' : selectedDistrict}
-                  </span>
+              {/* Active Filter Badges for quick 1-click removal */}
+              {(selectedDistrict !== 'all' || selectedPropertyType !== 'all') && (
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <span className="text-[11px] text-slate-400">الفلاتر المطبقة:</span>
+                  {selectedDistrict !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDistrict('all')}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[11px] font-semibold hover:bg-amber-400/25 transition-colors cursor-pointer"
+                      title="إزالة فلتر المنطقة"
+                    >
+                      <MapPin className="w-3 h-3 text-amber-400" />
+                      <span>{selectedDistrict}</span>
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                  {selectedPropertyType !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPropertyType('all')}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[11px] font-semibold hover:bg-amber-400/25 transition-colors cursor-pointer"
+                      title="إزالة فلتر نوع العقار"
+                    >
+                      <Building className="w-3 h-3 text-amber-400" />
+                      <span>{selectedPropertyType}</span>
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDistrict('all');
+                      setSelectedPropertyType('all');
+                    }}
+                    className="text-[11px] text-slate-400 hover:text-white underline mr-1 cursor-pointer"
+                  >
+                    مسح الكل
+                  </button>
                 </div>
-                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-amber-400 transition-colors" />
-                <select
-                  value={selectedDistrict}
-                  onChange={(e) => setSelectedDistrict(e.target.value)}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-slate-900"
-                  title="اختر المنطقة أو الحي"
-                >
-                  <option value="all">جميع أحياء ومناطق أسيوط</option>
-                  {activeDistrictOptions.map((opt) => (
-                    <option key={opt.id} value={opt.name}>
-                      {opt.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Button 2: فلتر الوحدات */}
-              <div 
-                className="relative h-12 rounded-[14px] bg-slate-900 hover:bg-slate-850 border border-slate-800 transition-all shadow-md flex items-center justify-between px-3.5 cursor-pointer group"
-                title="فلتر الوحدات"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-                    <Building className="w-3.5 h-3.5 text-amber-400" />
-                  </div>
-                  <span className="text-xs font-semibold text-white truncate">
-                    {selectedPropertyType === 'all' ? 'فلتر الوحدات' : selectedPropertyType}
-                  </span>
-                </div>
-                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-amber-400 transition-colors" />
-                <select
-                  value={selectedPropertyType}
-                  onChange={(e) => setSelectedPropertyType(e.target.value)}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-slate-900"
-                  title="اختر نوع الوحدة"
-                >
-                  <option value="all">جميع أنواع الوحدات</option>
-                  {activePropertyTypeOptions.map((opt) => (
-                    <option key={opt.id} value={opt.name}>
-                      {opt.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              )}
             </div>
 
             {/* Purpose Filter Bar: 3 Tabs (كل المعروض | عروض الإيجار | عروض البيع) */}
@@ -1962,85 +2145,182 @@ export function App() {
               </span>
             </div>
 
-            {/* Search Bar: Single streamlined search input bar with integrated parameters */}
-            <div className="relative">
-              <input
-                type="text"
-                value={requestSearchQuery}
-                onChange={(e) => setRequestSearchQuery(e.target.value)}
-                placeholder="ابحث في طلبات السكن (المنطقة، نوع الوحدة، كود الطلب، المواصفات)..."
-                className="w-full pr-12 pl-10 py-3.5 rounded-[14px] bg-slate-900 text-white placeholder:text-slate-400 text-xs sm:text-sm font-medium border border-slate-800 shadow-md focus:outline-hidden focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all"
-              />
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
-              {requestSearchQuery && (
+            {/* Unified Compact Search Bar with Integrated Filter Dropdown */}
+            <div className="relative w-full">
+              <div className="relative flex items-center h-12 bg-slate-900 border border-slate-800 rounded-[14px] shadow-md px-3.5 focus-within:border-amber-400/80 focus-within:ring-2 focus-within:ring-amber-400/20 transition-all">
+                {/* Search Icon on Right (RTL start) */}
+                <Search className="w-5 h-5 text-amber-400 shrink-0 ml-2.5" />
+
+                {/* Search Input with user's requested clear placeholder */}
+                <input
+                  type="text"
+                  value={requestSearchQuery}
+                  onChange={(e) => setRequestSearchQuery(e.target.value)}
+                  placeholder="ابحث بالمنطقة، نوع العقار، أو الكود..."
+                  className="w-full bg-transparent text-white placeholder:text-slate-400 text-xs sm:text-sm font-medium focus:outline-hidden py-2"
+                />
+
+                {/* Clear search text button */}
+                {requestSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setRequestSearchQuery('')}
+                    className="p-1 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0 ml-1.5"
+                    title="مسح البحث"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+
+                {/* Subtle vertical separator */}
+                <div className="h-6 w-px bg-slate-800 shrink-0 mx-1.5 sm:mx-2" />
+
+                {/* Integrated Filter Toggle Button */}
                 <button
-                  onClick={() => setRequestSearchQuery('')}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 cursor-pointer"
+                  type="button"
+                  onClick={() => setIsRequestsFilterOpen(!isRequestsFilterOpen)}
+                  className={`relative flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                    (requestDistrict !== 'all' || requestPropertyType !== 'all')
+                      ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-xs'
+                      : isRequestsFilterOpen
+                        ? 'bg-slate-800 text-white border border-slate-700'
+                        : 'bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800/80'
+                  }`}
+                  title="تصفية حسب المنطقة ونوع الوحدة المطلوبة"
                 >
-                  <X className="w-4 h-4" />
+                  <SlidersHorizontal className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="hidden xs:inline sm:inline">تصفية</span>
+                  {(requestDistrict !== 'all' || requestPropertyType !== 'all') && (
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                  )}
                 </button>
+              </div>
+
+              {/* Integrated Dropdown Popover for Districts & Property Types */}
+              {isRequestsFilterOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-30" 
+                    onClick={() => setIsRequestsFilterOpen(false)} 
+                  />
+                  <div className="absolute left-0 right-0 top-full mt-2 z-40 bg-[#0F172A] border border-slate-800 rounded-xl p-3.5 shadow-2xl space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <div className="flex items-center gap-2">
+                        <SlidersHorizontal className="w-4 h-4 text-amber-400" />
+                        <span className="text-xs font-bold text-white">تصفية الطلبات (المناطق + نوع الوحدة)</span>
+                      </div>
+                      {(requestDistrict !== 'all' || requestPropertyType !== 'all') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRequestDistrict('all');
+                            setRequestPropertyType('all');
+                          }}
+                          className="text-[11px] text-amber-400 hover:text-amber-300 underline font-medium cursor-pointer"
+                        >
+                          إعادة ضبط
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* Filter 1: Districts (المناطق) */}
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-amber-400" />
+                          <span>المنطقة أو الحي المطلوب:</span>
+                        </label>
+                        <select
+                          value={requestDistrict}
+                          onChange={(e) => setRequestDistrict(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg px-3 py-2 text-xs font-medium focus:outline-hidden focus:border-amber-400 transition-colors"
+                        >
+                          <option value="all">جميع أحياء ومناطق أسيوط</option>
+                          {activeDistrictOptions.map((opt) => (
+                            <option key={opt.id} value={opt.name}>
+                              {opt.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Filter 2: Property Type (نوع الوحدة) */}
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                          <Building className="w-3.5 h-3.5 text-amber-400" />
+                          <span>نوع الوحدة المطلوبة:</span>
+                        </label>
+                        <select
+                          value={requestPropertyType}
+                          onChange={(e) => setRequestPropertyType(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg px-3 py-2 text-xs font-medium focus:outline-hidden focus:border-amber-400 transition-colors"
+                        >
+                          <option value="all">جميع أنواع الوحدات المطلوبة</option>
+                          {activePropertyTypeOptions.map((opt) => (
+                            <option key={opt.id} value={opt.name}>
+                              {opt.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-xs text-slate-400">
+                        النتائج المطابقة: <strong className="text-amber-400">{filteredTenantRequests.length}</strong> طلب
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsRequestsFilterOpen(false)}
+                        className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs transition-colors cursor-pointer text-center"
+                      >
+                        تم وعرض النتائج
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
-            </div>
 
-            {/* Filters Layout: Exactly two filter dropdown buttons side-by-side in a single row */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Button 1: فلتر المناطق */}
-              <div 
-                className="relative h-12 rounded-[14px] bg-slate-900 hover:bg-slate-850 border border-slate-800 transition-all shadow-md flex items-center justify-between px-3.5 cursor-pointer group"
-                title="فلتر المناطق"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-                    <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                  </div>
-                  <span className="text-xs font-semibold text-white truncate">
-                    {requestDistrict === 'all' ? 'فلتر المناطق' : requestDistrict}
-                  </span>
+              {/* Active Filter Badges for quick 1-click removal */}
+              {(requestDistrict !== 'all' || requestPropertyType !== 'all') && (
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <span className="text-[11px] text-slate-400">الفلاتر المطبقة:</span>
+                  {requestDistrict !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={() => setRequestDistrict('all')}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[11px] font-semibold hover:bg-amber-400/25 transition-colors cursor-pointer"
+                      title="إزالة فلتر المنطقة"
+                    >
+                      <MapPin className="w-3 h-3 text-amber-400" />
+                      <span>{requestDistrict}</span>
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                  {requestPropertyType !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={() => setRequestPropertyType('all')}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[11px] font-semibold hover:bg-amber-400/25 transition-colors cursor-pointer"
+                      title="إزالة فلتر نوع العقار"
+                    >
+                      <Building className="w-3 h-3 text-amber-400" />
+                      <span>{requestPropertyType}</span>
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRequestDistrict('all');
+                      setRequestPropertyType('all');
+                    }}
+                    className="text-[11px] text-slate-400 hover:text-white underline mr-1 cursor-pointer"
+                  >
+                    مسح الكل
+                  </button>
                 </div>
-                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-amber-400 transition-colors" />
-                <select
-                  value={requestDistrict}
-                  onChange={(e) => setRequestDistrict(e.target.value)}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-slate-900"
-                  title="اختر المنطقة أو الحي"
-                >
-                  <option value="all">جميع أحياء ومناطق أسيوط</option>
-                  {activeDistrictOptions.map((opt) => (
-                    <option key={opt.id} value={opt.name}>
-                      {opt.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Button 2: فلتر الوحدات */}
-              <div 
-                className="relative h-12 rounded-[14px] bg-slate-900 hover:bg-slate-850 border border-slate-800 transition-all shadow-md flex items-center justify-between px-3.5 cursor-pointer group"
-                title="فلتر الوحدات"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-                    <Building className="w-3.5 h-3.5 text-amber-400" />
-                  </div>
-                  <span className="text-xs font-semibold text-white truncate">
-                    {requestPropertyType === 'all' ? 'فلتر الوحدات' : requestPropertyType}
-                  </span>
-                </div>
-                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-amber-400 transition-colors" />
-                <select
-                  value={requestPropertyType}
-                  onChange={(e) => setRequestPropertyType(e.target.value)}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-slate-900"
-                  title="اختر نوع الوحدة المطلوبة"
-                >
-                  <option value="all">جميع أنواع الوحدات المطلوبة</option>
-                  {activePropertyTypeOptions.map((opt) => (
-                    <option key={opt.id} value={opt.name}>
-                      {opt.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              )}
             </div>
 
             {/* Purpose Filter Bar: 3 Tabs (كل الطلبات | طلبات الإيجار | طلبات البيع) */}

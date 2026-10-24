@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppUser } from '../types/property';
-import { LogOut, Bell, Heart } from 'lucide-react';
+import { LogOut, Bell, Heart, Menu } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 
 export interface HeaderProps {
@@ -21,7 +21,7 @@ export interface HeaderProps {
  * 1. Logo (Right): Crisp emblem without white background, padding, or borders.
  * 2. Greeting & User Name (Right, next to logo): User name in white, and "أهلاً بك في" below it in slate-400.
  * 3. Center Title: "سكن أسيوط" in prominent text-2xl font-black with golden amber-400 color.
- * 4. Left Toolbar: PWA install, Favorites, Notifications, Logout (ALL Admin buttons/icons removed).
+ * 4. Left Toolbar: PWA install, Favorites, Notifications, Logout + Admin Drawer button when in Admin view.
  */
 export const Header: React.FC<HeaderProps> = ({ 
   currentUser, 
@@ -31,6 +31,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNotifications,
   favoritesCount = 0,
   onOpenFavorites,
+  isAdminView = false,
+  onToggleAdminDrawer,
 }) => {
   const isAdmin = currentUser?.role === 'admin';
 
@@ -39,9 +41,21 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-6xl mx-auto px-3 sm:px-4 h-14 sm:h-16 relative flex items-center justify-between gap-2 sm:gap-4">
         
         {/* ================================================================= */}
-        {/* 1 & 2. Zone 1 (Right): Logo + Username & Welcome Greeting */}
+        {/* 1 & 2. Zone 1 (Right): Logo + Username & Welcome Greeting + Admin Drawer Trigger */}
         {/* ================================================================= */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 z-10">
+          {/* Admin Drawer Toggle Button in Header right next to the logo as shown in screenshot */}
+          {isAdminView && onToggleAdminDrawer && (
+            <button
+              type="button"
+              onClick={onToggleAdminDrawer}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+              title="فتح القائمة الجانبية للوحة التحكم"
+            >
+              <Menu className="w-5 h-5 text-white" />
+            </button>
+          )}
+
           {/* Logo & User Greeting */}
           <div 
             onClick={() => onSelectTab && onSelectTab('home')}
@@ -84,9 +98,10 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* ================================================================= */}
-        {/* 4. Left Toolbar (Favorites, Notifications, Logout - Zero Admin icons) */}
+        {/* 4. Left Toolbar (Favorites, Notifications, Logout) */}
         {/* ================================================================= */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap z-10">
+
           {/* PWA Install Button */}
           <PWAInstallButton />
 

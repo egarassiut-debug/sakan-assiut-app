@@ -163,17 +163,17 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner with Alert / Info */}
-      <div className="p-4 bg-teal-50/90 border border-teal-200/90 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Top Banner with Alert / Info - Royal Dark Navy Theme */}
+      <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0">
-            <SlidersHorizontal className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-400/30 flex items-center justify-center shrink-0">
+            <SlidersHorizontal className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="font-bold text-xs sm:text-sm text-teal-300">
+            <h4 className="font-bold text-sm text-white">
               لوحة التحكم المركزية بالقوائم والخيارات الديناميكية
             </h4>
-            <p className="text-[11px] sm:text-xs text-teal-200/80 mt-0.5 leading-relaxed">
+            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
               أي حي جديد، أو نوع عقار، أو عداد/حالة عداد تضيفها هنا تظهر فوراً وبشكل تلقائي في نماذج إضافة العقارات وشريط البحث للمستأجر.
             </p>
           </div>

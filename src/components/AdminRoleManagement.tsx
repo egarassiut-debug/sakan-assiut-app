@@ -13,21 +13,30 @@ import { validateEgyptianPhone, normalizeEgyptianPhone } from '../utils/phoneVal
 import { 
   ShieldCheck, UserPlus, Trash2, Edit3, Search, 
   CheckCircle2, AlertCircle, Eye, EyeOff, Clock, 
-  Activity, Phone, KeyRound, Users, X
+  Activity, Phone, KeyRound, Users, X, Ban, Download, Filter, RotateCcw, FileSpreadsheet
 } from 'lucide-react';
+import { exportToCSV } from '../utils/exportUtils';
 
 interface AdminRoleManagementProps {
   currentUser?: AppUser | null;
   onAdminsUpdated?: () => void;
+  initialSubTab?: 'admins' | 'logs';
 }
 
 export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({ 
   currentUser,
-  onAdminsUpdated 
+  onAdminsUpdated,
+  initialSubTab = 'admins'
 }) => {
   const [admins, setAdmins] = useState<AdminRecord[]>([]);
   const [activityLogs, setActivityLogs] = useState<AdminActivityLogItem[]>([]);
-  const [activeSubTab, setActiveSubTab] = useState<'admins' | 'logs'>('admins');
+  const [activeSubTab, setActiveSubTab] = useState<'admins' | 'logs'>(initialSubTab);
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
 
   // Add Admin Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -230,6 +239,15 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
     );
   }, [admins, adminSearch]);
 
+  // Delete & Edit Logs Counts for governance oversight
+  const deleteLogsCount = useMemo(() => {
+    return activityLogs.filter((l) => l.actionType === 'delete_operation').length;
+  }, [activityLogs]);
+
+  const editLogsCount = useMemo(() => {
+    return activityLogs.filter((l) => l.actionType === 'edit_operation').length;
+  }, [activityLogs]);
+
   // Filtered Logs
   const filteredLogs = useMemo(() => {
     return activityLogs.filter((log) => {
@@ -247,57 +265,128 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
     });
   }, [activityLogs, logSearch, selectedActionFilter]);
 
+  // Export audit logs to CSV
+  const handleExportAuditLogs = () => {
+    if (activityLogs.length === 0) return;
+    const columns = [
+      { header: 'المعرف', accessor: (l: AdminActivityLogItem) => l.id },
+      { header: 'اسم الأدمن', accessor: (l: AdminActivityLogItem) => l.adminName },
+      { header: 'رقم هاتف الأدمن', accessor: (l: AdminActivityLogItem) => l.adminPhone },
+      { header: 'نوع الإجراء', accessor: (l: AdminActivityLogItem) => l.actionType },
+      { header: 'عنوان العملية', accessor: (l: AdminActivityLogItem) => l.actionTitle || l.title || '' },
+      { header: 'تفاصيل العملية والرقابة', accessor: (l: AdminActivityLogItem) => l.details || '' },
+      { header: 'التاريخ والوقت', accessor: (l: AdminActivityLogItem) => l.timestamp },
+    ];
+    exportToCSV(activityLogs, columns, 'سجل_الرقابة_والنشاط');
+  };
+
   const getActionBadge = (type: AdminActionType) => {
     switch (type) {
+      case 'delete_operation':
+        return { 
+          label: 'عملية حذف', 
+          bg: 'bg-rose-950/80 text-rose-300 border-rose-800 shadow-xs',
+          icon: <Trash2 className="w-3 h-3 text-rose-400" />
+        };
+      case 'edit_operation':
+        return { 
+          label: 'عملية تعديل', 
+          bg: 'bg-amber-950/80 text-amber-300 border-amber-800 shadow-xs',
+          icon: <Edit3 className="w-3 h-3 text-amber-400" />
+        };
       case 'approval':
-        return { label: 'اعتماد عقار', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+        return { 
+          label: 'اعتماد وقبول', 
+          bg: 'bg-emerald-950/80 text-emerald-300 border-emerald-800 shadow-xs',
+          icon: <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+        };
       case 'rejection':
-        return { label: 'رفض إعلان', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
+        return { 
+          label: 'رفض إعلان', 
+          bg: 'bg-rose-950/80 text-rose-300 border-rose-800 shadow-xs',
+          icon: <AlertCircle className="w-3 h-3 text-rose-400" />
+        };
       case 'block':
-        return { label: 'حظر مستخدم', bg: 'bg-red-50 text-red-800 border-red-300' };
+        return { 
+          label: 'حظر مستخدم', 
+          bg: 'bg-red-950/90 text-red-300 border-red-800 shadow-xs',
+          icon: <Ban className="w-3 h-3 text-red-400" />
+        };
       case 'inspection':
-        return { label: 'معاينة ميدانية', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+        return { 
+          label: 'معاينة ميدانية', 
+          bg: 'bg-blue-950/80 text-blue-300 border-blue-800 shadow-xs',
+          icon: <Eye className="w-3 h-3 text-blue-400" />
+        };
       case 'admin_management':
-        return { label: 'إدارة المدراء', bg: 'bg-purple-50 text-purple-700 border-purple-200' };
+        return { 
+          label: 'إدارة المدراء', 
+          bg: 'bg-purple-950/80 text-purple-300 border-purple-800 shadow-xs',
+          icon: <ShieldCheck className="w-3 h-3 text-purple-400" />
+        };
+      case 'user_management':
+        return { 
+          label: 'إدارة المستخدمين', 
+          bg: 'bg-indigo-950/80 text-indigo-300 border-indigo-800 shadow-xs',
+          icon: <Users className="w-3 h-3 text-indigo-400" />
+        };
       case 'category_update':
-        return { label: 'تحديث فلاتر', bg: 'bg-amber-50 text-amber-800 border-amber-200' };
+        return { 
+          label: 'تحديث فلاتر', 
+          bg: 'bg-cyan-950/80 text-cyan-300 border-cyan-800 shadow-xs',
+          icon: <Filter className="w-3 h-3 text-cyan-400" />
+        };
       default:
-        return { label: 'إجراء إداري', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
+        return { 
+          label: 'إجراء إداري', 
+          bg: 'bg-slate-800 text-slate-300 border-slate-700 shadow-xs',
+          icon: <Activity className="w-3 h-3 text-slate-400" />
+        };
     }
   };
 
   return (
     <div className="space-y-4 text-slate-100 font-['Cairo']">
       
-      {/* Overview Metric Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Overview Metric Banner: 4 distinct dark royal navy cards with Deletion & Edit tracking */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-blue-950/60 text-blue-400 border border-blue-800 flex items-center justify-center font-bold">
-            <Users className="w-6 h-6 text-blue-400" />
+          <div className="w-11 h-11 rounded-xl bg-blue-950/60 text-blue-400 border border-blue-800 flex items-center justify-center font-bold shrink-0">
+            <Users className="w-5 h-5 text-blue-400" />
           </div>
           <div>
             <div className="text-xl font-black text-white">{admins.length}</div>
-            <div className="text-xs text-slate-400 font-bold">إجمالي المدراء المعتمدين</div>
+            <div className="text-xs text-slate-400 font-bold">المدراء المعتمدين</div>
           </div>
         </div>
 
         <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-purple-950/60 text-purple-400 border border-purple-800 flex items-center justify-center font-bold">
-            <Activity className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-xl bg-purple-950/60 text-purple-400 border border-purple-800 flex items-center justify-center font-bold shrink-0">
+            <Activity className="w-5 h-5" />
           </div>
           <div>
             <div className="text-xl font-black text-purple-300">{activityLogs.length}</div>
-            <div className="text-xs text-slate-400 font-bold">سجلات الأنشطة المسجلة</div>
+            <div className="text-xs text-slate-400 font-bold">إجمالي الأنشطة</div>
           </div>
         </div>
 
         <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-emerald-950/60 text-emerald-400 border border-emerald-800 flex items-center justify-center font-bold">
-            <ShieldCheck className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-xl bg-rose-950/70 text-rose-400 border border-rose-800 flex items-center justify-center font-bold shrink-0">
+            <Trash2 className="w-5 h-5 text-rose-400" />
           </div>
           <div>
-            <div className="text-xs font-black text-emerald-400">صلاحيات الأدوار نشطة</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">توجيه تلقائي برقم الموبايل + PIN</div>
+            <div className="text-xl font-black text-rose-300">{deleteLogsCount}</div>
+            <div className="text-xs text-rose-400/90 font-bold">عمليات الحذف (رقابة)</div>
+          </div>
+        </div>
+
+        <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xs flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-amber-950/70 text-amber-400 border border-amber-800 flex items-center justify-center font-bold shrink-0">
+            <Edit3 className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <div className="text-xl font-black text-amber-300">{editLogsCount}</div>
+            <div className="text-xs text-amber-400/90 font-bold">عمليات التعديل</div>
           </div>
         </div>
       </div>
@@ -328,11 +417,16 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
             }`}
           >
             <Activity className="w-4 h-4 text-purple-400" />
-            <span>سجل النشاطات الرقابي ({activityLogs.length})</span>
+            <span>سجل الرقابة والنشاطات ({activityLogs.length})</span>
+            {deleteLogsCount > 0 && (
+              <span className="bg-rose-950 text-rose-300 text-[10px] font-black px-1.5 py-0.2 rounded-full border border-rose-800">
+                {deleteLogsCount} حذف
+              </span>
+            )}
           </button>
         </div>
 
-        {activeSubTab === 'admins' && (
+        {activeSubTab === 'admins' ? (
           <button
             type="button"
             onClick={() => {
@@ -346,6 +440,16 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
           >
             <UserPlus className="w-4 h-4" />
             <span>إضافة أدمن جديد</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleExportAuditLogs}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all border border-slate-700 cursor-pointer"
+            title="تصدير سجل العمليات والرقابة إلى ملف Excel / CSV"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span>تصدير السجل الرقابي (CSV)</span>
           </button>
         )}
       </div>
@@ -464,11 +568,83 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 2. سجل النشاطات (Activity Log Table) */}
+      {/* 2. سجل النشاطات (Activity Log Table) - الرقابة على الحذف والتعديل */}
       {/* ========================================================================= */}
       {activeSubTab === 'logs' && (
-        <div className="space-y-3 bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xs">
+        <div className="space-y-3.5 bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xs">
           
+          {/* Quick Filter Badges for Rapid Triage */}
+          <div className="flex items-center gap-1.5 flex-wrap pb-1">
+            <span className="text-xs font-bold text-slate-400 ml-1">تصفية سريعة:</span>
+            
+            <button
+              type="button"
+              onClick={() => setSelectedActionFilter('all')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                selectedActionFilter === 'all'
+                  ? 'bg-blue-600 text-white border-blue-500 font-black shadow-xs'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+              }`}
+            >
+              <span>الكل</span>
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.2 rounded-full font-mono">{activityLogs.length}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedActionFilter('delete_operation')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                selectedActionFilter === 'delete_operation'
+                  ? 'bg-rose-600 text-white border-rose-500 font-black shadow-xs'
+                  : 'bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border-rose-800'
+              }`}
+            >
+              <Trash2 className="w-3 h-3 text-rose-400" />
+              <span>عمليات الحذف</span>
+              <span className="text-[10px] bg-rose-900/80 px-1.5 py-0.2 rounded-full font-mono font-black">{deleteLogsCount}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedActionFilter('edit_operation')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                selectedActionFilter === 'edit_operation'
+                  ? 'bg-amber-600 text-white border-amber-500 font-black shadow-xs'
+                  : 'bg-amber-950/50 hover:bg-amber-900/60 text-amber-300 border-amber-800'
+              }`}
+            >
+              <Edit3 className="w-3 h-3 text-amber-400" />
+              <span>عمليات التعديل</span>
+              <span className="text-[10px] bg-amber-900/80 px-1.5 py-0.2 rounded-full font-mono font-black">{editLogsCount}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedActionFilter('approval')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                selectedActionFilter === 'approval'
+                  ? 'bg-emerald-600 text-white border-emerald-500 font-black shadow-xs'
+                  : 'bg-emerald-950/50 hover:bg-emerald-900/60 text-emerald-300 border-emerald-800'
+              }`}
+            >
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              <span>الاعتمادات</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedActionFilter('block')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                selectedActionFilter === 'block'
+                  ? 'bg-red-600 text-white border-red-500 font-black shadow-xs'
+                  : 'bg-red-950/50 hover:bg-red-900/60 text-red-300 border-red-800'
+              }`}
+            >
+              <Ban className="w-3 h-3 text-red-400" />
+              <span>الحظر (بلوك)</span>
+            </button>
+          </div>
+
           {/* Log Controls Row */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
             {/* Search Input */}
@@ -478,68 +654,101 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                 type="text"
                 value={logSearch}
                 onChange={(e) => setLogSearch(e.target.value)}
-                placeholder="ابحث في سجل الأنشطة (اسم الأدمن، رقم الهاتف، أو نص الإجراء)..."
-                className="w-full pr-10 pl-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder-slate-400 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                placeholder="ابحث في سجل الأنشطة (اسم الأدمن، رقم الهاتف، نوع العملية، أو الكود)..."
+                className="w-full pr-10 pl-4 py-2 bg-slate-800 border border-slate-700 text-white placeholder-slate-400 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-2xs"
               />
             </div>
 
             {/* Action Type Filter Dropdown */}
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-400 whitespace-nowrap">نوع النشاط:</span>
+              <span className="text-xs font-bold text-slate-400 whitespace-nowrap">النوع:</span>
               <select
                 value={selectedActionFilter}
                 onChange={(e) => setSelectedActionFilter(e.target.value)}
-                className="bg-slate-800 border border-slate-700 text-xs font-bold text-white py-2 px-3 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                className="bg-slate-800 border border-slate-700 text-xs font-bold text-white py-2 px-3 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
               >
                 <option value="all">كل الأنشطة ({activityLogs.length})</option>
-                <option value="approval">اعتمادات العقارات</option>
-                <option value="rejection">رفض الإعلانات</option>
-                <option value="block">حظر المستخدمين</option>
-                <option value="inspection">المعاينات الميدانية</option>
-                <option value="admin_management">إدارة المدراء</option>
-                <option value="category_update">تحديث الفلاتر</option>
+                <option value="delete_operation">🗑️ عمليات الحذف الرقابية ({deleteLogsCount})</option>
+                <option value="edit_operation">✏️ عمليات التعديل والتحديث ({editLogsCount})</option>
+                <option value="approval">✅ اعتمادات العقارات والطلبات</option>
+                <option value="rejection">❌ رفض الإعلانات</option>
+                <option value="block">🚫 حظر المستخدمين (بلوك)</option>
+                <option value="inspection">👁️ المعاينات الميدانية</option>
+                <option value="admin_management">🛡️ إدارة المدراء</option>
+                <option value="category_update">⚙️ تحديث الفلاتر والقوائم</option>
               </select>
+
+              {(selectedActionFilter !== 'all' || logSearch.trim()) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedActionFilter('all');
+                    setLogSearch('');
+                  }}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
+                  title="إلغاء الفلاتر"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 
           {/* Activity Log Table */}
-          <div className="overflow-x-auto rounded-xl border border-slate-800">
+          <div className="overflow-x-auto rounded-xl border border-slate-800 shadow-xs">
             <table className="w-full text-right text-xs">
               <thead className="bg-[#002B49] text-white">
                 <tr>
-                  <th className="py-3 px-3.5 font-black whitespace-nowrap">اسم الأدمن ورقم الهاتف</th>
+                  <th className="py-3 px-3.5 font-black whitespace-nowrap">الأدمن المسؤول</th>
                   <th className="py-3 px-3 font-black whitespace-nowrap">نوع الإجراء</th>
-                  <th className="py-3 px-3 font-black">تفاصيل العملية</th>
+                  <th className="py-3 px-3 font-black">تفاصيل العملية والرقابة</th>
                   <th className="py-3 px-3 font-black whitespace-nowrap text-left pl-4">التاريخ والوقت</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
                 {filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-8 text-center text-slate-400 font-bold">
-                      لا توجد أنشطة مسجلة مطابقة لخيارات البحث
+                    <td colSpan={4} className="py-10 text-center text-slate-400 font-bold bg-slate-900/60">
+                      لا توجد سجلات مطابقة لخيارات البحث والتصفية المحددة
                     </td>
                   </tr>
                 ) : (
                   filteredLogs.map((log) => {
                     const badge = getActionBadge(log.actionType);
+                    const isDelete = log.actionType === 'delete_operation';
+                    const isEdit = log.actionType === 'edit_operation';
+
                     return (
-                      <tr key={log.id} className="hover:bg-slate-800/50 transition-colors">
+                      <tr 
+                        key={log.id} 
+                        className={`transition-colors ${
+                          isDelete 
+                            ? 'bg-rose-950/20 hover:bg-rose-950/30' 
+                            : isEdit 
+                            ? 'bg-amber-950/10 hover:bg-amber-950/20' 
+                            : 'hover:bg-slate-800/50'
+                        }`}
+                      >
                         <td className="py-3 px-3.5 whitespace-nowrap">
-                          <div className="font-bold text-white">{log.adminName}</div>
-                          <div className="text-[11px] font-mono text-slate-400 font-bold">{log.adminPhone}</div>
+                          <div className="font-bold text-white flex items-center gap-1.5">
+                            <span>{log.adminName}</span>
+                          </div>
+                          <div className="text-[11px] font-mono text-slate-400 font-bold mt-0.5">{log.adminPhone}</div>
                         </td>
 
                         <td className="py-3 px-3 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black border ${badge.bg}`}>
-                            {badge.label}
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black border ${badge.bg}`}>
+                            {badge.icon}
+                            <span>{badge.label}</span>
                           </span>
                         </td>
 
                         <td className="py-3 px-3">
-                          <div className="font-bold text-slate-200">{log.actionTitle}</div>
+                          <div className={`font-bold ${isDelete ? 'text-rose-200' : isEdit ? 'text-amber-200' : 'text-slate-200'}`}>
+                            {log.actionTitle || log.title}
+                          </div>
                           {log.details && (
-                            <div className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                            <div className="text-[11px] text-slate-400 mt-1 leading-relaxed bg-slate-950/40 p-2 rounded-lg border border-slate-800/80">
                               {log.details}
                             </div>
                           )}
