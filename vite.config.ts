@@ -12,13 +12,29 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        react: path.resolve(__dirname, 'node_modules/react'),
+        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
       },
+      dedupe: ['react', 'react-dom'],
+    },
+    optimizeDeps: {
+      include: [
+        'react',
+        'react-dom',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'lucide-react',
+        'recharts',
+        'react-dropzone',
+        '@supabase/supabase-js',
+      ],
+      force: true,
     },
     build: {
       target: 'esnext',
       minify: 'esbuild',
       cssMinify: true,
-      chunkSizeWarningLimit: 600,
+      chunkSizeWarningLimit: 800,
       rollupOptions: {
         output: {
           manualChunks(id) {
@@ -29,7 +45,11 @@ export default defineConfig(() => {
               if (id.includes('@supabase')) {
                 return 'vendor-supabase';
               }
-              if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+              if (
+                id.includes('/node_modules/react/') ||
+                id.includes('/node_modules/react-dom/') ||
+                id.includes('/node_modules/scheduler/')
+              ) {
                 return 'vendor-react';
               }
               if (id.includes('lucide-react')) {
