@@ -1,5 +1,5 @@
 import React from 'react';
-import { Property } from '../types/property';
+import { Property, DEFAULT_CARD_IMAGE } from '../types/property';
 import { X, Heart, Building2, MapPin, Trash2, ArrowUpRight, MessageSquare, Bed, Bath, Maximize2 } from 'lucide-react';
 
 interface FavoritesModalProps {
@@ -100,10 +100,13 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({
                     {/* Thumbnail */}
                     <div className="w-20 h-20 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 relative">
                       <img
-                        src={prop.images && prop.images.length > 0 ? prop.images[0] : 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=300&q=80'}
+                        src={prop.images && prop.images.length > 0 ? prop.images[0] : DEFAULT_CARD_IMAGE}
                         alt={prop.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
+                        }}
                       />
                       <span className="absolute bottom-1 right-1 text-[9px] bg-black/60 text-white font-mono px-1 rounded-sm">
                         {prop.code}

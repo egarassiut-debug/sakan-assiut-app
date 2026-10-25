@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { Property, PropertyPurpose, PropertyUtilities, TenantRequest, AppUser } from '../types/property';
+import { Property, PropertyPurpose, PropertyUtilities, TenantRequest, AppUser, DEFAULT_CARD_IMAGE } from '../types/property';
 import { DropdownCategory, UtilityOptionDefinition } from '../data/dropdownOptions';
 import { parseArabicVoiceTranscript } from '../utils/voiceParser';
 import { ImageUploadField } from './ImageUploadField';
@@ -686,7 +686,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         ownerName: contactName.trim() || 'مالك العقار',
         ownerPhone: cleanContactPhone,
         source: isAdmin ? 'إدارة المنظومة (نشر مباشر)' : 'مالك مباشر',
-        images: uploadedImages.length > 0 ? uploadedImages : [isLand ? defaultLandImg : defaultAptImg],
+        images: uploadedImages.length > 0 ? uploadedImages : [DEFAULT_CARD_IMAGE],
         createdByAdmin: isAdmin,
         fee: isAdmin && fee ? Number(fee) : undefined,
         inspectionDate: isAdmin && inspectionDate ? inspectionDate : undefined,
@@ -774,6 +774,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         bathrooms: !isLand && bathrooms !== '' ? Number(bathrooms) : undefined,
         urgency,
         notes: notes.trim(),
+        images: uploadedImages.length > 0 ? uploadedImages : [DEFAULT_CARD_IMAGE],
         createdAt: todayDate,
       };
 

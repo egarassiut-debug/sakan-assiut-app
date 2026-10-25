@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Property } from '../types/property';
+import { Property, DEFAULT_CARD_IMAGE } from '../types/property';
 import { 
   Copy, Check, MapPin, Maximize2, Bed, Bath, ArrowUpRight, 
   MessageSquare, Compass, Building, ChevronLeft, ChevronRight, Camera, Edit3, AlertTriangle, Heart, Star,
@@ -48,7 +48,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
   const images = property.images && property.images.length > 0 
     ? property.images 
-    : ['https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80'];
+    : [DEFAULT_CARD_IMAGE];
 
   const hasMultipleImages = images.length > 1;
 
@@ -141,7 +141,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           loading="lazy"
           decoding="async"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
+            (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
           }}
         />
 

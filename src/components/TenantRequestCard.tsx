@@ -1,5 +1,5 @@
 import React from 'react';
-import { TenantRequest } from '../types/property';
+import { TenantRequest, DEFAULT_CARD_IMAGE } from '../types/property';
 import { 
   ShieldCheck, MessageSquare, MapPin, Building, Calendar, 
   Maximize2, Bed, Bath, ArrowUpRight, Edit3, AlertTriangle 
@@ -35,6 +35,10 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
     exploring: { text: 'مقارنة واستكشاف', color: 'bg-blue-600 text-white' },
   }[request.urgency || 'within_month'];
 
+  const requestImage = (request.images && request.images.length > 0)
+    ? request.images[0]
+    : DEFAULT_CARD_IMAGE;
+
   return (
     <div 
       onClick={(e) => {
@@ -45,44 +49,52 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
       className="group bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-slate-300 transition-all duration-300 overflow-hidden mb-6 flex flex-col justify-between cursor-pointer"
     >
       {/* Top Banner / Visual Header matching PropertyCard height */}
-      <div className="relative h-40 bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 p-4 flex flex-col justify-between border-b border-slate-200 select-none">
-        
+      <div className="relative h-48 sm:h-52 w-full bg-slate-950 overflow-hidden select-none">
+        <img
+          src={requestImage}
+          alt={`طلب ${request.propertyType} - ${request.preferredDistrict}`}
+          className="w-full h-full object-cover transition-all duration-300 group-hover:scale-102"
+          loading="lazy"
+          decoding="async"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
+          }}
+        />
+
+        {/* Gradient Overlay for readable badges */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-black/25 to-black/45 pointer-events-none" />
+
         {/* Top Badges Row */}
-        <div className="flex items-center justify-between gap-2 z-10">
+        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10">
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* نوع الوحدة على اليمين */}
-            <span className="px-2.5 py-1 rounded-xl bg-white/90 backdrop-blur-xs text-slate-800 text-xs font-bold border border-slate-200 shadow-2xs">
+            <span className="px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white text-xs font-bold border border-white/20 shadow-xs">
               {request.propertyType}
             </span>
             {/* شارة الغرض في أقصى اليسار */}
             <span
-              className={`px-3 py-1 rounded-xl font-bold text-xs shadow-xs ${
+              className={`px-3 py-1 rounded-xl font-bold text-xs shadow-xs text-white ${
                 isRent
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-emerald-600 text-white'
+                  ? 'bg-blue-600 border border-blue-400/30'
+                  : 'bg-emerald-600 border border-emerald-400/30'
               }`}
             >
               {isRent ? 'مطلوب للإيجار' : 'مطلوب للشراء'}
             </span>
           </div>
 
-          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-2xs ${urgencyLabel.color}`}>
+          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-xs ${urgencyLabel.color}`}>
             {urgencyLabel.text}
           </span>
         </div>
 
-        {/* Decorative Watermark Icon in center */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
-          <Building className="w-20 h-20 text-slate-600" />
-        </div>
-
         {/* Bottom floating source / district */}
-        <div className="flex items-center justify-between text-xs z-10">
-          <span className="bg-white/90 backdrop-blur-xs px-2.5 py-0.5 rounded-lg text-[11px] font-bold text-slate-700 border border-slate-200 font-mono shadow-2xs">
+        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs z-10">
+          <span className="bg-black/60 backdrop-blur-md px-2.5 py-0.5 rounded-lg text-[11px] font-bold text-white border border-white/20 font-mono shadow-xs">
             كود: {request.requestCode || request.id.slice(0, 7)}
           </span>
-          <span className="flex items-center gap-1 bg-white/90 backdrop-blur-xs px-2.5 py-0.5 rounded-lg text-[11px] font-bold text-slate-800 border border-slate-200 shadow-2xs">
-            <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-0.5 rounded-lg text-[11px] font-bold text-amber-300 border border-white/20 shadow-xs">
+            <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             {request.preferredDistrict}
           </span>
         </div>

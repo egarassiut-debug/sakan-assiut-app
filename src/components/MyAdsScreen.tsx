@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Property, TenantRequest, ScheduledInspection, AppUser, PropertyStatus } from '../types/property';
+import { Property, TenantRequest, ScheduledInspection, AppUser, PropertyStatus, DEFAULT_CARD_IMAGE } from '../types/property';
 import { 
   Building2, Clock, CheckCircle2, AlertTriangle, Edit3, Trash2, 
   Archive, RotateCcw, Eye, Plus, MapPin, Calendar, Copy, Check, CreditCard,
@@ -827,7 +827,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
                 const isRent = prop.purpose === 'rent';
                 const mainImg = prop.images && prop.images.length > 0 
                   ? prop.images[0] 
-                  : 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80';
+                  : DEFAULT_CARD_IMAGE;
 
                 const handleContactWhatsApp = () => {
                   const text = encodeURIComponent(
@@ -851,7 +851,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
                           loading="lazy"
                           decoding="async"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
+                            (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
                           }}
                         />
                         <span className="absolute bottom-1 right-1 text-[9px] bg-black/70 text-white font-mono px-1.5 py-0.2 rounded-md">

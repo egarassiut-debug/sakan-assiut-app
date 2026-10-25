@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Property, TenantRequest, PropertyPurpose, PropertyStatus } from '../types/property';
+import { Property, TenantRequest, PropertyPurpose, PropertyStatus, DEFAULT_CARD_IMAGE } from '../types/property';
 import { 
   Sparkles, UploadCloud, CheckCircle2, AlertCircle, Phone, MessageCircle, 
   Trash2, Copy, Check, Building2, MapPin, DollarSign, Maximize2, 
@@ -411,9 +411,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
         ownerName: extractedData.contactName || 'معلن فيسبوك',
         ownerPhone: extractedData.contactPhone || '01000000000',
         source: `فيسبوك: ${extractedData.sourceName}`,
-        images: selectedImage ? [selectedImage] : [
-          'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&auto=format&fit=crop&q=80'
-        ],
+        images: selectedImage ? [selectedImage] : [DEFAULT_CARD_IMAGE],
         createdAt: timestamp,
         createdByAdmin: true,
       };
@@ -451,6 +449,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
         bathrooms: extractedData.bathrooms,
         urgency: 'immediate',
         notes: `${extractedData.rawText}\n\n[المصدر: ${extractedData.sourceName}]`,
+        images: selectedImage ? [selectedImage] : [DEFAULT_CARD_IMAGE],
         createdAt: timestamp,
       };
 

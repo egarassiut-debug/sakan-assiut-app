@@ -1,5 +1,5 @@
 import React from 'react';
-import { Property, TenantRequest } from '../types/property';
+import { Property, TenantRequest, DEFAULT_CARD_IMAGE } from '../types/property';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -277,7 +277,7 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
 }) => {
   if (entry.type === 'property') {
     const prop = entry.item;
-    const thumbnail = prop.images && prop.images.length > 0 ? prop.images[0] : null;
+    const thumbnail = prop.images && prop.images.length > 0 ? prop.images[0] : DEFAULT_CARD_IMAGE;
 
     return (
       <div className={`bg-white rounded-2xl border p-3.5 flex flex-col justify-between space-y-3 transition-all hover:shadow-md ${
@@ -306,13 +306,14 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
 
           {/* Title & Image row */}
           <div className="flex items-start gap-2.5">
-            {thumbnail && (
-              <img
-                src={thumbnail}
-                alt={prop.title}
-                className="w-14 h-14 rounded-xl object-cover shrink-0 border border-slate-100 shadow-2xs"
-              />
-            )}
+            <img
+              src={thumbnail}
+              alt={prop.title}
+              className="w-14 h-14 rounded-xl object-cover shrink-0 border border-slate-100 shadow-2xs"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
+              }}
+            />
             <div className="flex-1 min-w-0">
               <h4 className="font-black text-xs text-slate-900 truncate">
                 {prop.title}
@@ -383,20 +384,30 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
           </span>
         </div>
 
-        {/* Requirements info */}
-        <div>
-          <h4 className="font-black text-xs text-slate-900 truncate">
-            طلب: {req.propertyType}
-          </h4>
-          <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold mt-0.5">
-            <MapPin className="w-3 h-3 text-teal-600 shrink-0" />
-            <span className="truncate">الحي: {req.preferredDistrict}</span>
-          </div>
-          <div className="font-mono font-black text-xs text-teal-900 mt-1">
-            ميزانية: {req.maxPrice.toLocaleString('ar-EG')} ج.م
-            <span className="text-[10px] text-slate-400 font-normal mr-1">
-              {isRent ? '/ شهر' : ''}
-            </span>
+        {/* Requirements info & thumbnail row */}
+        <div className="flex items-start gap-2.5">
+          <img
+            src={(req.images && req.images.length > 0) ? req.images[0] : DEFAULT_CARD_IMAGE}
+            alt={`طلب ${req.propertyType}`}
+            className="w-14 h-14 rounded-xl object-cover shrink-0 border border-slate-100 shadow-2xs"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
+            }}
+          />
+          <div className="flex-1 min-w-0">
+            <h4 className="font-black text-xs text-slate-900 truncate">
+              طلب: {req.propertyType}
+            </h4>
+            <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold mt-0.5">
+              <MapPin className="w-3 h-3 text-teal-600 shrink-0" />
+              <span className="truncate">الحي: {req.preferredDistrict}</span>
+            </div>
+            <div className="font-mono font-black text-xs text-teal-900 mt-1">
+              ميزانية: {req.maxPrice.toLocaleString('ar-EG')} ج.م
+              <span className="text-[10px] text-slate-400 font-normal mr-1">
+                {isRent ? '/ شهر' : ''}
+              </span>
+            </div>
           </div>
         </div>
       </div>

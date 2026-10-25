@@ -40,6 +40,9 @@ export interface PropertyUtilities {
   [customKey: string]: UtilityItem | undefined;
 }
 
+export const DEFAULT_PROPERTY_IMAGE = '/default-card-placeholder.webp';
+export const DEFAULT_CARD_IMAGE = '/default-card-placeholder.webp';
+
 export interface Property {
   id: string;
   code: string; // e.g. "ASY-102"
@@ -132,6 +135,7 @@ export interface TenantRequest {
   urgency?: 'immediate' | 'within_month' | 'exploring';
   notes?: string;
   adminNote?: string;
+  images?: string[];
   status?: 'pending' | 'pending_approval' | 'under_review' | 'active' | 'approved' | 'matched' | 'fulfilled' | 'rejected' | 'needs_completion';
   createdAt: string;
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Property } from '../types/property';
+import { Property, DEFAULT_CARD_IMAGE } from '../types/property';
 import { X, Copy, Check, MapPin, Zap, Droplets, Flame, ArrowUpDown, MessageSquare, Calendar, ShieldCheck, Edit3, Heart, Star, AlertTriangle } from 'lucide-react';
 
 interface PropertyDetailsModalProps {
@@ -138,13 +138,13 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
         {/* Image Gallery */}
         <div className="relative bg-slate-900 aspect-16/9 w-full">
           <img
-            src={property.images[activeImageIndex] || property.images[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80'}
+            src={property.images[activeImageIndex] || property.images[0] || DEFAULT_CARD_IMAGE}
             alt={property.title}
             className="w-full h-full object-cover"
             loading="lazy"
             decoding="async"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
+              (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
             }}
           />
           {property.images.length > 1 && (
