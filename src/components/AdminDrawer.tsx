@@ -15,16 +15,18 @@ import {
   User, 
   Database,
   CheckCircle2,
-  ChevronLeft
+  ChevronLeft,
+  Sparkles
 } from 'lucide-react';
 import { VerifiedUserIcon } from './FlutterIcons';
 
 export type AdminSectionId = 
+  | 'moderation'
+  | 'screenshot_converter'
   | 'dropdowns' 
   | 'users' 
   | 'admins' 
   | 'logs' 
-  | 'moderation' 
   | 'inspections' 
   | 'analytics' 
   | 'blocks' 
@@ -59,6 +61,12 @@ export const ADMIN_NAVIGATION_ITEMS: AdminNavigationItem[] = [
     id: 'moderation',
     title: 'الموافقات ومراجعة الإعلانات',
     icon: VerifiedUserIcon,
+  },
+  // المحول الذكي لإسكرينات الفيسبوك
+  {
+    id: 'screenshot_converter',
+    title: 'المحول الذكي لإسكرينات الفيسبوك',
+    icon: Sparkles,
   },
   // 2. جدول المعاينات الميدانية
   {
@@ -158,7 +166,7 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
     return item;
   });
 
-  // Nav Item Renderer: Simple, Clean, Large Bold Pure-White Font without Subtitles
+  // Nav Item Renderer: Simple, Clean, Large Bold Font in Light Theme
   const renderItemButton = (item: AdminNavigationItem) => {
     const isActive = activeSection === item.id;
     const IconComponent = item.icon;
@@ -175,8 +183,8 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
         }}
         className={`w-full py-3.5 px-3.5 sm:px-4 rounded-2xl flex items-center justify-between gap-3 text-right transition-all duration-150 cursor-pointer border ${
           isActive
-            ? 'bg-blue-600/25 border-blue-500/60 text-white font-black shadow-sm ring-1 ring-blue-500/40'
-            : 'bg-slate-900 border-slate-800 text-white hover:bg-slate-800 hover:border-slate-700'
+            ? 'bg-blue-50 border-blue-200 text-blue-700 font-bold shadow-xs'
+            : 'bg-white border-slate-200/90 text-slate-800 hover:bg-slate-50 hover:border-slate-300'
         }`}
         title={item.title}
       >
@@ -185,14 +193,16 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
             className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
               isActive
                 ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-800 text-amber-400 border border-slate-700'
+                : 'bg-slate-100 text-slate-700 border border-slate-200'
             }`}
           >
             <IconComponent className="w-5 h-5" />
           </div>
           
           <div className="min-w-0 flex-1">
-            <span className="text-sm sm:text-base font-bold text-white tracking-wide block truncate">
+            <span className={`text-sm sm:text-base font-bold tracking-wide block truncate ${
+              isActive ? 'text-blue-700 font-extrabold' : 'text-slate-900'
+            }`}>
               {item.title}
             </span>
           </div>
@@ -202,7 +212,7 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
           {item.badge !== undefined && item.badge !== null && (
             <span
               className={`text-xs font-black px-2.5 py-0.5 rounded-full shrink-0 ${
-                item.badgeColor || 'bg-slate-800 text-slate-300'
+                item.badgeColor || 'bg-slate-100 text-slate-700 border border-slate-200'
               }`}
             >
               {item.badge}
@@ -210,7 +220,7 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
           )}
           <ChevronLeft
             className={`w-4 h-4 shrink-0 transition-transform ${
-              isActive ? 'text-blue-400 -translate-x-0.5' : 'text-slate-500'
+              isActive ? 'text-blue-600 -translate-x-0.5' : 'text-slate-400'
             }`}
           />
         </div>
@@ -219,19 +229,19 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
   };
 
   const content = (
-    <div className="flex flex-col h-full bg-[#0F172A] text-white select-none">
+    <div className="flex flex-col h-full bg-white text-slate-800 select-none">
       {/* 1. Header & Identity */}
-      <div className="bg-[#0B132B] p-4 flex items-center justify-between border-b border-slate-800 shrink-0">
+      <div className="bg-slate-50 p-4 flex items-center justify-between border-b border-slate-200 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-400/30 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <h3 className="text-sm sm:text-base font-bold text-white truncate">لوحة التحكم</h3>
-              <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-bold">إدارة</span>
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">لوحة التحكم</h3>
+              <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full font-bold">إدارة</span>
             </div>
-            <p className="text-[11px] text-slate-400 truncate">القائمة الجانبية المركزية</p>
+            <p className="text-[11px] text-slate-500 truncate">القائمة الجانبية المركزية</p>
           </div>
         </div>
 
@@ -239,7 +249,7 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 border border-slate-700"
+            className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer shrink-0 border border-slate-200"
             title="إغلاق القائمة الجانبية"
           >
             <X className="w-4 h-4" />
@@ -248,18 +258,18 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
       </div>
 
       {/* 2. Admin User Card */}
-      <div className="p-3 border-b border-slate-800/80 bg-slate-900/60 shrink-0">
-        <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2 shadow-xs">
+      <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
+        <div className="p-3 rounded-xl bg-white border border-slate-200 flex items-center justify-between gap-2 shadow-2xs">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0 font-bold text-xs">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 font-bold text-xs">
               <User className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-bold text-white truncate">
+              <div className="text-xs font-bold text-slate-900 truncate">
                 {currentUser?.name || 'مدير النظام'}
               </div>
-              <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="truncate">جلسة إدارية نشطة</span>
               </div>
             </div>
@@ -269,7 +279,7 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
             <button
               type="button"
               onClick={onLockAdmin}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-700 shrink-0"
+              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200 shrink-0"
               title="قفل لوحة التحكم"
             >
               <Lock className="w-3.5 h-3.5" />
@@ -279,23 +289,23 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
       </div>
 
       {/* 3. Navigation Links List (Ordered 1 to 9 by usage priority) */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 bg-slate-50/30">
         <nav className="space-y-2">
           {itemsWithBadges.map(renderItemButton)}
         </nav>
       </div>
 
       {/* 4. Footer */}
-      <div className="p-3 bg-[#0B132B] border-t border-slate-800 shrink-0 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 min-w-0">
-          <Database className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+      <div className="p-3 bg-slate-50 border-t border-slate-200 shrink-0 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 min-w-0">
+          <Database className="w-3.5 h-3.5 text-amber-600 shrink-0" />
           <span className="truncate">النظام متصل ومؤمن</span>
         </div>
         {variant === 'drawer' ? (
           <button
             type="button"
             onClick={onClose}
-            className="text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 border border-slate-800 transition-colors cursor-pointer shrink-0"
+            className="text-xs font-bold text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer shrink-0"
           >
             إغلاق
           </button>
@@ -309,7 +319,7 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
   // If variant is desktop sidebar, render cleanly without backdrop or fixed positioning
   if (variant === 'sidebar') {
     return (
-      <aside className="w-full h-full border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+      <aside className="w-full h-full border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
         {content}
       </aside>
     );
@@ -321,7 +331,7 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
       {/* 1. Backdrop Overlay */}
       <div
         onClick={onClose}
-        className={`fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 transition-opacity duration-300 ease-in-out ${
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 transition-opacity duration-300 ease-in-out ${
           isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         aria-hidden="true"
@@ -329,7 +339,7 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
 
       {/* 2. Slide-over Drawer Panel */}
       <aside
-        className={`fixed inset-y-0 right-0 z-50 h-full w-80 sm:w-96 max-w-[88vw] shadow-2xl flex flex-col border-l border-slate-800 transform transition-transform duration-300 ease-out ${
+        className={`fixed inset-y-0 right-0 z-50 h-full w-80 sm:w-96 max-w-[88vw] shadow-2xl flex flex-col border-l border-slate-200 bg-white transform transition-transform duration-300 ease-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
         }`}
         role="dialog"

@@ -302,31 +302,31 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
             {isExportOpen && (
               <div 
-                className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-right"
+                className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-60 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-right"
               >
-                <div className="px-3.5 py-2 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                <div className="px-3.5 py-2 border-b border-slate-800 flex items-center justify-between text-[11px] font-bold text-slate-400">
                   <span>خيارات التصدير</span>
-                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono">{filteredUsers.length} مستخدم</span>
+                  <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">{filteredUsers.length} مستخدم</span>
                 </div>
                 <button
                   onClick={handleExportCSV}
-                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-800 flex items-center justify-between gap-2 transition-colors cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
                     <span>ملف Excel (CSV)</span>
                   </span>
-                  <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-mono font-bold">.csv</span>
+                  <span className="text-[10px] bg-emerald-950/70 border border-emerald-800 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold">.csv</span>
                 </button>
                 <button
                   onClick={handleExportPDF}
-                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-800 flex items-center justify-between gap-2 transition-colors cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    <Printer className="w-4 h-4 text-rose-600" />
+                    <Printer className="w-4 h-4 text-rose-400" />
                     <span>طباعة / حفظ PDF</span>
                   </span>
-                  <span className="text-[10px] bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-mono font-bold">.pdf</span>
+                  <span className="text-[10px] bg-rose-950/70 border border-rose-800 text-rose-300 px-1.5 py-0.5 rounded font-mono font-bold">.pdf</span>
                 </button>
               </div>
             )}
@@ -334,7 +334,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
           <button
             onClick={() => loadUsers(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
             title="تحديث قائمة الحسابات"
           >
             <RefreshCw className="w-4 h-4 text-[#FFB300]" />
@@ -345,7 +345,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
       {/* Summary Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold text-slate-400 block">إجمالي الحسابات</span>
             <span className="text-xl font-black text-white mt-0.5 block">{totalCount}</span>

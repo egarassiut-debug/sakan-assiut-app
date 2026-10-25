@@ -864,13 +864,10 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                             isRent
-                              ? 'bg-teal-50 text-teal-800 border border-teal-200'
-                              : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              ? 'bg-blue-950/60 text-blue-300 border border-blue-800'
+                              : 'bg-amber-950/60 text-amber-300 border border-amber-800'
                           }`}>
-                            {isRent ? 'للإيجار' : 'للبيع'}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-semibold">
-                            {prop.propertyType}
+                            {`${prop.propertyType === 'شقة سكنية' ? 'شقة' : prop.propertyType === 'قطعة أرض فضاء' ? 'أرض' : prop.propertyType} ${isRent ? 'للإيجار' : 'للبيع'}`}
                           </span>
                           <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
                             <MapPin className="w-2.5 h-2.5 text-teal-600" />

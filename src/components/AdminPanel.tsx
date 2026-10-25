@@ -13,9 +13,10 @@ import {
   UserX, Ban, AlertTriangle, Calendar, Plus, Search,
   Edit3, MessageSquare, Users, UserCheck, Download, FileSpreadsheet, Printer, ChevronDown,
   SlidersHorizontal, BarChart3, RotateCcw, Building2, Menu, X, ChevronLeft,
-  Phone, MessageCircle, User, Database, RefreshCw
+  Phone, MessageCircle, User, Database, RefreshCw, Sparkles
 } from 'lucide-react';
 import { UserManagement } from './UserManagement';
+import { ScreenshotConverter } from './ScreenshotConverter';
 import { AdminDrawer, AdminSectionId, ADMIN_NAVIGATION_ITEMS } from './AdminDrawer';
 import { exportToCSV, exportToPrintablePDF } from '../utils/exportUtils';
 import { 
@@ -35,11 +36,13 @@ interface AdminPanelProps {
   onOpenDetails: (property: Property) => void;
   onDeleteProperty?: (propertyId: string) => void;
   onEditProperty?: (property: Property) => void;
+  onAddProperty?: (property: Property) => void;
   tenantRequests?: TenantRequest[];
   onOpenTenantRequestDetails?: (request: TenantRequest) => void;
   onUpdateTenantRequestStatus?: (requestId: string, newStatus: any, note?: string) => void;
   onEditTenantRequest?: (request: TenantRequest) => void;
   onDeleteTenantRequest?: (requestId: string) => void;
+  onAddTenantRequest?: (request: TenantRequest) => void;
   dropdownCategories: Record<string, DropdownCategory>;
   onUpdateDropdownCategories: (catKey: string, updatedCat: DropdownCategory) => void;
   utilityDefinitions: UtilityOptionDefinition[];
@@ -72,11 +75,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onOpenDetails,
   onDeleteProperty,
   onEditProperty,
+  onAddProperty,
   tenantRequests = [],
   onOpenTenantRequestDetails,
   onUpdateTenantRequestStatus,
   onEditTenantRequest,
   onDeleteTenantRequest,
+  onAddTenantRequest,
   dropdownCategories,
   onUpdateDropdownCategories,
   utilityDefinitions,
@@ -476,26 +481,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* 3. Main Content View (العمود الرئيسي للمحتوى) */}
         {/* ========================================================================= */}
         <div className="flex-1 min-w-0 w-full space-y-4">
-          {/* Top Admin Bar: Single Compact, Flat Horizontal Strip in Royal Dark Navy */}
-          <div className="bg-[#0F172A] border border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-md flex items-center justify-between gap-2.5">
+          {/* Top Admin Bar: Single Compact, Flat Horizontal Strip */}
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs flex items-center justify-between gap-2.5">
             {/* Right: Sleek mini Drawer Trigger Button (located right under header/logo) + Active Section */}
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(true)}
-                className="w-8 h-8 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-2xs shrink-0"
+                className="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-2xs shrink-0"
                 title="فتح القائمة الجانبية للأقسام (أو اسحب الشاشة من اليمين)"
               >
-                <Menu className="w-4 h-4 text-blue-400 stroke-[2.5]" />
+                <Menu className="w-4 h-4 text-blue-600 stroke-[2.5]" />
               </button>
 
-              <div className="h-5 w-px bg-slate-800 shrink-0 hidden sm:block" />
+              <div className="h-5 w-px bg-slate-200 shrink-0 hidden sm:block" />
 
               <div className="flex items-center gap-1.5 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-400/30 flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
                   {React.createElement(activeNavItem.icon, { className: 'w-3.5 h-3.5' })}
                 </div>
-                <span className="text-xs font-bold text-white truncate hidden md:inline max-w-[140px]">
+                <span className="text-xs font-bold text-slate-800 truncate hidden md:inline max-w-[140px]">
                   {activeNavItem.title}
                 </span>
               </div>
@@ -522,11 +527,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     onClick={() => setActiveSection(item.id)}
                     className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                       isActive
-                        ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-xs'
-                        : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800'
+                        ? 'bg-[#002B49] text-white shadow-xs'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200'
                     }`}
                   >
-                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-amber-400' : 'text-slate-400'}`} />
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-amber-400' : 'text-slate-500'}`} />
                     <span className="whitespace-nowrap">{item.title}</span>
                     {badge !== null && (
                       <span
@@ -674,9 +679,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
+          {/* قسم المحول الذكي لإسكرينات الفيسبوك (AI Screenshot-to-Card Converter) */}
+          {activeSection === 'screenshot_converter' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <ScreenshotConverter
+                onPublishProperty={(prop) => {
+                  if (onAddProperty) onAddProperty(prop);
+                }}
+                onPublishTenantRequest={(req) => {
+                  if (onAddTenantRequest) onAddTenantRequest(req);
+                }}
+                adminName={currentUser?.name}
+                adminPhone={currentUser?.phone}
+              />
+            </div>
+          )}
+
           {/* القسم 3: الموافقات ومراجعة الإعلانات */}
           {activeSection === 'moderation' && (
             <div className="space-y-3">
+              {/* AI Converter Quick Callout Banner */}
+              <div className="bg-gradient-to-r from-blue-950/70 via-slate-900 to-amber-950/30 p-3.5 rounded-2xl border border-blue-800/60 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-400/30 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>المحول الذكي لإسكرينات الفيسبوك (AI OCR)</span>
+                      <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.2 rounded-full border border-blue-500/30 font-bold">جديد</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-0.5">
+                      ارفع أي لقطة شاشة لبوست عقاري لتفريغ بياناته وأرقام التواصل ونشره فوراً في المنصة بضغطة زر.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('screenshot_converter')}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>فتح أداة التحويل</span>
+                </button>
+              </div>
+
               {/* Toggle Between Offers and Requests - Dark Theme */}
               <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 gap-1.5 shadow-sm">
                 <button

@@ -216,6 +216,14 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                 </div>
               </>
             )}
+
+            {/* Source of the listing */}
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 col-span-2 sm:col-span-4 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-semibold">جهة النشر ومصدر الإعلان:</span>
+              <span className="font-bold text-[#002B49] bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                {property.source || 'مالك مباشر'}
+              </span>
+            </div>
           </div>
 
           {/* Description */}

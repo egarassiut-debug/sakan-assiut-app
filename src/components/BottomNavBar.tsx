@@ -31,14 +31,14 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
   if (!isAdmin) {
     return (
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900 text-slate-300 border-t border-slate-800 shadow-xl select-none">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md text-slate-600 border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] select-none">
         <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-between relative">
           
           {/* 1. عروض الإيجار (Index 0) */}
           <button
             onClick={() => onSelectIndex(0)}
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
-              currentIndex === 0 ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+              currentIndex === 0 ? 'text-amber-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-700'
             }`}
             title="عروض الإيجار والبيع"
           >
@@ -49,7 +49,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
               العروض
             </span>
             {currentIndex === 0 && (
-              <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-0.5" />
+              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-0.5" />
             )}
           </button>
 
@@ -57,7 +57,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <button
             onClick={() => onSelectIndex(1)}
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
-              currentIndex === 1 ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+              currentIndex === 1 ? 'text-amber-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-700'
             }`}
             title="طلبات الإيجار"
           >
@@ -73,7 +73,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
               الطلبات
             </span>
             {currentIndex === 1 && (
-              <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-0.5" />
+              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-0.5" />
             )}
           </button>
 
@@ -81,13 +81,13 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <div className="relative -top-3.5 flex flex-col items-center justify-center px-1.5 z-10">
             <button
               onClick={onOpenAddModal}
-              className="w-12 h-12 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/25 flex items-center justify-center border-2 border-slate-900 transition-transform active:scale-95 hover:scale-105 group cursor-pointer"
+              className="w-12 h-12 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/25 flex items-center justify-center border-2 border-white transition-transform active:scale-95 hover:scale-105 group cursor-pointer"
               title="إضافة عقار أو طلب جديد (+)"
               aria-label="إضافة عقار أو طلب جديد"
             >
               <Add className="w-7 h-7 text-slate-950 transition-transform group-hover:rotate-90 duration-200" />
             </button>
-            <span className="text-[9px] text-slate-400 font-bold mt-0.5 tracking-tight">
+            <span className="text-[9px] text-slate-500 font-bold mt-0.5 tracking-tight">
               إضافة
             </span>
           </div>
@@ -96,7 +96,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <button
             onClick={() => onSelectIndex(2)}
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
-              currentIndex === 2 ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+              currentIndex === 2 ? 'text-amber-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-700'
             }`}
             title="إعلاناتي"
           >
@@ -112,7 +112,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
               إعلاناتي
             </span>
             {currentIndex === 2 && (
-              <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-0.5" />
+              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-0.5" />
             )}
           </button>
 
@@ -122,14 +122,14 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900 text-slate-300 border-t border-slate-800 shadow-xl select-none">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md text-slate-600 border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] select-none">
       <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-between relative">
         
         {/* 1. عروض الإيجار (Index 0) */}
         <button
           onClick={() => onSelectIndex(0)}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
-            currentIndex === 0 ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+            currentIndex === 0 ? 'text-amber-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-700'
           }`}
           title="عروض الإيجار والبيع"
         >
@@ -140,7 +140,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             العروض
           </span>
           {currentIndex === 0 && (
-            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-0.5" />
+            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-0.5" />
           )}
         </button>
 
@@ -148,7 +148,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         <button
           onClick={() => onSelectIndex(1)}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
-            (currentIndex === 1 || currentIndex === 2) ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+            (currentIndex === 1 || currentIndex === 2) ? 'text-amber-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-700'
           }`}
           title="طلبات الإيجار"
         >
@@ -164,7 +164,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             الطلبات
           </span>
           {(currentIndex === 1 || currentIndex === 2) && (
-            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-0.5" />
+            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-0.5" />
           )}
         </button>
 
@@ -172,13 +172,13 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         <div className="relative -top-3.5 flex flex-col items-center justify-center px-1.5 z-10">
           <button
             onClick={onOpenAddModal}
-            className="w-12 h-12 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/25 flex items-center justify-center border-2 border-slate-900 transition-transform active:scale-95 hover:scale-105 group cursor-pointer"
+            className="w-12 h-12 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/25 flex items-center justify-center border-2 border-white transition-transform active:scale-95 hover:scale-105 group cursor-pointer"
             title="إضافة عقار أو طلب جديد (+)"
             aria-label="إضافة عقار أو طلب جديد"
           >
             <Add className="w-7 h-7 text-slate-950 transition-transform group-hover:rotate-90 duration-200" />
           </button>
-          <span className="text-[9px] text-slate-400 font-bold mt-0.5 tracking-tight">
+          <span className="text-[9px] text-slate-500 font-bold mt-0.5 tracking-tight">
             إضافة
           </span>
         </div>
@@ -187,7 +187,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         <button
           onClick={() => onSelectIndex(3)}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
-            currentIndex === 3 ? 'text-amber-400 font-bold scale-105' : 'text-slate-400 hover:text-slate-200'
+            currentIndex === 3 ? 'text-amber-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-700'
           }`}
           title="لوحة التحكم الإدارية"
         >
@@ -203,7 +203,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             لوحة التحكم
           </span>
           {currentIndex === 3 && (
-            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-0.5" />
+            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-0.5" />
           )}
         </button>
 
