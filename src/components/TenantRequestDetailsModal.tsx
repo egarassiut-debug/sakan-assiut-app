@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TenantRequest } from '../types/property';
+import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
   X, Copy, Check, MapPin, Building, 
   MessageCircle, ShieldCheck, CheckCircle2, 
@@ -74,6 +75,17 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Visual Request Banner */}
+        <div className="relative bg-gradient-to-br from-[#002B49] via-[#0B1E36] to-[#011627] h-36 w-full flex items-center justify-center overflow-hidden border-b border-slate-100">
+          <img
+            src={DEFAULT_SAKAN_PLACEHOLDER}
+            alt="سكن أسيوط"
+            className="w-full h-full object-contain p-4 drop-shadow-md"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
         </div>
 
         {/* Modal Body */}

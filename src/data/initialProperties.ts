@@ -213,9 +213,7 @@ export const INITIAL_PROPERTIES: Property[] = [
     ownerName: 'أبو أحمد السيوطي',
     ownerPhone: '01099887766',
     source: 'مالك مباشر',
-    images: [
-      'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80'
-    ],
+    images: [],
     featured: false,
     status: 'approved',
     isApproved: true,

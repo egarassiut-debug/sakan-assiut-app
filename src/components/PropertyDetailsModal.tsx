@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Property, DEFAULT_CARD_IMAGE } from '../types/property';
+import { Property } from '../types/property';
+import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { X, Copy, Check, MapPin, Zap, Droplets, Flame, ArrowUpDown, MessageSquare, Calendar, ShieldCheck, Edit3, Heart, Star, AlertTriangle } from 'lucide-react';
 
 interface PropertyDetailsModalProps {
@@ -136,17 +137,28 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
         )}
 
         {/* Image Gallery */}
-        <div className="relative bg-slate-900 aspect-16/9 w-full">
-          <img
-            src={property.images[activeImageIndex] || property.images[0] || DEFAULT_CARD_IMAGE}
-            alt={property.title}
-            className="w-full h-full object-cover"
-            loading="lazy"
-            decoding="async"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
-            }}
-          />
+        <div className="relative bg-gradient-to-br from-[#002B49] via-[#0B1E36] to-[#011627] aspect-16/9 w-full flex items-center justify-center overflow-hidden">
+          {(() => {
+            const currentImg = property.images[activeImageIndex] || property.images[0] || DEFAULT_SAKAN_PLACEHOLDER;
+            const isPlaceholder = currentImg === DEFAULT_SAKAN_PLACEHOLDER || !property.images || property.images.length === 0;
+
+            return (
+              <img
+                src={currentImg}
+                alt={property.title}
+                className={`w-full h-full transition-all duration-300 ${
+                  isPlaceholder ? 'object-contain p-6 drop-shadow-lg' : 'object-cover'
+                }`}
+                loading="lazy"
+                decoding="async"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = DEFAULT_SAKAN_PLACEHOLDER;
+                  target.className = 'w-full h-full object-contain p-6 drop-shadow-lg';
+                }}
+              />
+            );
+          })()}
           {property.images.length > 1 && (
             <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2 z-10">
               {property.images.map((_, idx) => (

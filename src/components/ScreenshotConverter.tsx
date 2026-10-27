@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Property, TenantRequest, PropertyPurpose, PropertyStatus, DEFAULT_CARD_IMAGE } from '../types/property';
+import { Property, TenantRequest, PropertyPurpose, PropertyStatus } from '../types/property';
+import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
   Sparkles, UploadCloud, CheckCircle2, AlertCircle, Phone, MessageCircle, 
   Trash2, Copy, Check, Building2, MapPin, DollarSign, Maximize2, 
@@ -411,7 +412,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
         ownerName: extractedData.contactName || 'معلن فيسبوك',
         ownerPhone: extractedData.contactPhone || '01000000000',
         source: `فيسبوك: ${extractedData.sourceName}`,
-        images: selectedImage ? [selectedImage] : [DEFAULT_CARD_IMAGE],
+        images: selectedImage ? [selectedImage] : [DEFAULT_SAKAN_PLACEHOLDER],
         createdAt: timestamp,
         createdByAdmin: true,
       };
@@ -449,7 +450,6 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
         bathrooms: extractedData.bathrooms,
         urgency: 'immediate',
         notes: `${extractedData.rawText}\n\n[المصدر: ${extractedData.sourceName}]`,
-        images: selectedImage ? [selectedImage] : [DEFAULT_CARD_IMAGE],
         createdAt: timestamp,
       };
 
@@ -478,26 +478,25 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
   };
 
   return (
-    <div className="space-y-4 text-slate-100 font-['Cairo']">
+    <div className="space-y-4 text-slate-800 font-['Cairo']">
       
       {/* 1. Header Banner */}
-      <div className="bg-gradient-to-r from-[#002B49] via-slate-900 to-[#0F172A] rounded-2xl p-4 sm:p-5 border border-blue-900/60 shadow-lg relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-gradient-to-r from-blue-50 via-white to-amber-50/60 rounded-2xl p-4 sm:p-5 border border-blue-200/80 shadow-xs relative overflow-hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center font-bold shadow-md shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center font-bold shadow-xs shrink-0">
               <Sparkles className="w-6 h-6 animate-spin-slow" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base sm:text-lg font-black text-white">
+                <h3 className="text-base sm:text-lg font-black text-slate-900">
                   المحول الذكي لإسكرينات الفيسبوك
                 </h3>
-                <span className="text-[11px] bg-blue-600/30 text-blue-300 border border-blue-500/50 font-bold px-2 py-0.5 rounded-full">
+                <span className="text-[11px] bg-blue-100 text-blue-700 border border-blue-200 font-bold px-2 py-0.5 rounded-full">
                   Gemini Vision OCR ⚡
                 </span>
               </div>
-              <p className="text-xs text-slate-300 mt-1">
+              <p className="text-xs text-slate-600 mt-1">
                 ارفع لقطة شاشة لأي بوست عقاري في أسيوط ليتم تفريغ بياناته وأرقام التواصل فوراً إلى بطاقة جاهزة للنشر بضغطة زر.
               </p>
             </div>
@@ -507,9 +506,9 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
             <button
               type="button"
               onClick={handleReset}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-700 cursor-pointer shrink-0"
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-200 cursor-pointer shrink-0 shadow-2xs"
             >
-              <RefreshCw className="w-4 h-4 text-amber-400" />
+              <RefreshCw className="w-4 h-4 text-amber-600" />
               <span>تحويل سكرين شوت جديد</span>
             </button>
           )}
@@ -518,20 +517,20 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
 
       {/* Success Notification Bar */}
       {publishSuccess && (
-        <div className="p-4 rounded-2xl bg-emerald-950/80 border border-emerald-800 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-sm font-black text-emerald-300">تم الاعتماد والنشر بنجاح! 🚀</div>
-              <div className="text-xs text-slate-200 mt-0.5">{publishSuccess}</div>
+              <div className="text-sm font-black text-emerald-800">تم الاعتماد والنشر بنجاح! 🚀</div>
+              <div className="text-xs text-emerald-700 mt-0.5">{publishSuccess}</div>
             </div>
           </div>
           <button
             type="button"
             onClick={handleReset}
-            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer shrink-0"
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer shrink-0"
           >
             تحويل إسكرين شوت آخر
           </button>
@@ -540,8 +539,8 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
 
       {/* Error / Warning Notice */}
       {errorMsg && (
-        <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
           <span>{errorMsg}</span>
         </div>
       )}
@@ -551,31 +550,31 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
         <div className="space-y-4">
           <div
             {...getRootProps()}
-            className={`border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center transition-all cursor-pointer bg-slate-900/90 ${
+            className={`border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center transition-all cursor-pointer bg-white ${
               isDragActive
-                ? 'border-amber-400 bg-amber-500/10 scale-[1.01]'
-                : 'border-slate-700 hover:border-blue-500 hover:bg-slate-800/80'
+                ? 'border-amber-500 bg-amber-50/50 scale-[1.01]'
+                : 'border-slate-300 hover:border-blue-500 hover:bg-slate-50'
             }`}
           >
             <input {...getInputProps()} />
-            <div className="w-16 h-16 rounded-2xl bg-blue-950/70 border border-blue-800 text-blue-400 flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center mx-auto mb-4 shadow-2xs">
               <UploadCloud className="w-8 h-8" />
             </div>
-            <h4 className="text-base sm:text-lg font-black text-white">
+            <h4 className="text-base sm:text-lg font-black text-slate-900">
               اسحب وأفلت لقطة شاشة البوست هنا، أو اضغط للاختيار من جهازك
             </h4>
-            <p className="text-xs text-slate-400 max-w-md mx-auto mt-2 leading-relaxed">
+            <p className="text-xs text-slate-500 max-w-md mx-auto mt-2 leading-relaxed">
               يدعم صور السكرين شوت من جروبات الفيسبوك بصيغ (PNG, JPG, WebP) مع قراءة فورية للأرقام، الأسعار، والمناطق في محافظة أسيوط.
             </p>
-            <div className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md">
+            <div className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs">
               <Sparkles className="w-4 h-4 text-amber-300" />
               <span>اختيار سكرين شوت من الجهاز</span>
             </div>
           </div>
 
           {/* Quick Demo Samples for Admin Instant Testing */}
-          <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 space-y-2.5">
-            <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-2.5">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-700">
               <Sparkles className="w-4 h-4" />
               <span>أو جرّب فورياً بأحد نماذج بوستات فيسبوك أسيوط الجاهزة (1-Click Test):</span>
             </div>
@@ -585,17 +584,17 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
                   key={idx}
                   type="button"
                   onClick={() => handleLoadSample(sample)}
-                  className="p-3 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-right transition-all hover:border-amber-400/60 cursor-pointer group space-y-1.5"
+                  className="p-3 rounded-xl bg-slate-50 hover:bg-white border border-slate-200 text-right transition-all hover:border-amber-400 cursor-pointer group space-y-1.5 shadow-2xs"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white group-hover:text-amber-300">
+                    <span className="text-xs font-bold text-slate-900 group-hover:text-blue-700">
                       {sample.name}
                     </span>
-                    <span className="text-[10px] bg-blue-900/60 text-blue-300 px-1.5 py-0.5 rounded-md font-mono">
+                    <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md font-mono font-bold">
                       تجربة سريعة
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
                     {sample.previewText}
                   </p>
                 </button>
@@ -607,18 +606,18 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
 
       {/* 3. Processing Loading Overlay */}
       {isProcessing && (
-        <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 text-center space-y-4 animate-in fade-in">
-          <div className="w-14 h-14 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/40 flex items-center justify-center mx-auto animate-pulse">
-            <Sparkles className="w-7 h-7 text-amber-400 animate-spin" />
+        <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center space-y-4 animate-in fade-in shadow-xs">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center mx-auto animate-pulse">
+            <Sparkles className="w-7 h-7 text-amber-500 animate-spin" />
           </div>
           <div>
-            <h4 className="text-base font-black text-white">جاري تحليل الإسكرين شوت عبر الذكاء الاصطناعي</h4>
-            <p className="text-xs text-amber-400 mt-1 font-mono font-bold animate-pulse">
+            <h4 className="text-base font-black text-slate-900">جاري تحليل الإسكرين شوت عبر الذكاء الاصطناعي</h4>
+            <p className="text-xs text-amber-700 mt-1 font-mono font-bold animate-pulse">
               {processingStep}
             </p>
           </div>
-          <div className="w-full max-w-md mx-auto bg-slate-800 h-2 rounded-full overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-amber-400 h-full w-3/4 animate-pulse" />
+          <div className="w-full max-w-md mx-auto bg-slate-100 h-2 rounded-full overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-amber-500 h-full w-3/4 animate-pulse" />
           </div>
         </div>
       )}
@@ -628,17 +627,17 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
         <div className="space-y-4">
           
           {/* Main Action Top Bar */}
-          <div className="bg-slate-900 rounded-2xl p-3 border border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-md">
+          <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-400">تصنيف البطاقة:</span>
-              <div className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700 gap-1">
+              <span className="text-xs font-bold text-slate-600">تصنيف البطاقة:</span>
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
                 <button
                   type="button"
                   onClick={() => setExtractedData({ ...extractedData, postType: 'offer' })}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                     extractedData.postType === 'offer'
                       ? 'bg-blue-600 text-white font-black shadow-xs'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <Building2 className="w-3.5 h-3.5" />
@@ -651,7 +650,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                     extractedData.postType === 'request'
                       ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <UserCheck className="w-3.5 h-3.5" />
@@ -659,20 +658,20 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
                 </button>
               </div>
 
-              <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span>المصدر: {extractedData.sourceName}</span>
               </div>
             </div>
 
             {/* Instant publish button */}
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-bold ml-1">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 font-bold ml-1">
                 <input
                   type="checkbox"
                   checked={isInstantApproved}
                   onChange={(e) => setIsInstantApproved(e.target.checked)}
-                  className="rounded border-slate-700 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span>نشر معتمد ومفعل فوراً ✓</span>
               </label>
@@ -680,7 +679,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
               <button
                 type="button"
                 onClick={handleOneClickPublish}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
               >
                 <Send className="w-4 h-4" />
                 <span>اعتماد ونشر فوري 🚀</span>
@@ -692,62 +691,62 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             
             {/* RIGHT SIDE (5 Cols): Original Screenshot Viewer */}
-            <div className="lg:col-span-5 bg-slate-900 rounded-2xl p-4 border border-slate-800 space-y-3 flex flex-col">
-              <div className="flex items-center justify-between text-xs border-b border-slate-800 pb-2">
-                <div className="flex items-center gap-2 font-bold text-white">
-                  <Eye className="w-4 h-4 text-blue-400" />
+            <div className="lg:col-span-5 bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3 flex flex-col">
+              <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-2 font-bold text-slate-900">
+                  <Eye className="w-4 h-4 text-blue-600" />
                   <span>صورة السكرين شوت الأصلية</span>
                 </div>
-                <span className="text-[11px] text-slate-400 truncate max-w-[150px]">
+                <span className="text-[11px] text-slate-500 truncate max-w-[150px]">
                   {imageFileName}
                 </span>
               </div>
 
               {/* Image Preview Container */}
-              <div className="bg-slate-950 rounded-xl overflow-hidden border border-slate-800 max-h-[500px] flex items-center justify-center relative group">
+              <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-200 max-h-[500px] flex items-center justify-center relative group">
                 <img
                   src={selectedImage}
                   alt="Original Screenshot"
                   className="w-full h-auto object-contain max-h-[480px]"
                 />
-                <div className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-[10px] text-slate-300 px-2 py-0.5 rounded-md border border-slate-700">
+                <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-xs text-[10px] text-slate-700 px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs font-bold">
                   {extractedData.sourceName}
                 </div>
               </div>
 
               {/* Detected Phones Summary Box */}
-              <div className="bg-slate-800/80 rounded-xl p-3 border border-slate-700 space-y-2">
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-amber-400 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5" />
+                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-blue-600" />
                     <span>أرقام الهواتف المقروءة من البوست ({extractedData.allPhones.length})</span>
                   </span>
                 </div>
                 
                 <div className="flex flex-wrap gap-1.5">
                   {extractedData.allPhones.length === 0 ? (
-                    <span className="text-xs text-slate-400">لم يتم العثور على أرقام في نص البوست</span>
+                    <span className="text-xs text-slate-500">لم يتم العثور على أرقام في نص البوست</span>
                   ) : (
                     extractedData.allPhones.map((ph, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-700 text-xs font-mono text-white"
+                        className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-mono text-slate-900 shadow-2xs"
                       >
-                        <span className="text-amber-300 font-bold">{ph}</span>
+                        <span className="text-blue-700 font-bold">{ph}</span>
                         <button
                           type="button"
                           onClick={() => handleCopyPhone(ph)}
                           title="نسخ الرقم"
-                          className="text-slate-400 hover:text-white cursor-pointer ml-1"
+                          className="text-slate-400 hover:text-slate-700 cursor-pointer ml-1"
                         >
-                          {copiedPhone === ph ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedPhone === ph ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                         <a
                           href={`https://wa.me/20${ph.replace(/\D/g, '')}`}
                           target="_blank"
                           rel="noreferrer"
                           title="مراسلة واتساب"
-                          className="text-emerald-400 hover:text-emerald-300 ml-1"
+                          className="text-emerald-600 hover:text-emerald-700 ml-1"
                         >
                           <MessageCircle className="w-3.5 h-3.5" />
                         </a>
@@ -759,16 +758,16 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
             </div>
 
             {/* LEFT SIDE (7 Cols): Extracted Real Estate Card & Fast Inline Editor */}
-            <div className="lg:col-span-7 bg-slate-900 rounded-2xl p-4 border border-slate-800 space-y-3 flex flex-col">
+            <div className="lg:col-span-7 bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3 flex flex-col">
               
               {/* Tab selector: Preview Card vs Edit Form vs Raw Text */}
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700 gap-1">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
                   <button
                     type="button"
                     onClick={() => setActiveTab('card')}
                     className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      activeTab === 'card' ? 'bg-blue-600 text-white font-black' : 'text-slate-400 hover:text-white'
+                      activeTab === 'card' ? 'bg-blue-600 text-white font-black shadow-xs' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     معاينة البطاقة العقارية
@@ -778,7 +777,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
                     type="button"
                     onClick={() => setActiveTab('edit')}
                     className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      activeTab === 'edit' ? 'bg-blue-600 text-white font-black' : 'text-slate-400 hover:text-white'
+                      activeTab === 'edit' ? 'bg-blue-600 text-white font-black shadow-xs' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     تعديل البيانات المستخرجة
@@ -788,14 +787,14 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
                     type="button"
                     onClick={() => setActiveTab('raw')}
                     className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      activeTab === 'raw' ? 'bg-blue-600 text-white font-black' : 'text-slate-400 hover:text-white'
+                      activeTab === 'raw' ? 'bg-blue-600 text-white font-black shadow-xs' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     النص الكامل للبوست
                   </button>
                 </div>
 
-                <span className="text-[10px] bg-amber-950/60 text-amber-300 border border-amber-800 px-2 py-0.5 rounded-full font-bold">
+                <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
                   {extractedData.postType === 'offer' ? 'عقار جاهز للعرض' : 'طلب سكن جاهز'}
                 </span>
               </div>
@@ -803,7 +802,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
               {/* TAB 1: Live Platform Card Preview */}
               {activeTab === 'card' && (
                 <div className="space-y-3">
-                  <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 shadow-md space-y-3">
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-3">
                     
                     {/* Top Badges */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -816,59 +815,59 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
                           {extractedData.purpose === 'rent' ? 'إيجار 🔑' : 'بيع كاش 💰'}
                         </span>
 
-                        <span className="bg-slate-800 text-slate-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-slate-700">
+                        <span className="bg-white text-slate-700 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-slate-200 shadow-2xs">
                           {extractedData.propertyType}
                         </span>
 
-                        <span className="bg-blue-950/60 text-blue-300 border border-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
                           المصدر: {extractedData.sourceName}
                         </span>
                       </div>
 
-                      <div className="text-base font-black text-amber-400 font-mono">
+                      <div className="text-base font-black text-amber-700 font-mono">
                         {extractedData.price > 0 ? (
                           <>
-                            {extractedData.price.toLocaleString()} <span className="text-xs text-slate-300 font-sans">ج.م {extractedData.purpose === 'rent' ? '/ شهر' : ''}</span>
+                            {extractedData.price.toLocaleString()} <span className="text-xs text-slate-500 font-sans">ج.م {extractedData.purpose === 'rent' ? '/ شهر' : ''}</span>
                           </>
                         ) : (
-                          <span className="text-xs text-slate-400">السعر عند التواصل</span>
+                          <span className="text-xs text-slate-500">السعر عند التواصل</span>
                         )}
                       </div>
                     </div>
 
                     {/* Title */}
-                    <h3 className="text-base font-black text-white leading-snug">
+                    <h3 className="text-base font-black text-slate-900 leading-snug">
                       {extractedData.title}
                     </h3>
 
                     {/* District & Location */}
-                    <div className="flex items-center gap-1.5 text-xs text-slate-300">
-                      <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span className="font-bold text-white">{extractedData.district}</span>
-                      <span className="text-slate-500">•</span>
-                      <span className="text-slate-400 truncate">{extractedData.address}</span>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="font-bold text-slate-900">{extractedData.district}</span>
+                      <span className="text-slate-400">•</span>
+                      <span className="text-slate-500 truncate">{extractedData.address}</span>
                     </div>
 
                     {/* Key Specs Pills */}
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800 text-xs">
-                      <div className="bg-slate-900 p-2 rounded-xl border border-slate-800 text-center">
-                        <span className="text-[10px] text-slate-400 block font-bold">المساحة</span>
-                        <span className="font-black text-white">{extractedData.area || '--'} م²</span>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-200 text-xs">
+                      <div className="bg-white p-2 rounded-xl border border-slate-200 text-center shadow-2xs">
+                        <span className="text-[10px] text-slate-500 block font-bold">المساحة</span>
+                        <span className="font-black text-slate-900">{extractedData.area || '--'} م²</span>
                       </div>
 
-                      <div className="bg-slate-900 p-2 rounded-xl border border-slate-800 text-center">
-                        <span className="text-[10px] text-slate-400 block font-bold">الغرف</span>
-                        <span className="font-black text-white">{extractedData.bedrooms} غرف</span>
+                      <div className="bg-white p-2 rounded-xl border border-slate-200 text-center shadow-2xs">
+                        <span className="text-[10px] text-slate-500 block font-bold">الغرف</span>
+                        <span className="font-black text-slate-900">{extractedData.bedrooms} غرف</span>
                       </div>
 
-                      <div className="bg-slate-900 p-2 rounded-xl border border-slate-800 text-center">
-                        <span className="text-[10px] text-slate-400 block font-bold">الحمام</span>
-                        <span className="font-black text-white">{extractedData.bathrooms} حمام</span>
+                      <div className="bg-white p-2 rounded-xl border border-slate-200 text-center shadow-2xs">
+                        <span className="text-[10px] text-slate-500 block font-bold">الحمام</span>
+                        <span className="font-black text-slate-900">{extractedData.bathrooms} حمام</span>
                       </div>
 
-                      <div className="bg-slate-900 p-2 rounded-xl border border-slate-800 text-center">
-                        <span className="text-[10px] text-slate-400 block font-bold">التشطيب</span>
-                        <span className="font-black text-white truncate block">{extractedData.finishing}</span>
+                      <div className="bg-white p-2 rounded-xl border border-slate-200 text-center shadow-2xs">
+                        <span className="text-[10px] text-slate-500 block font-bold">التشطيب</span>
+                        <span className="font-black text-slate-900 truncate block">{extractedData.finishing}</span>
                       </div>
                     </div>
 
@@ -878,7 +877,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
                         {extractedData.features.map((f, i) => (
                           <span
                             key={i}
-                            className="text-[10px] bg-slate-800/90 text-slate-300 px-2 py-0.5 rounded-lg border border-slate-700"
+                            className="text-[10px] bg-white text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 shadow-2xs font-medium"
                           >
                             ✓ {f}
                           </span>
@@ -887,12 +886,12 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
                     )}
 
                     {/* Contact Call-To-Action Box */}
-                    <div className="bg-gradient-to-r from-blue-950/60 to-slate-900 p-3 rounded-xl border border-blue-900/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
                       <div>
-                        <div className="text-[11px] text-slate-400">بيانات التواصل مع صاحب البوست:</div>
-                        <div className="text-xs font-bold text-white flex items-center gap-2 mt-0.5">
+                        <div className="text-[11px] text-slate-500">بيانات التواصل مع صاحب البوست:</div>
+                        <div className="text-xs font-bold text-slate-900 flex items-center gap-2 mt-0.5">
                           <span>{extractedData.contactName || 'المعلن'}</span>
-                          <span className="font-mono text-amber-400 tracking-wider">
+                          <span className="font-mono text-amber-700 tracking-wider font-bold">
                             {extractedData.contactPhone || 'غير محدد'}
                           </span>
                         </div>
@@ -904,7 +903,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
                             href={`https://wa.me/20${extractedData.contactPhone.replace(/\D/g, '')}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs"
+                            className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
                             <span>واتساب</span>
@@ -912,7 +911,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
 
                           <a
                             href={`tel:${extractedData.contactPhone}`}
-                            className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs"
+                            className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs"
                           >
                             <Phone className="w-3.5 h-3.5" />
                             <span>اتصال</span>
@@ -927,27 +926,27 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
 
               {/* TAB 2: Quick Inline Editor */}
               {activeTab === 'edit' && (
-                <div className="space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs">
+                <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     
                     {/* Title */}
                     <div className="sm:col-span-2">
-                      <label className="block text-slate-300 font-bold mb-1">عنوان الإعلان</label>
+                      <label className="block text-slate-700 font-bold mb-1">عنوان الإعلان</label>
                       <input
                         type="text"
                         value={extractedData.title}
                         onChange={(e) => setExtractedData({ ...extractedData, title: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-medium focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
 
                     {/* Purpose */}
                     <div>
-                      <label className="block text-slate-300 font-bold mb-1">الغرض</label>
+                      <label className="block text-slate-700 font-bold mb-1">الغرض</label>
                       <select
                         value={extractedData.purpose}
                         onChange={(e) => setExtractedData({ ...extractedData, purpose: e.target.value as PropertyPurpose })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-bold"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold"
                       >
                         <option value="rent">إيجار 🔑</option>
                         <option value="sale">بيع 💰</option>
@@ -956,11 +955,11 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
 
                     {/* Property Type */}
                     <div>
-                      <label className="block text-slate-300 font-bold mb-1">نوع العقار</label>
+                      <label className="block text-slate-700 font-bold mb-1">نوع العقار</label>
                       <select
                         value={extractedData.propertyType}
                         onChange={(e) => setExtractedData({ ...extractedData, propertyType: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-bold"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold"
                       >
                         {PROPERTY_TYPES.map((pt, i) => (
                           <option key={i} value={pt}>{pt}</option>
@@ -970,11 +969,11 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
 
                     {/* District */}
                     <div>
-                      <label className="block text-slate-300 font-bold mb-1">المنطقة / الحي بأسيوط</label>
+                      <label className="block text-slate-700 font-bold mb-1">المنطقة / الحي بأسيوط</label>
                       <select
                         value={extractedData.district}
                         onChange={(e) => setExtractedData({ ...extractedData, district: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-bold"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold"
                       >
                         {ASSIUT_DISTRICTS.map((dst, i) => (
                           <option key={i} value={dst}>{dst}</option>
@@ -984,56 +983,56 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
 
                     {/* Price */}
                     <div>
-                      <label className="block text-slate-300 font-bold mb-1">السعر (ج.م)</label>
+                      <label className="block text-slate-700 font-bold mb-1">السعر (ج.م)</label>
                       <input
                         type="number"
                         value={extractedData.price}
                         onChange={(e) => setExtractedData({ ...extractedData, price: Number(e.target.value) })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono font-bold"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold"
                       />
                     </div>
 
                     {/* Area */}
                     <div>
-                      <label className="block text-slate-300 font-bold mb-1">المساحة (م²)</label>
+                      <label className="block text-slate-700 font-bold mb-1">المساحة (م²)</label>
                       <input
                         type="number"
                         value={extractedData.area}
                         onChange={(e) => setExtractedData({ ...extractedData, area: Number(e.target.value) })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono font-bold"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold"
                       />
                     </div>
 
                     {/* Phone */}
                     <div>
-                      <label className="block text-slate-300 font-bold mb-1">رقم الهاتف للتواصل</label>
+                      <label className="block text-slate-700 font-bold mb-1">رقم الهاتف للتواصل</label>
                       <input
                         type="tel"
                         value={extractedData.contactPhone}
                         onChange={(e) => setExtractedData({ ...extractedData, contactPhone: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono font-bold text-left"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold text-left"
                       />
                     </div>
 
                     {/* Contact Name */}
                     <div>
-                      <label className="block text-slate-300 font-bold mb-1">اسم المعلن / المكتب</label>
+                      <label className="block text-slate-700 font-bold mb-1">اسم المعلن / المكتب</label>
                       <input
                         type="text"
                         value={extractedData.contactName}
                         onChange={(e) => setExtractedData({ ...extractedData, contactName: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-medium"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium"
                       />
                     </div>
 
                     {/* Floor & Finishing */}
                     <div>
-                      <label className="block text-slate-300 font-bold mb-1">الدور والتشطيب</label>
+                      <label className="block text-slate-700 font-bold mb-1">الدور والتشطيب</label>
                       <input
                         type="text"
                         value={`${extractedData.floor} - ${extractedData.finishing}`}
                         onChange={(e) => setExtractedData({ ...extractedData, floor: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-medium"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium"
                       />
                     </div>
 
@@ -1043,19 +1042,19 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
 
               {/* TAB 3: Raw Extracted Post Text */}
               {activeTab === 'raw' && (
-                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
-                  <div className="text-xs text-slate-400 font-bold flex items-center justify-between">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="text-xs text-slate-600 font-bold flex items-center justify-between">
                     <span>النص الكامل المقروء من البوست:</span>
                     <button
                       type="button"
                       onClick={() => handleCopyPhone(extractedData.rawText)}
-                      className="text-amber-400 hover:text-amber-300 flex items-center gap-1 text-[11px] cursor-pointer"
+                      className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-[11px] cursor-pointer font-bold"
                     >
                       <Copy className="w-3.5 h-3.5" />
                       <span>نسخ النص</span>
                     </button>
                   </div>
-                  <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-200 leading-relaxed font-mono whitespace-pre-wrap select-text">
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs text-slate-800 leading-relaxed font-mono whitespace-pre-wrap select-text">
                     {extractedData.rawText || 'لا يوجد نص مستخرج'}
                   </div>
                 </div>
@@ -1066,7 +1065,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
                 <button
                   type="button"
                   onClick={handleOneClickPublish}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-600 hover:from-emerald-500 hover:to-blue-500 text-white font-black text-sm shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition-all"
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white font-black text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition-all"
                 >
                   <Send className="w-4 h-4" />
                   <span>

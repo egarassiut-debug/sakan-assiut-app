@@ -163,17 +163,17 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner with Alert / Info - Royal Dark Navy Theme */}
-      <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+      {/* Top Banner with Alert / Info - Light Theme */}
+      <div className="p-4 bg-white border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-400/30 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
             <SlidersHorizontal className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="font-bold text-sm text-white">
+            <h4 className="font-bold text-sm text-slate-900">
               لوحة التحكم المركزية بالقوائم والخيارات الديناميكية
             </h4>
-            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
               أي حي جديد، أو نوع عقار، أو عداد/حالة عداد تضيفها هنا تظهر فوراً وبشكل تلقائي في نماذج إضافة العقارات وشريط البحث للمستأجر.
             </p>
           </div>
@@ -187,9 +187,9 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                 showNotification('تمت استعادة الإعدادات الافتراضية بنجاح.');
               }
             }}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 shadow-2xs flex items-center gap-1.5 transition-colors shrink-0 self-start sm:self-auto cursor-pointer"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 shadow-2xs flex items-center gap-1.5 transition-colors shrink-0 self-start sm:self-auto cursor-pointer"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+            <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
             <span>استعادة الافتراضي</span>
           </button>
         )}
@@ -204,16 +204,16 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
       )}
 
       {/* Tab Switcher */}
-      <div className="flex border-b border-slate-800 gap-2">
+      <div className="flex border-b border-slate-200 gap-2">
         <button
           onClick={() => setActiveTab('categories')}
           className={`py-2.5 px-4 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'categories'
-              ? 'border-teal-400 text-teal-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-teal-600 text-teal-700 font-black'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <ListFilter className="w-4 h-4 text-teal-400" />
+          <ListFilter className="w-4 h-4 text-teal-600" />
           <span>قوائم الأحياء وأنواع العقارات والدفع ({Object.keys(categories).length})</span>
         </button>
 
@@ -221,11 +221,11 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
           onClick={() => setActiveTab('utilities')}
           className={`py-2.5 px-4 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'utilities'
-              ? 'border-teal-400 text-teal-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-teal-600 text-teal-700 font-black'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Zap className="w-4 h-4 text-amber-400" />
+          <Zap className="w-4 h-4 text-amber-500" />
           <span>أنواع العدادات والمرافق الفرعية ({utilities.length})</span>
         </button>
       </div>
@@ -241,8 +241,8 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                 onClick={() => setSelectedCatKey(key)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                   selectedCatKey === key
-                    ? 'bg-teal-600 text-white border-teal-500 shadow-xs'
-                    : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
                 {cat.title} ({cat.items.length})
@@ -251,12 +251,12 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
           </div>
 
           {/* Category Details Banner */}
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex items-center justify-between shadow-xs">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-xs">
             <div>
-              <h3 className="font-bold text-sm text-white">{currentCategory.title}</h3>
-              <p className="text-xs text-slate-400 mt-0.5">{currentCategory.description}</p>
+              <h3 className="font-bold text-sm text-slate-900">{currentCategory.title}</h3>
+              <p className="text-xs text-slate-500 mt-0.5">{currentCategory.description}</p>
             </div>
-            <span className="text-xs bg-teal-950/60 text-teal-300 font-bold px-2.5 py-1 rounded-lg border border-teal-800">
+            <span className="text-xs bg-teal-50 text-teal-700 font-bold px-2.5 py-1 rounded-lg border border-teal-200">
               {currentCategory.items.filter((i) => i.isActive).length} مفعل من إجمالي {currentCategory.items.length}
             </span>
           </div>
@@ -264,9 +264,9 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
           {/* Add New Item Form */}
           <form
             onSubmit={handleAddItem}
-            className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3 shadow-xs"
+            className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3 shadow-xs"
           >
-            <h4 className="font-bold text-xs text-white">
+            <h4 className="font-bold text-xs text-slate-900">
               إضافة عنصر جديد إلى {currentCategory.title}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -275,7 +275,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
                 placeholder={selectedCatKey === 'districts' ? 'اسم الحي أو المنطقة (مثال: سيتي، الوليدية)' : 'اسم العنصر الجديد...'}
-                className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 text-xs focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+                className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-xs focus:outline-hidden focus:ring-2 focus:ring-teal-500 font-medium"
                 required
               />
               <input
@@ -283,7 +283,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                 value={newItemDesc}
                 onChange={(e) => setNewItemDesc(e.target.value)}
                 placeholder="الوصف التوضيحي (اختياري)"
-                className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 text-xs focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+                className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-xs focus:outline-hidden focus:ring-2 focus:ring-teal-500 font-medium"
               />
             </div>
             <button
@@ -297,7 +297,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
 
           {/* Items List */}
           <div className="space-y-2">
-            <span className="text-xs font-bold text-slate-400">
+            <span className="text-xs font-bold text-slate-500">
               العناصر المسجلة حالياً (يمكنك التفعيل أو التعطيل أو الحذف):
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -306,14 +306,14 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                   key={item.id}
                   className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                     item.isActive
-                      ? 'bg-slate-900 border-slate-800 shadow-xs'
-                      : 'bg-slate-900/60 border-slate-800/60 opacity-60'
+                      ? 'bg-white border-slate-200 shadow-xs'
+                      : 'bg-slate-50/80 border-slate-200/80 opacity-60'
                   }`}
                 >
                   <div className="min-w-0 flex-1">
-                    <span className="font-bold text-xs text-white truncate block">{item.name}</span>
+                    <span className="font-bold text-xs text-slate-900 truncate block">{item.name}</span>
                     {item.description && (
-                      <span className="text-[11px] text-slate-400 truncate block">{item.description}</span>
+                      <span className="text-[11px] text-slate-500 truncate block">{item.description}</span>
                     )}
                   </div>
 
@@ -323,8 +323,8 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                       onClick={() => handleToggleItem(item.id)}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
                         item.isActive
-                          ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800'
-                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-slate-100 text-slate-500 border-slate-200'
                       }`}
                     >
                       {item.isActive ? 'مفعل' : 'معطل'}
@@ -333,7 +333,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDeleteItem(item.id)}
-                      className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                       title="حذف هذا العنصر"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -349,11 +349,11 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
       {/* 2. UTILITIES & METERS TAB */}
       {activeTab === 'utilities' && (
         <div className="space-y-4 animate-in fade-in duration-150">
-          <div className="p-4 bg-amber-950/40 border border-amber-800/80 rounded-2xl flex items-start justify-between gap-3 shadow-xs">
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start justify-between gap-3 shadow-xs">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-              <div className="text-xs text-amber-200 leading-relaxed">
-                <strong className="text-amber-300">الربط الديناميكي للعدادات والمرافق:</strong> كل مرفق في هذه القائمة يظهر كاختيار فرعي في نموذج إضافة العقار وأمامه قائمة منسدلة بحالاته. يمكنك هنا إضافة أو إزالة أي حالة (مثل: كودي، ذكي، عداد قديم)، أو إضافة مرافق جديدة تماماً.
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-900 leading-relaxed">
+                <strong className="text-amber-800">الربط الديناميكي للعدادات والمرافق:</strong> كل مرفق في هذه القائمة يظهر كاختيار فرعي في نموذج إضافة العقار وأمامه قائمة منسدلة بحالاته. يمكنك هنا إضافة أو إزالة أي حالة (مثل: كودي، ذكي، عداد قديم)، أو إضافة مرافق جديدة تماماً.
               </div>
             </div>
 
@@ -368,15 +368,15 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
 
           {/* New Utility Form */}
           {isAddingNewUtility && (
-            <form onSubmit={handleCreateNewUtility} className="bg-slate-900 p-4 rounded-2xl border border-amber-600/60 shadow-xs space-y-3 animate-in fade-in">
-              <h4 className="font-bold text-xs text-white">إضافة مرفق أو عداد جديد للقائمة</h4>
+            <form onSubmit={handleCreateNewUtility} className="bg-white p-4 rounded-2xl border border-amber-200 shadow-xs space-y-3 animate-in fade-in">
+              <h4 className="font-bold text-xs text-slate-900">إضافة مرفق أو عداد جديد للقائمة</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <input
                   type="text"
                   value={newUtilityName}
                   onChange={(e) => setNewUtilityName(e.target.value)}
                   placeholder="اسم المرفق (مثال: جراج خاص، خط تليفون أرضي)"
-                  className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 text-xs focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+                  className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-xs focus:outline-hidden focus:ring-2 focus:ring-teal-500 font-medium"
                   required
                 />
                 <input
@@ -384,7 +384,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                   value={newUtilityInitialOption}
                   onChange={(e) => setNewUtilityInitialOption(e.target.value)}
                   placeholder="الحالة الأولى المقترحة (مثال: متوفر مع رسوم شهرية)"
-                  className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 text-xs focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+                  className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-xs focus:outline-hidden focus:ring-2 focus:ring-teal-500 font-medium"
                 />
               </div>
               <div className="flex gap-2">
@@ -397,7 +397,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddingNewUtility(false)}
-                  className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold text-xs hover:bg-slate-700 border border-slate-700 cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 font-semibold text-xs hover:bg-slate-200 border border-slate-200 cursor-pointer"
                 >
                   إلغاء
                 </button>
@@ -410,16 +410,16 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
             {utilities.map((util) => (
               <div
                 key={util.id}
-                className="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xs space-y-3"
+                className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3"
               >
-                <div className="flex items-center justify-between border-b pb-2.5 border-slate-800">
+                <div className="flex items-center justify-between border-b pb-2.5 border-slate-100">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-slate-800 text-amber-400 border border-slate-700 flex items-center justify-center">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 text-amber-600 border border-slate-200 flex items-center justify-center">
                       {getUtilIcon(util.iconName)}
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm text-white">{util.name}</h4>
-                      <span className="text-[11px] text-slate-400">
+                      <h4 className="font-bold text-sm text-slate-900">{util.name}</h4>
+                      <span className="text-[11px] text-slate-500">
                         {util.statusOptions.length} حالات للاختيار في نموذج العقار
                       </span>
                     </div>
@@ -429,7 +429,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                   {util.key.startsWith('util_custom_') && (
                     <button
                       onClick={() => handleDeleteUtility(util.key)}
-                      className="text-xs text-rose-400 hover:text-rose-300 font-bold px-2 py-1 rounded-lg hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      className="text-xs text-rose-600 hover:text-rose-700 font-bold px-2 py-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                     >
                       حذف هذا المرفق
                     </button>
@@ -438,21 +438,21 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
 
                 {/* Sub-status options list */}
                 <div className="space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 block">
+                  <span className="text-[11px] font-bold text-slate-500 block">
                     الحالات المتاحة في القائمة المنسدلة:
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {util.statusOptions.map((opt, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 shadow-xs"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-800 shadow-xs"
                       >
                         <span>{opt}</span>
                         {util.statusOptions.length > 1 && (
                           <button
                             type="button"
                             onClick={() => handleRemoveSubStatus(util.key, idx)}
-                            className="w-4 h-4 rounded-full bg-slate-700 hover:bg-rose-600 hover:text-white flex items-center justify-center text-slate-400 text-xs transition-colors cursor-pointer"
+                            className="w-4 h-4 rounded-full bg-slate-200 hover:bg-rose-600 hover:text-white flex items-center justify-center text-slate-500 text-xs transition-colors cursor-pointer"
                             title="حذف هذه الحالة"
                           >
                             ×
@@ -472,7 +472,7 @@ export const DropdownManager: React.FC<DropdownManagerProps> = ({
                       setNewSubOptionText({ ...newSubOptionText, [util.key]: e.target.value })
                     }
                     placeholder={`إضافة حالة أو نوع عداد جديد لـ (${util.name})...`}
-                    className="flex-1 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 text-xs focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-xs focus:outline-hidden focus:ring-2 focus:ring-teal-500 font-medium"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();

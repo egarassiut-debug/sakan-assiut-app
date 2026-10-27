@@ -555,10 +555,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveSection('moderation')}
-                  className="px-2 py-1 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[11px] font-bold flex items-center gap-1 animate-pulse cursor-pointer shrink-0"
+                  className="px-2.5 py-1 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold flex items-center gap-1 animate-pulse cursor-pointer shrink-0 shadow-2xs"
                   title="عناصر بانتظار المراجعة"
                 >
-                  <AlertTriangle className="w-3 h-3 text-rose-400" />
+                  <AlertTriangle className="w-3 h-3 text-rose-500" />
                   <span className="hidden sm:inline">{pendingModerationCount} للمراجعة</span>
                   <span className="sm:hidden">{pendingModerationCount}</span>
                 </button>
@@ -568,7 +568,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <button
                   type="button"
                   onClick={onLockAdmin}
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-700 shrink-0"
+                  className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200 shrink-0"
                   title="قفل لوحة التحكم"
                 >
                   <Lock className="w-3.5 h-3.5" />
@@ -594,26 +594,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="space-y-4 animate-in fade-in duration-150">
               {/* Analytics Summary */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-                  <span className="text-xs text-slate-400 font-semibold block">إجمالي العقارات</span>
-                  <span className="text-2xl font-black text-amber-400 mt-1 block">{properties.length}</span>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                  <span className="text-xs text-slate-500 font-semibold block">إجمالي العقارات</span>
+                  <span className="text-2xl font-black text-amber-600 mt-1 block">{properties.length}</span>
                 </div>
-                <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-                  <span className="text-xs text-slate-400 font-semibold block">عروض الإيجار</span>
-                  <span className="text-2xl font-black text-sky-400 mt-1 block">{rentTotal}</span>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                  <span className="text-xs text-slate-500 font-semibold block">عروض الإيجار</span>
+                  <span className="text-2xl font-black text-blue-600 mt-1 block">{rentTotal}</span>
                 </div>
-                <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-                  <span className="text-xs text-slate-400 font-semibold block">عروض البيع والأراضي</span>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                  <span className="text-xs text-slate-500 font-semibold block">عروض البيع والأراضي</span>
                   <span className="text-2xl font-black text-amber-500 mt-1 block">{saleTotal}</span>
                 </div>
               </div>
 
               {/* Pie and Bar Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md flex flex-col justify-between">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
                   <div>
-                    <h4 className="font-bold text-sm text-white mb-1">توزيع العقارات (إيجار مقابل بيع)</h4>
-                    <p className="text-[11px] text-slate-400 mb-3">النسبة المئوية لإعلانات الإيجار مقارنة بطلبات وعروض التمليك</p>
+                    <h4 className="font-bold text-sm text-slate-900 mb-1">توزيع العقارات (إيجار مقابل بيع)</h4>
+                    <p className="text-[11px] text-slate-500 mb-3">النسبة المئوية لإعلانات الإيجار مقارنة بطلبات وعروض التمليك</p>
                   </div>
 
                   <div className="h-52">
@@ -630,7 +630,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           paddingAngle={3}
                         >
                           {purposeData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} stroke="#0F172A" strokeWidth={2} />
+                            <Cell key={`cell-${index}`} fill={entry.color} stroke="#FFFFFF" strokeWidth={2} />
                           ))}
                         </Pie>
                         <Tooltip 
@@ -641,36 +641,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
 
                   {/* Clean Bottom Legend Bar showing exact percentages beneath the chart */}
-                  <div className="pt-3 border-t border-slate-800 grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2.5 rounded-xl bg-slate-800 border border-slate-700 flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 rounded-md bg-blue-500 shrink-0 shadow-2xs" />
+                  <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 rounded-md bg-blue-600 shrink-0 shadow-2xs" />
                       <div className="min-w-0">
-                        <div className="font-black text-white text-xs sm:text-sm truncate">%{rentPct} للإيجار</div>
-                        <div className="text-[10px] text-slate-400 font-medium">({rentTotal} عقار متاح)</div>
+                        <div className="font-black text-slate-900 text-xs sm:text-sm truncate">%{rentPct} للإيجار</div>
+                        <div className="text-[10px] text-slate-500 font-medium">({rentTotal} عقار متاح)</div>
                       </div>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-slate-800 border border-slate-700 flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 rounded-md bg-amber-400 shrink-0 shadow-2xs" />
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 rounded-md bg-amber-500 shrink-0 shadow-2xs" />
                       <div className="min-w-0">
-                        <div className="font-black text-amber-300 text-xs sm:text-sm truncate">%{salePct} للبيع</div>
-                        <div className="text-[10px] text-slate-400 font-medium">({saleTotal} عقار متاح)</div>
+                        <div className="font-black text-slate-900 text-xs sm:text-sm truncate">%{salePct} للبيع</div>
+                        <div className="text-[10px] text-slate-500 font-medium">({saleTotal} عقار متاح)</div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md">
-                  <h4 className="font-bold text-sm text-white mb-3">توزيع العقارات حسب أحياء أسيوط</h4>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                  <h4 className="font-bold text-sm text-slate-900 mb-3">توزيع العقارات حسب أحياء أسيوط</h4>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={districtData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94A3B8' }} />
-                        <YAxis allowDecimals={false} tick={{ fill: '#94A3B8' }} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} />
+                        <YAxis allowDecimals={false} tick={{ fill: '#64748B' }} />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="إيجار" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="بيع" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="إيجار" fill="#2563EB" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="بيع" fill="#D97706" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -699,17 +699,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {activeSection === 'moderation' && (
             <div className="space-y-3">
               {/* AI Converter Quick Callout Banner */}
-              <div className="bg-gradient-to-r from-blue-950/70 via-slate-900 to-amber-950/30 p-3.5 rounded-2xl border border-blue-800/60 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="bg-gradient-to-r from-blue-50 via-slate-50 to-amber-50/70 p-3.5 rounded-2xl border border-blue-100 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-400/30 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                       <span>المحول الذكي لإسكرينات الفيسبوك (AI OCR)</span>
-                      <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.2 rounded-full border border-blue-500/30 font-bold">جديد</span>
+                      <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded-full border border-blue-200 font-bold">جديد</span>
                     </div>
-                    <p className="text-[11px] text-slate-300 mt-0.5">
+                    <p className="text-[11px] text-slate-600 mt-0.5">
                       ارفع أي لقطة شاشة لبوست عقاري لتفريغ بياناته وأرقام التواصل ونشره فوراً في المنصة بضغطة زر.
                     </p>
                   </div>
@@ -717,27 +717,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveSection('screenshot_converter')}
-                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                   <span>فتح أداة التحويل</span>
                 </button>
               </div>
 
-              {/* Toggle Between Offers and Requests - Dark Theme */}
-              <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 gap-1.5 shadow-sm">
+              {/* Toggle Between Offers and Requests - Light Theme */}
+              <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 gap-1.5 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setModerationType('properties')}
                   className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     moderationType === 'properties'
-                      ? 'bg-amber-500 text-slate-950 shadow-xs'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
                   <span>عروض العقارات (المعروض)</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                    moderationType === 'properties' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-300'
+                    moderationType === 'properties' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600'
                   }`}>
                     {properties.length}
                   </span>
@@ -747,13 +747,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   onClick={() => setModerationType('requests')}
                   className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     moderationType === 'requests'
-                      ? 'bg-amber-500 text-slate-950 shadow-xs'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
                   <span>طلبات السكن والمطلوب</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                    moderationType === 'requests' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-300'
+                    moderationType === 'requests' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
                   }`}>
                     {tenantRequests.length}
                   </span>
@@ -761,7 +761,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               {/* Filter Pills and Search */}
-              <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+              <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
                 <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto no-scrollbar">
                   {[
                     {
@@ -818,7 +818,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-colors border ${
                         filterStatus === tab.id
                           ? 'bg-blue-600 text-white border-blue-500 shadow-xs'
-                          : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'
+                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 hover:text-slate-900'
                       }`}
                     >
                       {tab.label} ({tab.count})
@@ -833,7 +833,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     value={moderationSearch}
                     onChange={(e) => setModerationSearch(e.target.value)}
                     placeholder="بحث بالكود، الحي، الهاتف..."
-                    className="w-full pr-9 pl-3 py-1.5 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                    className="w-full pr-9 pl-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -843,7 +843,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {moderationType === 'properties' ? (
                   /* 1. PROPERTIES / OFFERS */
                   filteredProperties.length === 0 ? (
-                    <div className="bg-slate-900 p-8 rounded-2xl text-center text-slate-400 border border-slate-800">
+                    <div className="bg-white p-8 rounded-2xl text-center text-slate-500 border border-slate-200 shadow-xs">
                       لا توجد عروض عقارية مطابقة لخيارات الفلترة
                     </div>
                   ) : (
@@ -857,44 +857,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       return (
                         <div
                           key={item.id}
-                          className="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xs hover:border-slate-700 transition-all space-y-3"
+                          className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all space-y-3"
                         >
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-sm text-white">
+                              <span className="font-bold text-sm text-slate-900">
                                 كود: {item.code} ({item.propertyType})
                               </span>
                               <span
-                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                                   item.purpose === 'rent'
-                                    ? 'bg-blue-900/60 text-blue-300 border border-blue-700'
-                                    : 'bg-emerald-900/60 text-emerald-300 border border-emerald-700'
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                    : 'bg-amber-50 text-amber-700 border border-amber-200'
                                 }`}
                               >
                                 {item.purpose === 'rent' ? 'إيجار' : 'بيع'}
                               </span>
-                              <span className="text-xs text-slate-400 font-medium">• {item.district}</span>
+                              <span className="text-xs text-slate-500 font-medium">• {item.district}</span>
                             </div>
 
                             <div className="flex items-center gap-2">
                               {isPending ? (
-                                <span className="text-amber-300 bg-amber-950/50 border border-amber-800/80 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                                <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                                   بانتظار المراجعة والاعتماد
                                 </span>
                               ) : isNeedsComp ? (
-                                <span className="text-amber-200 bg-amber-900/40 border border-amber-700 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 text-amber-400" />
+                                <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600" />
                                   مطلوب استكمال بيان
                                 </span>
                               ) : item.status === 'rejected' ? (
-                                <span className="text-rose-300 bg-rose-950/50 border border-rose-800 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <XCircle className="w-3 h-3 text-rose-400" />
+                                <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                  <XCircle className="w-3 h-3 text-rose-500" />
                                   تم الرفض
                                 </span>
                               ) : (
-                                <span className="text-emerald-300 bg-emerald-950/50 border border-emerald-800 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                   معتمد ومنشور
                                 </span>
                               )}
@@ -903,7 +903,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => onDeleteProperty(item.id)}
-                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                                   title="حذف الإعلان نهائياً"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -913,15 +913,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
 
                           {/* بطاقة تفاصيل وبيانات صاحب الإعلان */}
-                          <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-2">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-700/80 pb-2">
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
                               <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-blue-950/60 text-blue-400 border border-blue-800 flex items-center justify-center font-bold text-xs shrink-0">
+                                <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center font-bold text-xs shrink-0">
                                   <User className="w-3.5 h-3.5" />
                                 </div>
                                 <div>
-                                  <span className="text-[10px] text-slate-400 block font-medium">بيانات صاحب الإعلان / المعلن</span>
-                                  <span className="font-bold text-xs sm:text-sm text-white">{item.ownerName || 'مالك العقار'}</span>
+                                  <span className="text-[10px] text-slate-500 block font-medium">بيانات صاحب الإعلان / المعلن</span>
+                                  <span className="font-bold text-xs sm:text-sm text-slate-900">{item.ownerName || 'مالك العقار'}</span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-1.5 flex-wrap">
@@ -929,7 +929,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   <>
                                     <a
                                       href={`tel:${item.ownerPhone}`}
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/80 text-xs font-bold border border-emerald-800 flex items-center gap-1 transition-colors"
+                                      className="px-2.5 py-1 rounded-lg bg-white text-emerald-700 hover:bg-emerald-50 text-xs font-bold border border-emerald-200 flex items-center gap-1 transition-colors shadow-2xs"
                                       title="اتصال هاتفياً بالمعلن"
                                     >
                                       <Phone className="w-3 h-3" />
@@ -939,7 +939,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                       href={`https://wa.me/20${item.ownerPhone.replace(/^0+/, '')}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 transition-colors"
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs"
                                       title="مراسلة عبر الواتساب"
                                     >
                                       <MessageCircle className="w-3 h-3" />
@@ -950,18 +950,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-300 pt-0.5">
-                              <div>السعر: <strong className="text-amber-400 font-mono">{item.price.toLocaleString()} ج.م</strong></div>
-                              <div>المساحة: <strong className="text-white">{item.area} م²</strong></div>
-                              <div>تاريخ الإضافة: <strong className="font-mono text-slate-200">{item.createdAt || 'اليوم'}</strong></div>
-                              <div>المصدر: <strong className="text-slate-200">{item.source || 'مالك مباشر'}</strong></div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-600 pt-0.5">
+                              <div>السعر: <strong className="text-amber-700 font-mono font-bold">{item.price.toLocaleString()} ج.م</strong></div>
+                              <div>المساحة: <strong className="text-slate-900 font-bold">{item.area} م²</strong></div>
+                              <div>تاريخ الإضافة: <strong className="font-mono text-slate-700">{item.createdAt || 'اليوم'}</strong></div>
+                              <div>المصدر: <strong className="text-slate-700">{item.source || 'مالك مباشر'}</strong></div>
                             </div>
                           </div>
 
                           {/* ملاحظة استكمال البيان إذا كانت مسجلة مسبقاً */}
                           {item.adminNote && (
-                            <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-800 text-xs text-amber-200 font-medium flex items-start gap-2">
-                              <MessageSquare className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium flex items-start gap-2">
+                              <MessageSquare className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                               <div>
                                 <span className="font-bold block">ملاحظة الإدارة للمعلن:</span>
                                 {item.adminNote}
@@ -971,8 +971,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                           {/* مربع إدخال ملاحظة الإدارة عند طلب استكمال البيانات */}
                           {noteInputId === item.id && (
-                            <div className="p-3 bg-slate-800 rounded-xl border border-amber-500/50 space-y-2 animate-in fade-in">
-                              <label className="block text-xs font-bold text-amber-300">
+                            <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-2 animate-in fade-in">
+                              <label className="block text-xs font-bold text-amber-900">
                                 حدد البيان المطلوب استكماله من المعلن (مثال: توضيح نوع العداد، رقم الطابق، إلخ):
                               </label>
                               <div className="flex gap-2">
@@ -981,7 +981,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   value={customNote}
                                   onChange={(e) => setCustomNote(e.target.value)}
                                   placeholder="اكتب البيان المطلوب استكماله بالتحديد..."
-                                  className="flex-1 p-2 bg-slate-900 rounded-lg border border-slate-700 text-xs text-white placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                                  className="flex-1 p-2 bg-white rounded-lg border border-amber-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
                                 />
                                 <button
                                   type="button"
@@ -994,7 +994,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     setNoteInputId(null);
                                     setCustomNote('');
                                   }}
-                                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs cursor-pointer"
+                                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs cursor-pointer shadow-xs"
                                 >
                                   حفظ وإرسال الطلب
                                 </button>
@@ -1004,7 +1004,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     setNoteInputId(null);
                                     setCustomNote('');
                                   }}
-                                  className="px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs cursor-pointer"
+                                  className="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs cursor-pointer"
                                 >
                                   إلغاء
                                 </button>
@@ -1027,7 +1027,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                           {/* PropertyCard Admin Actions Container */}
                           <div 
-                            className="pt-2.5 border-t border-slate-800 flex flex-row flex-wrap items-center justify-start gap-2 w-full"
+                            className="pt-2.5 border-t border-slate-100 flex flex-row flex-wrap items-center justify-start gap-2 w-full"
                             style={{
                               display: 'flex',
                               flexDirection: 'row',
@@ -1040,10 +1040,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => onOpenDetails(item)}
-                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-slate-700 shadow-2xs cursor-pointer"
+                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-slate-200 shadow-2xs cursor-pointer"
                               title="معاينة تفاصيل الإعلان"
                             >
-                              <Eye className="w-4 h-4 text-slate-400 shrink-0" />
+                              <Eye className="w-4 h-4 text-slate-500 shrink-0" />
                               <span className="truncate">معاينة</span>
                             </button>
 
@@ -1079,7 +1079,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               disabled={item.status === 'rejected'}
                               className={`flex-1 min-w-[75px] h-9 px-2.5 rounded-xl text-white font-bold text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 shadow-2xs border cursor-pointer ${
                                 item.status === 'rejected'
-                                  ? 'bg-rose-950/60 border-rose-900 text-rose-400 cursor-not-allowed opacity-75'
+                                  ? 'bg-rose-100 border-rose-200 text-rose-400 cursor-not-allowed opacity-75'
                                   : 'bg-rose-600 hover:bg-rose-700 border-rose-700'
                               }`}
                               title="رفض الإعلان"
@@ -1095,7 +1095,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 ) : (
                   /* 2. TENANT REQUESTS / ORDERS */
                   filteredRequests.length === 0 ? (
-                    <div className="bg-slate-900 p-8 rounded-2xl text-center text-slate-400 border border-slate-800">
+                    <div className="bg-white p-8 rounded-2xl text-center text-slate-500 border border-slate-200 shadow-xs">
                       لا توجد طلبات سكن مطابقة لخيارات الفلترة
                     </div>
                   ) : (
@@ -1109,40 +1109,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       return (
                         <div
                           key={req.id}
-                          className="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xs hover:border-slate-700 transition-all space-y-3"
+                          className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all space-y-3"
                         >
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-sm text-white">
+                              <span className="font-bold text-sm text-slate-900">
                                 كود الطلب: {req.requestCode || req.id}
                               </span>
-                              <span className="px-2.5 py-0.5 rounded-full bg-indigo-950/60 border border-indigo-800 text-indigo-300 text-[10px] font-bold">
+                              <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-bold">
                                 مطلوب: {req.propertyType}
                               </span>
-                              <span className="text-xs text-slate-400 font-medium">
+                              <span className="text-xs text-slate-500 font-medium">
                                 • {req.preferredDistrict} ({req.purpose === 'rent' ? 'إيجار' : 'شراء'})
                               </span>
                             </div>
 
                             <div className="flex items-center gap-2">
                               {isPending ? (
-                                <span className="text-amber-300 bg-amber-950/50 border border-amber-800/80 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                                <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                                   قيد المراجعة الإدارية
                                 </span>
                               ) : isNeedsComp ? (
-                                <span className="text-amber-200 bg-amber-900/40 border border-amber-700 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 text-amber-400" />
+                                <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600" />
                                   مطلوب استكمال بيان
                                 </span>
                               ) : req.status === 'rejected' ? (
-                                <span className="text-rose-300 bg-rose-950/50 border border-rose-800 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <XCircle className="w-3 h-3 text-rose-400" />
+                                <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                  <XCircle className="w-3 h-3 text-rose-500" />
                                   مرفوض
                                 </span>
                               ) : (
-                                <span className="text-emerald-300 bg-emerald-950/50 border border-emerald-800 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                   معتمد ونشط
                                 </span>
                               )}
@@ -1151,7 +1151,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => onDeleteTenantRequest(req.id)}
-                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                                   title="حذف الطلب نهائياً"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -1161,15 +1161,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
 
                           {/* بطاقة تفاصيل وبيانات صاحب طلب السكن */}
-                          <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-2">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-700/80 pb-2">
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
                               <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-indigo-950/60 text-indigo-400 border border-indigo-800 flex items-center justify-center font-bold text-xs shrink-0">
+                                <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center justify-center font-bold text-xs shrink-0">
                                   <User className="w-3.5 h-3.5" />
                                 </div>
                                 <div>
-                                  <span className="text-[10px] text-slate-400 block font-medium">بيانات صاحب الطلب / الباحث</span>
-                                  <span className="font-bold text-xs sm:text-sm text-white">{req.tenantName || 'مواطن باحث عن عقار'}</span>
+                                  <span className="text-[10px] text-slate-500 block font-medium">بيانات صاحب الطلب / الباحث</span>
+                                  <span className="font-bold text-xs sm:text-sm text-slate-900">{req.tenantName || 'مواطن باحث عن عقار'}</span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-1.5 flex-wrap">
@@ -1177,7 +1177,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   <>
                                     <a
                                       href={`tel:${req.tenantPhone}`}
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/80 text-xs font-bold border border-emerald-800 flex items-center gap-1 transition-colors"
+                                      className="px-2.5 py-1 rounded-lg bg-white text-emerald-700 hover:bg-emerald-50 text-xs font-bold border border-emerald-200 flex items-center gap-1 transition-colors shadow-2xs"
                                       title="اتصال هاتفياً بصاحب الطلب"
                                     >
                                       <Phone className="w-3 h-3" />
@@ -1187,7 +1187,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                       href={`https://wa.me/20${req.tenantPhone.replace(/^0+/, '')}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 transition-colors"
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs"
                                       title="مراسلة عبر الواتساب"
                                     >
                                       <MessageCircle className="w-3 h-3" />
@@ -1198,35 +1198,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-300 pt-0.5">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-600 pt-0.5">
                               <div>
                                 الميزانية:{' '}
-                                <strong className="text-amber-400 font-mono">
+                                <strong className="text-amber-700 font-mono font-bold">
                                   {req.minPrice ? `${req.minPrice.toLocaleString()} - ` : ''}
                                   {req.maxPrice.toLocaleString()} ج.م
                                 </strong>
                               </div>
                               <div>
                                 المساحة:{' '}
-                                <strong className="text-white">
+                                <strong className="text-slate-900 font-bold">
                                   {req.minArea || req.maxArea ? `${req.minArea || ''}-${req.maxArea || ''} م²` : 'غير محدد'}
                                 </strong>
                               </div>
-                              <div>تاريخ الطلب: <strong className="font-mono text-slate-200">{req.createdAt || 'اليوم'}</strong></div>
-                              <div>الحي المفضل: <strong className="text-slate-200">{req.preferredDistrict}</strong></div>
+                              <div>تاريخ الطلب: <strong className="font-mono text-slate-700">{req.createdAt || 'اليوم'}</strong></div>
+                              <div>الحي المفضل: <strong className="text-slate-700">{req.preferredDistrict}</strong></div>
                             </div>
                           </div>
 
                           {req.notes && (
-                            <div className="text-xs text-slate-300 bg-slate-800 p-2 rounded-lg border border-slate-700">
-                              <span className="font-bold text-white">ملاحظات الطلب: </span>
+                            <div className="text-xs text-slate-700 bg-slate-100 p-2.5 rounded-lg border border-slate-200">
+                              <span className="font-bold text-slate-900">ملاحظات الطلب: </span>
                               {req.notes}
                             </div>
                           )}
 
                           {req.adminNote && (
-                            <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-800 text-xs text-amber-200 font-medium flex items-start gap-2">
-                              <MessageSquare className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium flex items-start gap-2">
+                              <MessageSquare className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                               <div>
                                 <span className="font-bold block">ملاحظة الإدارة لطالب العقار:</span>
                                 {req.adminNote}
@@ -1236,8 +1236,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                           {/* مربع إدخال استكمال بيان للطلب */}
                           {noteInputId === req.id && (
-                            <div className="p-3 bg-slate-800 rounded-xl border border-amber-500/50 space-y-2 animate-in fade-in">
-                              <label className="block text-xs font-bold text-amber-300">
+                            <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-2 animate-in fade-in">
+                              <label className="block text-xs font-bold text-amber-900">
                                 حدد البيان المطلوب استكماله من صاحب الطلب:
                               </label>
                               <div className="flex gap-2">
@@ -1246,7 +1246,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   value={customNote}
                                   onChange={(e) => setCustomNote(e.target.value)}
                                   placeholder="اكتب البيان المطلوب استكماله بالتحديد..."
-                                  className="flex-1 p-2 bg-slate-900 rounded-lg border border-slate-700 text-xs text-white placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                                  className="flex-1 p-2 bg-white rounded-lg border border-amber-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
                                 />
                                 <button
                                   type="button"
@@ -1261,7 +1261,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     setNoteInputId(null);
                                     setCustomNote('');
                                   }}
-                                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs cursor-pointer"
+                                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs cursor-pointer shadow-xs"
                                 >
                                   حفظ وإرسال
                                 </button>
@@ -1271,7 +1271,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     setNoteInputId(null);
                                     setCustomNote('');
                                   }}
-                                  className="px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs cursor-pointer"
+                                  className="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs cursor-pointer"
                                 >
                                   إلغاء
                                 </button>
@@ -1294,7 +1294,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                           {/* Tenant Request Admin Actions Container */}
                           <div 
-                            className="pt-2.5 border-t border-slate-800 flex flex-row flex-wrap items-center justify-start gap-2 w-full"
+                            className="pt-2.5 border-t border-slate-100 flex flex-row flex-wrap items-center justify-start gap-2 w-full"
                             style={{
                               display: 'flex',
                               flexDirection: 'row',
@@ -1307,10 +1307,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => onOpenTenantRequestDetails && onOpenTenantRequestDetails(req)}
-                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-slate-700 shadow-2xs cursor-pointer"
+                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-slate-200 shadow-2xs cursor-pointer"
                               title="معاينة تفاصيل الطلب"
                             >
-                              <Eye className="w-4 h-4 text-slate-400 shrink-0" />
+                              <Eye className="w-4 h-4 text-slate-500 shrink-0" />
                               <span className="truncate">معاينة</span>
                             </button>
 
@@ -1346,7 +1346,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               disabled={req.status === 'rejected'}
                               className={`flex-1 min-w-[75px] h-9 px-2.5 rounded-xl text-white font-bold text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 shadow-2xs border cursor-pointer ${
                                 req.status === 'rejected'
-                                  ? 'bg-rose-950/60 border-rose-900 text-rose-400 cursor-not-allowed opacity-75'
+                                  ? 'bg-rose-100 border-rose-200 text-rose-400 cursor-not-allowed opacity-75'
                                   : 'bg-rose-600 hover:bg-rose-700 border-rose-700'
                               }`}
                               title="رفض الطلب"
@@ -1367,13 +1367,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {/* SUB-SECTION B: USER BLOCKS (البلوكات) */}
           {activeSection === 'blocks' && (
             <div className="space-y-4">
-              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
                 <div>
-                  <h4 className="text-sm font-black text-white flex items-center gap-2">
+                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
                     <Ban className="w-4 h-4 text-rose-500" />
                     <span>سجل حظر المستخدمين (البلوكات) في أسيوط</span>
                   </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     حظر أرقام الهواتف أو الوسطاء والملاك المخالفين لمنعهم من نشر عروض وهمية أو تلقي رسائل
                   </p>
                 </div>
@@ -1390,26 +1390,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {isAddBlockOpen && (
                 <form
                   onSubmit={handleCreateBlock}
-                  className="bg-slate-900 border border-rose-900/60 p-4 rounded-2xl space-y-3 animate-in fade-in shadow-xs"
+                  className="bg-white border border-rose-200 p-4 rounded-2xl space-y-3 animate-in fade-in shadow-xs"
                 >
-                  <h5 className="font-bold text-xs text-rose-400 flex items-center gap-1.5">
+                  <h5 className="font-bold text-xs text-rose-600 flex items-center gap-1.5">
                     <UserX className="w-4 h-4 text-rose-500" />
                     <span>تسجيل حظر لمستخدم أو رقم هاتف مخالف</span>
                   </h5>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">اسم المستخدم / المعلن</label>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">اسم المستخدم / المعلن</label>
                       <input
                         type="text"
                         value={blockName}
                         onChange={(e) => setBlockName(e.target.value)}
                         placeholder="مثال: أحمد مصطفى"
                         required
-                        className="w-full p-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-rose-500"
+                        className="w-full p-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-rose-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">رقم الهاتف المراد حظره (11 رقماً)</label>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">رقم الهاتف المراد حظره (11 رقماً)</label>
                       <input
                         type="tel"
                         dir="ltr"
@@ -1423,18 +1423,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         }}
                         placeholder="01012345678"
                         required
-                        className="w-full p-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-rose-500 font-mono text-right"
+                        className="w-full p-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-rose-500 font-mono text-right"
                       />
                       {blockPhoneError && (
-                        <p className="text-[10px] text-rose-400 font-bold mt-1">{blockPhoneError}</p>
+                        <p className="text-[10px] text-rose-600 font-bold mt-1">{blockPhoneError}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">صفة المستخدم</label>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">صفة المستخدم</label>
                       <select
                         value={blockRole}
                         onChange={(e) => setBlockRole(e.target.value as any)}
-                        className="w-full p-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-hidden focus:ring-1 focus:ring-rose-500"
+                        className="w-full p-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-rose-500"
                       >
                         <option value="owner">مالك عقار</option>
                         <option value="broker">سمسار / وسيط</option>
@@ -1443,20 +1443,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1">سبب الحظر</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">سبب الحظر</label>
                     <input
                       type="text"
                       value={blockReason}
                       onChange={(e) => setBlockReason(e.target.value)}
                       placeholder="مثال: نشر عقار وهمي في حي الجامعة، أو تكرار الإلغاء في المعاينات"
-                      className="w-full p-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-rose-500"
+                      className="w-full p-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-rose-500"
                     />
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => setIsAddBlockOpen(false)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 border border-slate-700 cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 border border-slate-200 cursor-pointer"
                     >
                       إلغاء
                     </button>
@@ -1473,36 +1473,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {/* Blocked Users List */}
               <div className="space-y-2.5">
                 {blockedUsers.length === 0 ? (
-                  <div className="bg-slate-900 p-8 rounded-2xl text-center text-slate-400 border border-slate-800">
+                  <div className="bg-white p-8 rounded-2xl text-center text-slate-500 border border-slate-200 shadow-xs">
                     لا يوجد مستخدمون محظورون حالياً، النظام نظيف وخالٍ من المخالفات
                   </div>
                 ) : (
                   blockedUsers.map((bu) => (
                     <div
                       key={bu.id}
-                      className="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                      className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
                     >
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-rose-400 flex items-center gap-1">
+                          <span className="font-bold text-xs text-rose-600 flex items-center gap-1">
                             <Ban className="w-3.5 h-3.5" />
                             <span>{bu.name}</span>
                           </span>
-                          <span className="font-mono text-xs bg-slate-800 text-slate-200 px-2 py-0.5 rounded-md border border-slate-700">
+                          <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
                             {bu.phone}
                           </span>
-                          <span className="text-[10px] bg-rose-950/60 border border-rose-800 text-rose-300 font-bold px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] bg-rose-50 border border-rose-200 text-rose-700 font-bold px-2 py-0.5 rounded-full">
                             {bu.role === 'broker' ? 'سمسار' : bu.role === 'owner' ? 'مالك' : 'مستأجر'}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-300 mt-1">سبب الحظر: {bu.reason}</p>
-                        <span className="text-[10px] text-slate-500 block mt-0.5">تاريخ البلوك: {bu.blockedAt}</span>
+                        <p className="text-xs text-slate-600 mt-1">سبب الحظر: {bu.reason}</p>
+                        <span className="text-[10px] text-slate-400 block mt-0.5">تاريخ البلوك: {bu.blockedAt}</span>
                       </div>
 
                       {onRemoveBlockedUser && (
                         <button
                           onClick={() => onRemoveBlockedUser(bu.id)}
-                          className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors border border-slate-700 cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors border border-slate-200 cursor-pointer shadow-2xs"
                         >
                           إلغاء الحظر (فك البلوك)
                         </button>
@@ -1517,54 +1517,54 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {/* SUB-SECTION C: INSPECTIONS MANAGEMENT (المعاينات) */}
           {activeSection === 'inspections' && (
             <div className="space-y-3">
-              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex items-center justify-between shadow-xs">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 flex items-center justify-between shadow-xs">
                 <div>
-                  <h4 className="text-sm font-black text-white flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-amber-400" />
+                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-amber-500" />
                     <span>جدول المعاينات الميدانية ({inspections.length})</span>
                   </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     إدارة وتأكيد مواعيد المعاينات للعملاء وتتبع المعاينات بالرمز الذكي
                   </p>
                 </div>
               </div>
 
               {inspections.length === 0 ? (
-                <div className="bg-slate-900 p-8 rounded-2xl text-center text-slate-400 border border-slate-800">
+                <div className="bg-white p-8 rounded-2xl text-center text-slate-500 border border-slate-200 shadow-xs">
                   لا توجد طلبات معاينة مسجلة حالياً
                 </div>
               ) : (
                 inspections.map((insp) => (
                   <div
                     key={insp.id}
-                    className="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                    className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
                   >
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-xs bg-amber-500 text-slate-950 px-2 py-0.5 rounded-md">
                           كود: {insp.propertyCode}
                         </span>
-                        <span className="text-xs text-slate-400 font-semibold">{insp.district}</span>
+                        <span className="text-xs text-slate-500 font-semibold">{insp.district}</span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           insp.status === 'completed' 
-                            ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800' 
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                             : insp.status === 'confirmed' 
-                            ? 'bg-blue-950/60 text-blue-300 border border-blue-800' 
-                            : 'bg-amber-950/60 text-amber-300 border border-amber-800'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                            : 'bg-amber-50 text-amber-800 border border-amber-200'
                         }`}>
                           {insp.status === 'completed' ? 'معاينة مكتملة ومسددة (مؤهل للتقييم ✓)' : insp.status === 'confirmed' ? 'معاينة مؤكدة' : 'بانتظار التأكيد والسداد'}
                         </span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          insp.feePaid ? 'bg-teal-950/60 text-teal-300 border border-teal-800' : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          insp.feePaid ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}>
                           {insp.feePaid ? 'الرسوم مسددة ✓' : 'الرسوم معلقة (50 ج.م)'}
                         </span>
                       </div>
-                      <h4 className="font-bold text-sm text-white mt-1">{insp.propertyTitle}</h4>
-                      <p className="text-xs text-slate-300 mt-0.5">
-                        العميل: {insp.tenantName} (<strong dir="ltr" className="text-amber-400 font-mono">{insp.tenantPhone}</strong>) • الموعد المطلوب: {insp.preferredDate} الساعة {insp.preferredTime}
+                      <h4 className="font-bold text-sm text-slate-900 mt-1">{insp.propertyTitle}</h4>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        العميل: {insp.tenantName} (<strong dir="ltr" className="text-amber-700 font-mono font-bold">{insp.tenantPhone}</strong>) • الموعد المطلوب: {insp.preferredDate} الساعة {insp.preferredTime}
                       </p>
-                      {insp.notes && <p className="text-[11px] text-slate-400 mt-0.5">ملاحظات: {insp.notes}</p>}
+                      {insp.notes && <p className="text-[11px] text-slate-500 mt-0.5">ملاحظات: {insp.notes}</p>}
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
@@ -1594,7 +1594,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         href={`https://wa.me/20${insp.tenantPhone}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-2xs"
                       >
                         واتساب العميل
                       </a>
@@ -1630,16 +1630,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {activeSection === 'export_settings' && (
             <div className="space-y-4 animate-in fade-in duration-150">
               {/* Header Card */}
-              <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xs">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-950/60 text-blue-400 border border-blue-800 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center shrink-0">
                     <Download className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white text-base">
+                    <h3 className="font-bold text-slate-900 text-base">
                       تصدير البيانات والتقارير وإعدادات النظام
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-500 mt-0.5">
                       تصدير سجلات العقارات والطلبات إلى ملفات Excel أو PDF قابلة للطباعة، وإدارة ضبط النظام.
                     </p>
                   </div>
@@ -1649,20 +1649,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {/* Export Grid Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Card 1: سجل العقارات */}
-                <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xs flex flex-col justify-between space-y-4">
+                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-4">
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-bold text-white text-sm sm:text-base">سجل إعلانات العقارات</span>
-                      <span className="text-[11px] font-bold bg-blue-950/60 text-blue-300 border border-blue-800 px-2.5 py-0.5 rounded-full font-mono">
+                      <span className="font-bold text-slate-900 text-sm sm:text-base">سجل إعلانات العقارات</span>
+                      <span className="text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full font-mono">
                         {filteredProperties.length} عقار
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">
+                    <p className="text-xs text-slate-500 leading-relaxed">
                       تصدير السجل الكامل لجميع إعلانات العقارات المعروضة في أسيوط مع الأسعار، بيانات الملاك، والمواصفات.
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                     <button
                       onClick={handleExportPropertiesCSV}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
@@ -1681,20 +1681,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
 
                 {/* Card 2: سجل طلبات المستأجرين */}
-                <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xs flex flex-col justify-between space-y-4">
+                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-4">
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-bold text-white text-sm sm:text-base">سجل طلبات السكن</span>
-                      <span className="text-[11px] font-bold bg-amber-950/60 text-amber-300 border border-amber-800 px-2.5 py-0.5 rounded-full font-mono">
+                      <span className="font-bold text-slate-900 text-sm sm:text-base">سجل طلبات السكن</span>
+                      <span className="text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-mono">
                         {filteredRequests.length} طلب
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">
+                    <p className="text-xs text-slate-500 leading-relaxed">
                       تصدير السجل الكامل لطلبات السكن والبحث المسجلة في أسيوط مع أرقام التواصل والأحياء والميزانيات.
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                     <button
                       onClick={handleExportRequestsCSV}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
@@ -1714,17 +1714,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               {/* Card 3: إعدادات الربط بقاعدة بيانات الإنتاج السحابية (Supabase) */}
-              <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-950/60 text-emerald-400 border border-emerald-800 flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
                       <Database className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-white text-sm sm:text-base">
+                      <h4 className="font-bold text-slate-900 text-sm sm:text-base">
                         قاعدة بيانات الإنتاج والمزامنة السحابية (Supabase)
                       </h4>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-500">
                         ربط لوحة التحكم بالمستخدمين والعقارات الحية لضمان مزامنة الإعلانات والحسابات فورياً عبر كافة الأجهزة وVercel
                       </p>
                     </div>
@@ -1732,24 +1732,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shrink-0 ${
                     isSupabaseActive()
-                      ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800'
-                      : 'bg-amber-950/60 text-amber-300 border border-amber-800'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border border-amber-200'
                   }`}>
-                    <span className={`w-2 h-2 rounded-full ${isSupabaseActive() ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                    <span className={`w-2 h-2 rounded-full ${isSupabaseActive() ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
                     <span>{isSupabaseActive() ? 'قاعدة البيانات الحية متصلة (Online)' : 'تخزين محلي متزامن'}</span>
                   </span>
                 </div>
 
                 {sbSaveMsg && (
-                  <div className="p-3 bg-blue-950/60 border border-blue-800 text-blue-200 text-xs font-bold rounded-xl flex items-center gap-2 animate-in fade-in">
-                    <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
+                  <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold rounded-xl flex items-center gap-2 animate-in fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
                     <span>{sbSaveMsg}</span>
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-right">
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       رابط مشروع Supabase (Project URL):
                     </label>
                     <input
@@ -1758,12 +1758,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       value={sbUrl}
                       onChange={(e) => setSbUrl(e.target.value)}
                       placeholder="https://xyzcompany.supabase.co"
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       مفتاح الوصول العام (Anon Public Key):
                     </label>
                     <input
@@ -1772,12 +1772,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       value={sbAnonKey}
                       onChange={(e) => setSbAnonKey(e.target.value)}
                       placeholder="eyJhbGciOi..."
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-slate-800">
+                <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={handleSaveSbConfig}
@@ -1798,23 +1798,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </button>
                 </div>
 
-                <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700 text-[11px] text-slate-400 leading-relaxed">
-                  💡 <strong className="text-slate-200">ملاحظة هامة:</strong> يتضمن المشروع ملف <code className="text-blue-300 font-mono font-bold bg-blue-950/60 px-1 py-0.5 rounded border border-blue-800">supabase_schema.sql</code> في المجلد الرئيسي، يحتوي على المخطط الشامل لجداول (<code className="font-mono text-slate-200">app_users</code>, <code className="font-mono text-slate-200">properties</code>, <code className="font-mono text-slate-200">tenant_requests</code>) مع سياسات الأمان (RLS) ومفتاح التحديث اللحظي (Realtime). قم بتشغيله في SQL Editor داخل لوحة تحكم Supabase لتفعيل كافة الصلاحيات فوراً.
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+                  💡 <strong className="text-slate-900">ملاحظة هامة:</strong> يتضمن المشروع ملف <code className="text-blue-700 font-mono font-bold bg-blue-50 px-1 py-0.5 rounded border border-blue-200">supabase_schema.sql</code> في المجلد الرئيسي، يحتوي على المخطط الشامل لجداول (<code className="font-mono text-slate-800">app_users</code>, <code className="font-mono text-slate-800">properties</code>, <code className="font-mono text-slate-800">tenant_requests</code>) مع سياسات الأمان (RLS) ومفتاح التحديث اللحظي (Realtime). قم بتشغيله في SQL Editor داخل لوحة تحكم Supabase لتفعيل كافة الصلاحيات فوراً.
                 </div>
               </div>
 
               {/* Card 4: إعدادات إعادة الضبط وتأمين الجلسة */}
-              <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
-                  <span className="font-bold text-white text-sm block">استعادة الإعدادات الافتراضية للقوائم</span>
-                  <span className="text-xs text-slate-400">إعادة تعيين خيارات الأحياء والمرافق وأنواع العقارات إلى التوليفات الأساسية</span>
+                  <span className="font-bold text-slate-900 text-sm block">استعادة الإعدادات الافتراضية للقوائم</span>
+                  <span className="text-xs text-slate-500">إعادة تعيين خيارات الأحياء والمرافق وأنواع العقارات إلى التوليفات الأساسية</span>
                 </div>
                 {onResetDefaults && (
                   <button
                     onClick={onResetDefaults}
-                    className="flex items-center gap-1.5 py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all cursor-pointer shrink-0 border border-slate-700"
+                    className="flex items-center gap-1.5 py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer shrink-0 border border-slate-200"
                   >
-                    <RotateCcw className="w-4 h-4 text-slate-400" />
+                    <RotateCcw className="w-4 h-4 text-slate-500" />
                     <span>إعادة تعيين الافتراضيات</span>
                   </button>
                 )}

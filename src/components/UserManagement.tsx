@@ -302,31 +302,31 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
             {isExportOpen && (
               <div 
-                className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-60 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-right"
+                className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-right"
               >
-                <div className="px-3.5 py-2 border-b border-slate-800 flex items-center justify-between text-[11px] font-bold text-slate-400">
+                <div className="px-3.5 py-2 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
                   <span>خيارات التصدير</span>
-                  <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">{filteredUsers.length} مستخدم</span>
+                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono">{filteredUsers.length} مستخدم</span>
                 </div>
                 <button
                   onClick={handleExportCSV}
-                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-800 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                     <span>ملف Excel (CSV)</span>
                   </span>
-                  <span className="text-[10px] bg-emerald-950/70 border border-emerald-800 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold">.csv</span>
+                  <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded font-mono font-bold">.csv</span>
                 </button>
                 <button
                   onClick={handleExportPDF}
-                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-800 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    <Printer className="w-4 h-4 text-rose-400" />
+                    <Printer className="w-4 h-4 text-rose-600" />
                     <span>طباعة / حفظ PDF</span>
                   </span>
-                  <span className="text-[10px] bg-rose-950/70 border border-rose-800 text-rose-300 px-1.5 py-0.5 rounded font-mono font-bold">.pdf</span>
+                  <span className="text-[10px] bg-rose-50 border border-rose-200 text-rose-700 px-1.5 py-0.5 rounded font-mono font-bold">.pdf</span>
                 </button>
               </div>
             )}
@@ -334,7 +334,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
           <button
             onClick={() => loadUsers(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
             title="تحديث قائمة الحسابات"
           >
             <RefreshCw className="w-4 h-4 text-[#FFB300]" />
@@ -345,49 +345,49 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
       {/* Summary Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-slate-400 block">إجمالي الحسابات</span>
-            <span className="text-xl font-black text-white mt-0.5 block">{totalCount}</span>
+            <span className="text-[11px] font-bold text-slate-500 block">إجمالي الحسابات</span>
+            <span className="text-xl font-black text-slate-900 mt-0.5 block">{totalCount}</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600">
             <Users className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-slate-400 block">المستخدمين النشطين</span>
-            <span className="text-xl font-black text-emerald-400 mt-0.5 block">{activeCount}</span>
+            <span className="text-[11px] font-bold text-slate-500 block">المستخدمين النشطين</span>
+            <span className="text-xl font-black text-emerald-600 mt-0.5 block">{activeCount}</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-950/60 border border-emerald-800 flex items-center justify-center text-emerald-400">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
             <UserCheck className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-slate-400 block">الحسابات المحظورة</span>
-            <span className="text-xl font-black text-rose-400 mt-0.5 block">{blockedCount}</span>
+            <span className="text-[11px] font-bold text-slate-500 block">الحسابات المحظورة</span>
+            <span className="text-xl font-black text-rose-600 mt-0.5 block">{blockedCount}</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-800 flex items-center justify-center text-rose-400">
+          <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
             <UserX className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-slate-400 block">المشرفين والمدراء</span>
-            <span className="text-xl font-black text-amber-400 mt-0.5 block">{adminCount}</span>
+            <span className="text-[11px] font-bold text-slate-500 block">المشرفين والمدراء</span>
+            <span className="text-xl font-black text-amber-600 mt-0.5 block">{adminCount}</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-950/60 border border-amber-800 flex items-center justify-center text-amber-400">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
             <ShieldCheck className="w-5 h-5" />
           </div>
         </div>
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 shadow-xs space-y-3">
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
           
           {/* Search Box */}
@@ -398,12 +398,12 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ابحث بالاسم، رقم الموبايل أو المعرف..."
-              className="w-full pr-10 pl-3 py-2 text-xs bg-slate-800 border border-slate-700 text-white placeholder-slate-400 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
+              className="w-full pr-10 pl-3 py-2 text-xs bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
               >
                 ✕
               </button>
@@ -413,11 +413,11 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
           {/* Filter Pills */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Status Filter */}
-            <div className="flex bg-slate-800 border border-slate-700 p-1 rounded-xl text-xs font-bold">
+            <div className="flex bg-slate-100 border border-slate-200 p-1 rounded-xl text-xs font-bold">
               <button
                 onClick={() => setStatusFilter('all')}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  statusFilter === 'all' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  statusFilter === 'all' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 الكل
@@ -425,7 +425,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               <button
                 onClick={() => setStatusFilter('active')}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  statusFilter === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  statusFilter === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 النشطون
@@ -433,7 +433,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               <button
                 onClick={() => setStatusFilter('blocked')}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  statusFilter === 'blocked' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  statusFilter === 'blocked' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 المحظورون
@@ -441,11 +441,11 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
             </div>
 
             {/* Role Filter */}
-            <div className="flex bg-slate-800 border border-slate-700 p-1 rounded-xl text-xs font-bold">
+            <div className="flex bg-slate-100 border border-slate-200 p-1 rounded-xl text-xs font-bold">
               <button
                 onClick={() => setRoleFilter('all')}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  roleFilter === 'all' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  roleFilter === 'all' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 كل الأدوار
@@ -453,7 +453,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               <button
                 onClick={() => setRoleFilter('user')}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  roleFilter === 'user' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  roleFilter === 'user' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 مستخدمين
@@ -461,7 +461,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               <button
                 onClick={() => setRoleFilter('admin')}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  roleFilter === 'admin' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-400 hover:text-white'
+                  roleFilter === 'admin' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 مدراء
@@ -473,10 +473,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
       {/* Users List / Grid */}
       {filteredUsers.length === 0 ? (
-        <div className="bg-slate-900 p-12 text-center rounded-3xl border border-slate-800">
-          <UserX className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <h4 className="text-sm font-black text-slate-200">لا توجد حسابات مطابقة لمعايير البحث</h4>
-          <p className="text-xs text-slate-400 mt-1">
+        <div className="bg-white p-12 text-center rounded-3xl border border-slate-200">
+          <UserX className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+          <h4 className="text-sm font-black text-slate-800">لا توجد حسابات مطابقة لمعايير البحث</h4>
+          <p className="text-xs text-slate-500 mt-1">
             جرب تغيير كلمات البحث أو إعادة ضبط الفلاتر بالأعلى
           </p>
         </div>
@@ -489,12 +489,12 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
             return (
               <div
                 key={u.id}
-                className={`bg-slate-900 rounded-2xl border p-4 shadow-xs transition-all hover:border-slate-700 flex flex-col justify-between ${
+                className={`bg-white rounded-2xl border p-4 shadow-xs transition-all hover:border-slate-300 flex flex-col justify-between ${
                   u.isBlocked 
-                    ? 'border-rose-900/60 bg-rose-950/20' 
+                    ? 'border-rose-300 bg-rose-50/40' 
                     : u.role === 'admin' 
-                    ? 'border-amber-500/40' 
-                    : 'border-slate-800'
+                    ? 'border-amber-300 bg-amber-50/20' 
+                    : 'border-slate-200'
                 }`}
               >
                 {/* User Card Header */}
@@ -503,21 +503,21 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                     <div className="flex items-center gap-2.5">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
                         u.isBlocked
-                          ? 'bg-rose-950/60 text-rose-400 border border-rose-800'
+                          ? 'bg-rose-100 text-rose-600 border border-rose-200'
                           : u.role === 'admin'
-                          ? 'bg-amber-950/60 text-amber-400 border border-amber-800'
-                          : 'bg-slate-800 text-slate-300 border border-slate-700'
+                          ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}>
-                        {u.role === 'admin' ? <ShieldCheck className="w-5 h-5 text-amber-400" /> : <User className="w-5 h-5 text-slate-300" />}
+                        {u.role === 'admin' ? <ShieldCheck className="w-5 h-5 text-amber-600" /> : <User className="w-5 h-5 text-slate-600" />}
                       </div>
 
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <h4 className="text-xs font-black text-white leading-tight">
+                          <h4 className="text-xs font-black text-slate-900 leading-tight">
                             {u.name}
                           </h4>
                           {isSelf && (
-                            <span className="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-bold px-1.5 py-0.2 rounded">
+                            <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200 font-bold px-1.5 py-0.2 rounded">
                               حسابك
                             </span>
                           )}
@@ -525,19 +525,19 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                             u.role === 'admin'
-                              ? 'bg-amber-950/60 text-amber-300 border border-amber-800'
-                              : 'bg-slate-800 text-slate-300 border border-slate-700'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-slate-100 text-slate-700 border border-slate-200'
                           }`}>
                             {u.role === 'admin' ? 'مشرف / أدمن' : 'مستخدم عادي'}
                           </span>
 
                           {u.isBlocked ? (
-                            <span className="text-[10px] font-black bg-rose-950/60 text-rose-300 px-2 py-0.5 rounded-full border border-rose-800 flex items-center gap-1">
+                            <span className="text-[10px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200 flex items-center gap-1">
                               <Lock className="w-2.5 h-2.5" />
                               محظور
                             </span>
                           ) : (
-                            <span className="text-[10px] font-black bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-800 flex items-center gap-1">
+                            <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
                               <CheckCircle2 className="w-2.5 h-2.5" />
                               نشط
                             </span>
@@ -554,7 +554,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                       )}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-8 h-8 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-800 text-emerald-300 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
                       title="مراسلة العميل عبر الواتساب"
                     >
                       <MessageCircle className="w-4 h-4" />
@@ -562,51 +562,51 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                   </div>
 
                   {/* Phone & PIN Details */}
-                  <div className="space-y-1.5 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 text-xs my-3">
+                  <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs my-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                      <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
                         <Phone className="w-3 h-3 text-slate-400" />
                         رقم الموبايل:
                       </span>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-bold text-slate-200 text-[11px]" dir="ltr">
+                        <span className="font-mono font-bold text-slate-800 text-[11px]" dir="ltr">
                           {u.phone}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleCopyPhone(u.phone)}
-                          className="text-slate-400 hover:text-white cursor-pointer"
+                          className="text-slate-400 hover:text-slate-700 cursor-pointer"
                           title="نسخ الرقم"
                         >
-                          {copiedPhone === u.phone ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedPhone === u.phone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-700">
-                      <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                        <KeyRound className="w-3 h-3 text-amber-400" />
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200">
+                      <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                        <KeyRound className="w-3 h-3 text-amber-600" />
                         رمز PIN الحالي:
                       </span>
-                      <span className="font-mono font-black text-amber-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700 text-xs">
+                      <span className="font-mono font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-xs">
                         {u.pin || '1234'}
                       </span>
                     </div>
 
                     {u.createdAt && (
-                      <div className="flex items-center justify-between pt-1 border-t border-slate-700">
-                        <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-200">
+                        <span className="text-[10px] text-slate-500 flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           تاريخ التسجيل:
                         </span>
-                        <span className="text-[10px] font-medium text-slate-300">
+                        <span className="text-[10px] font-medium text-slate-600">
                           {u.createdAt}
                         </span>
                       </div>
                     )}
 
                     {u.isBlocked && u.blockedReason && (
-                      <div className="mt-1 pt-1 border-t border-rose-900/60 text-[10px] text-rose-400 font-bold flex items-start gap-1">
+                      <div className="mt-1 pt-1 border-t border-rose-200 text-[10px] text-rose-600 font-bold flex items-start gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
                         <span>سبب الحظر: {u.blockedReason}</span>
                       </div>
@@ -615,7 +615,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                 </div>
 
                 {/* Action Buttons Row */}
-                <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800">
+                <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-100">
                   
                   {/* 1. Reset PIN Button */}
                   <button
@@ -626,10 +626,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                       setPinError(null);
                       setSendWhatsAppOnReset(true);
                     }}
-                    className="py-1.5 px-2 rounded-xl bg-amber-950/60 hover:bg-amber-900/80 border border-amber-800 text-amber-300 font-black text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                    className="py-1.5 px-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 font-black text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
                     title="إعادة تعيين كلمة السر الخاصة بالمستخدم بعد تواصله بالواتساب"
                   >
-                    <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                    <KeyRound className="w-3.5 h-3.5 text-amber-600" />
                     <span>تغيير PIN</span>
                   </button>
 
@@ -643,19 +643,19 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                     disabled={isProtectedAdmin}
                     className={`py-1.5 px-2 rounded-xl border font-black text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs ${
                       u.isBlocked
-                        ? 'bg-emerald-950/60 hover:bg-emerald-900/80 border-emerald-800 text-emerald-300'
-                        : 'bg-rose-950/60 hover:bg-rose-900/80 border-rose-800 text-rose-300'
+                        ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
+                        : 'bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700'
                     } ${isProtectedAdmin ? 'opacity-40 cursor-not-allowed' : ''}`}
                     title={u.isBlocked ? 'إلغاء حظر الحساب' : 'حظر الحساب'}
                   >
                     {u.isBlocked ? (
                       <>
-                        <Unlock className="w-3.5 h-3.5 text-emerald-400" />
+                        <Unlock className="w-3.5 h-3.5 text-emerald-600" />
                         <span>إلغاء الحظر</span>
                       </>
                     ) : (
                       <>
-                        <Lock className="w-3.5 h-3.5 text-rose-400" />
+                        <Lock className="w-3.5 h-3.5 text-rose-600" />
                         <span>حظر الحساب</span>
                       </>
                     )}
@@ -666,7 +666,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                     type="button"
                     onClick={() => setDeleteModalUser(u)}
                     disabled={isProtectedAdmin || isSelf}
-                    className={`py-1.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-rose-400 font-bold text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer ${
+                    className={`py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-rose-600 font-bold text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer ${
                       isProtectedAdmin || isSelf ? 'opacity-40 cursor-not-allowed' : ''
                     }`}
                     title={isProtectedAdmin ? 'حساب محمي لا يمكن حذفه' : 'حذف الحساب'}
@@ -685,8 +685,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       {/* Modal 1: Reset PIN (إعادة تعيين كلمة السر) */}
       {/* ========================================================================= */}
       {pinModalUser && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-800 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
             
             {/* Header */}
             <div className="bg-[#002B49] text-white p-5 flex items-center justify-between border-b border-blue-900/60">
@@ -705,7 +705,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               <button
                 type="button"
                 onClick={() => setPinModalUser(null)}
-                className="text-slate-400 hover:text-white cursor-pointer"
+                className="text-slate-300 hover:text-white cursor-pointer"
               >
                 ✕
               </button>
@@ -714,27 +714,27 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
             {/* Form */}
             <form onSubmit={handleConfirmResetPin} className="p-5 space-y-4">
               {pinError && (
-                <div className="p-3 bg-rose-950/50 border border-rose-800 rounded-xl text-xs text-rose-300 font-semibold flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                   <span>{pinError}</span>
                 </div>
               )}
 
-              <div className="bg-amber-950/40 border border-amber-800/80 rounded-2xl p-3 text-xs text-amber-200 leading-relaxed">
-                💡 <span className="font-bold text-amber-300">ملاحظة للأدمن:</span> بعد تواصل المستخدم معك عبر الواتساب، يمكنك إدخال الرمز الجديد (4 أرقام) ثم النقر على تأكيد ليتم فتح محادثة الواتساب معه تلقائياً لإرسال الرمز الجديد.
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 leading-relaxed">
+                💡 <span className="font-bold text-amber-800">ملاحظة للأدمن:</span> بعد تواصل المستخدم معك عبر الواتساب، يمكنك إدخال الرمز الجديد (4 أرقام) ثم النقر على تأكيد ليتم فتح محادثة الواتساب معه تلقائياً لإرسال الرمز الجديد.
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-black text-white">
-                    رمز PIN الجديد (4 أرقام) <span className="text-rose-400">*</span>
+                  <label className="text-xs font-black text-slate-800">
+                    رمز PIN الجديد (4 أرقام) <span className="text-rose-500">*</span>
                   </label>
                   <button
                     type="button"
                     onClick={handleGenerateRandomPin}
-                    className="text-[11px] font-bold text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-[11px] font-bold text-amber-600 hover:underline flex items-center gap-1 cursor-pointer"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                     <span>توليد كود تلقائي</span>
                   </button>
                 </div>
@@ -756,12 +756,12 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                       }
                     }}
                     placeholder="••••"
-                    className="w-full pr-10 pl-10 py-3 text-center text-base tracking-widest bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-mono font-black"
+                    className="w-full pr-10 pl-10 py-3 text-center text-base tracking-widest bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-mono font-black"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPin(!showPin)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -769,7 +769,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
                 {/* Quick Presets */}
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[10px] text-slate-400 font-bold">أكواد سريعة:</span>
+                  <span className="text-[10px] text-slate-500 font-bold">أكواد سريعة:</span>
                   {['1234', '1122', '0000', '2026'].map((code) => (
                     <button
                       key={code}
@@ -778,7 +778,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                         setNewPin(code);
                         setPinError(null);
                       }}
-                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono text-[11px] font-bold cursor-pointer transition-colors"
+                      className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-mono text-[11px] font-bold cursor-pointer transition-colors"
                     >
                       {code}
                     </button>
@@ -787,20 +787,20 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               </div>
 
               {/* Send WhatsApp Toggle */}
-              <div className="p-3 bg-emerald-950/40 border border-emerald-800 rounded-xl">
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
                 <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={sendWhatsAppOnReset}
                     onChange={(e) => setSendWhatsAppOnReset(e.target.checked)}
-                    className="mt-0.5 rounded text-emerald-500 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                    className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                   />
                   <div className="text-xs">
-                    <span className="font-bold text-emerald-300 block flex items-center gap-1.5">
-                      <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="font-bold text-emerald-800 block flex items-center gap-1.5">
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
                       فتح الواتساب ومراسلة العميل بالـ PIN الجديد فوراً
                     </span>
-                    <span className="text-[10px] text-emerald-400/80 block mt-0.5">
+                    <span className="text-[10px] text-emerald-700 block mt-0.5">
                       سيتم فتح رسالة منسقة جاهزة لإرسالها لرقم ({pinModalUser.phone})
                     </span>
                   </div>
@@ -812,7 +812,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                 <button
                   type="button"
                   onClick={() => setPinModalUser(null)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold text-xs cursor-pointer transition-colors"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs cursor-pointer transition-colors"
                 >
                   إلغاء
                 </button>
@@ -833,10 +833,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       {/* Modal 2: Block / Unblock Modal */}
       {/* ========================================================================= */}
       {blockModalUser && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-800 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
             
-            <div className={`p-5 text-white ${blockModalUser.isBlocked ? 'bg-emerald-800' : 'bg-rose-800'} flex items-center justify-between`}>
+            <div className={`p-5 text-white ${blockModalUser.isBlocked ? 'bg-emerald-700' : 'bg-rose-700'} flex items-center justify-between`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
                   {blockModalUser.isBlocked ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
@@ -845,7 +845,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                   <h3 className="text-sm font-black">
                     {blockModalUser.isBlocked ? 'إلغاء حظر الحساب' : 'حظر حساب المستخدم'}
                   </h3>
-                  <p className="text-xs text-white/80">
+                  <p className="text-xs text-white/90">
                     {blockModalUser.name} ({blockModalUser.phone})
                   </p>
                 </div>
@@ -862,26 +862,26 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
             <div className="p-5 space-y-4">
               {blockModalUser.isBlocked ? (
-                <div className="text-xs text-slate-300 leading-relaxed">
-                  هل أنت متأكد من رغبتك في <span className="font-bold text-emerald-400">إلغاء حظر</span> هذا الحساب؟
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  هل أنت متأكد من رغبتك في <span className="font-bold text-emerald-700">إلغاء حظر</span> هذا الحساب؟
                   سيتمكن المستخدم مجدداً من تسجيل الدخول وإضافة العقارات والطلبات بصورة طبيعية.
                 </div>
               ) : (
                 <>
-                  <div className="text-xs text-slate-300 leading-relaxed">
-                    عند حظر هذا الحساب، لن يتمكن صاحب الرقم (<span className="font-mono font-bold text-white">{blockModalUser.phone}</span>) من الدخول إلى المنظومة، وستظهر له رسالة توضح حظره مع توجيهه لمراسلة الإدارة عبر الواتساب.
+                  <div className="text-xs text-slate-600 leading-relaxed">
+                    عند حظر هذا الحساب، لن يتمكن صاحب الرقم (<span className="font-mono font-bold text-slate-900">{blockModalUser.phone}</span>) من الدخول إلى المنظومة، وستظهر له رسالة توضح حظره مع توجيهه لمراسلة الإدارة عبر الواتساب.
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black text-white mb-1">
-                      سبب الحظر <span className="text-rose-400">*</span>
+                    <label className="block text-xs font-black text-slate-800 mb-1">
+                      سبب الحظر <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={blockReason}
                       onChange={(e) => setBlockReason(e.target.value)}
                       placeholder="اكتب سبب الحظر..."
-                      className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700 text-white placeholder-slate-400 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
                     />
 
                     <div className="flex flex-wrap gap-1.5 mt-2">
@@ -895,7 +895,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                           key={preset}
                           type="button"
                           onClick={() => setBlockReason(preset)}
-                          className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                          className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2 py-0.5 rounded cursor-pointer transition-colors"
                         >
                           {preset}
                         </button>
@@ -909,7 +909,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                 <button
                   type="button"
                   onClick={() => setBlockModalUser(null)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold text-xs cursor-pointer transition-colors"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs cursor-pointer transition-colors"
                 >
                   إلغاء
                 </button>
@@ -944,17 +944,17 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       {/* Modal 3: Delete Account Confirmation */}
       {/* ========================================================================= */}
       {deleteModalUser && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-800 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
             
-            <div className="bg-rose-800 text-white p-5 flex items-center justify-between">
+            <div className="bg-rose-700 text-white p-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
                   <Trash2 className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-black">حذف حساب المستخدم نهائياً</h3>
-                  <p className="text-xs text-white/80">
+                  <p className="text-xs text-white/90">
                     {deleteModalUser.name} ({deleteModalUser.phone})
                   </p>
                 </div>
@@ -970,7 +970,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
             </div>
 
             <div className="p-5 space-y-4">
-              <div className="p-3 bg-rose-950/50 border border-rose-800 rounded-xl text-xs text-rose-300 leading-relaxed font-semibold">
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 leading-relaxed font-semibold">
                 ⚠️ تحذير: سيتم حذف هذا الحساب نهائياً من قاعدة بيانات المنظومة ولن يتمكن المستخدم من الدخول ببياناته الحالية إلا بإنشاء حساب جديد.
               </div>
 
@@ -978,7 +978,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                 <button
                   type="button"
                   onClick={() => setDeleteModalUser(null)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold text-xs cursor-pointer transition-colors"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs cursor-pointer transition-colors"
                 >
                   تراجع
                 </button>

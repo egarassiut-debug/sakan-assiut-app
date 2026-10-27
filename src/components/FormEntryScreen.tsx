@@ -1,9 +1,10 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { Property, PropertyPurpose, PropertyUtilities, TenantRequest, AppUser, DEFAULT_CARD_IMAGE } from '../types/property';
+import { Property, PropertyPurpose, PropertyUtilities, TenantRequest, AppUser } from '../types/property';
 import { DropdownCategory, UtilityOptionDefinition } from '../data/dropdownOptions';
 import { parseArabicVoiceTranscript } from '../utils/voiceParser';
 import { ImageUploadField } from './ImageUploadField';
 import { validateEgyptianPhone, normalizeEgyptianPhone, isValidEgyptianPhone } from '../utils/phoneValidator';
+import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import {
   ArrowRight,
   Building2,
@@ -639,9 +640,6 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         return;
       }
 
-      const defaultLandImg = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80';
-      const defaultAptImg = 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80';
-
       // 1. تجهيز الكائن بحالة غير معتمدة لانتظار السداد والموافقة
       const newListing: Property = {
         id: generatedListingId,
@@ -686,7 +684,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         ownerName: contactName.trim() || 'مالك العقار',
         ownerPhone: cleanContactPhone,
         source: isAdmin ? 'إدارة المنظومة (نشر مباشر)' : 'مالك مباشر',
-        images: uploadedImages.length > 0 ? uploadedImages : [DEFAULT_CARD_IMAGE],
+        images: uploadedImages.length > 0 ? uploadedImages : [DEFAULT_SAKAN_PLACEHOLDER],
         createdByAdmin: isAdmin,
         fee: isAdmin && fee ? Number(fee) : undefined,
         inspectionDate: isAdmin && inspectionDate ? inspectionDate : undefined,
@@ -774,7 +772,6 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         bathrooms: !isLand && bathrooms !== '' ? Number(bathrooms) : undefined,
         urgency,
         notes: notes.trim(),
-        images: uploadedImages.length > 0 ? uploadedImages : [DEFAULT_CARD_IMAGE],
         createdAt: todayDate,
       };
 

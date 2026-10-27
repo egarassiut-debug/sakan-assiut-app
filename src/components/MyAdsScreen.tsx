@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Property, TenantRequest, ScheduledInspection, AppUser, PropertyStatus, DEFAULT_CARD_IMAGE } from '../types/property';
+import { Property, TenantRequest, ScheduledInspection, AppUser, PropertyStatus } from '../types/property';
+import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
   Building2, Clock, CheckCircle2, AlertTriangle, Edit3, Trash2, 
   Archive, RotateCcw, Eye, Plus, MapPin, Calendar, Copy, Check, CreditCard,
@@ -827,7 +828,8 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
                 const isRent = prop.purpose === 'rent';
                 const mainImg = prop.images && prop.images.length > 0 
                   ? prop.images[0] 
-                  : DEFAULT_CARD_IMAGE;
+                  : DEFAULT_SAKAN_PLACEHOLDER;
+                const isPlaceholder = mainImg === DEFAULT_SAKAN_PLACEHOLDER || !prop.images || prop.images.length === 0;
 
                 const handleContactWhatsApp = () => {
                   const text = encodeURIComponent(
@@ -843,15 +845,19 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
                   >
                     <div className="flex items-start gap-3">
                       {/* Thumbnail */}
-                      <div className="w-22 h-22 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 relative">
+                      <div className="w-22 h-22 rounded-2xl bg-[#002B49] overflow-hidden shrink-0 border border-slate-200 relative flex items-center justify-center">
                         <img
                           src={mainImg}
                           alt={prop.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${
+                            isPlaceholder ? 'object-contain p-2' : 'object-cover'
+                          }`}
                           loading="lazy"
                           decoding="async"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
+                            const target = e.target as HTMLImageElement;
+                            target.src = DEFAULT_SAKAN_PLACEHOLDER;
+                            target.className = 'w-full h-full object-contain p-2';
                           }}
                         />
                         <span className="absolute bottom-1 right-1 text-[9px] bg-black/70 text-white font-mono px-1.5 py-0.2 rounded-md">

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Property, DEFAULT_CARD_IMAGE } from '../types/property';
+import { Property } from '../types/property';
+import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
   Copy, Check, MapPin, Maximize2, Bed, Bath, ArrowUpRight, 
   MessageSquare, Compass, Building, ChevronLeft, ChevronRight, Camera, Edit3, AlertTriangle, Heart, Star,
@@ -46,9 +47,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     setIsExpanded((prev) => !prev);
   };
 
-  const images = property.images && property.images.length > 0 
-    ? property.images 
-    : [DEFAULT_CARD_IMAGE];
+  const images = property.images && property.images.length > 0 && property.images.some((img) => Boolean(img?.trim()))
+    ? property.images.filter((img) => Boolean(img?.trim()))
+    : [DEFAULT_SAKAN_PLACEHOLDER];
+
+  const isDefaultImage = !property.images || property.images.length === 0 || images[currentImageIndex] === DEFAULT_SAKAN_PLACEHOLDER;
 
   const hasMultipleImages = images.length > 1;
 
@@ -130,18 +133,24 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     >
       {/* Top Media Slider & Badges */}
       <div 
-        className="relative h-48 sm:h-52 w-full bg-slate-100 overflow-hidden select-none"
+        className={`relative h-48 sm:h-52 w-full overflow-hidden select-none flex items-center justify-center ${
+          isDefaultImage ? 'bg-gradient-to-br from-[#002B49] via-[#0B1E36] to-[#011627]' : 'bg-slate-100'
+        }`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
         <img
-          src={images[currentImageIndex] || images[0]}
+          src={images[currentImageIndex] || images[0] || DEFAULT_SAKAN_PLACEHOLDER}
           alt={`${property.title} - صورة ${currentImageIndex + 1}`}
-          className="w-full h-full object-cover transition-all duration-300 group-hover:scale-102"
+          className={`w-full h-full transition-all duration-300 group-hover:scale-102 ${
+            isDefaultImage ? 'object-contain p-4 drop-shadow-md' : 'object-cover'
+          }`}
           loading="lazy"
           decoding="async"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
+            const target = e.target as HTMLImageElement;
+            target.src = DEFAULT_SAKAN_PLACEHOLDER;
+            target.className = 'w-full h-full object-contain p-4 drop-shadow-md transition-all duration-300 group-hover:scale-102';
           }}
         />
 

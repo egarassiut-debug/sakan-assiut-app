@@ -1,5 +1,6 @@
 import React from 'react';
-import { Property, DEFAULT_CARD_IMAGE } from '../types/property';
+import { Property } from '../types/property';
+import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { X, Heart, Building2, MapPin, Trash2, ArrowUpRight, MessageSquare, Bed, Bath, Maximize2 } from 'lucide-react';
 
 interface FavoritesModalProps {
@@ -98,17 +99,23 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({
                   {/* Property Info */}
                   <div className="flex items-start gap-3 min-w-0 flex-1">
                     {/* Thumbnail */}
-                    <div className="w-20 h-20 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 relative">
+                    <div className="w-20 h-20 rounded-xl bg-[#002B49] overflow-hidden shrink-0 border border-slate-200 relative flex items-center justify-center">
                       <img
-                        src={prop.images && prop.images.length > 0 ? prop.images[0] : DEFAULT_CARD_IMAGE}
+                        src={prop.images && prop.images.length > 0 ? prop.images[0] : DEFAULT_SAKAN_PLACEHOLDER}
                         alt={prop.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${
+                          (!prop.images || prop.images.length === 0 || prop.images[0] === DEFAULT_SAKAN_PLACEHOLDER)
+                            ? 'object-contain p-1.5'
+                            : 'object-cover'
+                        }`}
                         loading="lazy"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
+                          const target = e.target as HTMLImageElement;
+                          target.src = DEFAULT_SAKAN_PLACEHOLDER;
+                          target.className = 'w-full h-full object-contain p-1.5';
                         }}
                       />
-                      <span className="absolute bottom-1 right-1 text-[9px] bg-black/60 text-white font-mono px-1 rounded-sm">
+                      <span className="absolute bottom-1 right-1 text-[9px] bg-black/70 text-white font-mono px-1 rounded-sm">
                         {prop.code}
                       </span>
                     </div>

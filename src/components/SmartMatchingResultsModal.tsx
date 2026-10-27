@@ -1,5 +1,6 @@
 import React from 'react';
-import { Property, TenantRequest, DEFAULT_CARD_IMAGE } from '../types/property';
+import { Property, TenantRequest } from '../types/property';
+import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -277,7 +278,8 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
 }) => {
   if (entry.type === 'property') {
     const prop = entry.item;
-    const thumbnail = prop.images && prop.images.length > 0 ? prop.images[0] : DEFAULT_CARD_IMAGE;
+    const thumbnail = prop.images && prop.images.length > 0 ? prop.images[0] : DEFAULT_SAKAN_PLACEHOLDER;
+    const isPlaceholder = thumbnail === DEFAULT_SAKAN_PLACEHOLDER || !prop.images || prop.images.length === 0;
 
     return (
       <div className={`bg-white rounded-2xl border p-3.5 flex flex-col justify-between space-y-3 transition-all hover:shadow-md ${
@@ -306,14 +308,18 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
 
           {/* Title & Image row */}
           <div className="flex items-start gap-2.5">
-            <img
-              src={thumbnail}
-              alt={prop.title}
-              className="w-14 h-14 rounded-xl object-cover shrink-0 border border-slate-100 shadow-2xs"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
-              }}
-            />
+            <div className="w-14 h-14 rounded-xl bg-[#002B49] overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center">
+              <img
+                src={thumbnail}
+                alt={prop.title}
+                className={`w-full h-full ${isPlaceholder ? 'object-contain p-1' : 'object-cover'}`}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = DEFAULT_SAKAN_PLACEHOLDER;
+                  target.className = 'w-full h-full object-contain p-1';
+                }}
+              />
+            </div>
             <div className="flex-1 min-w-0">
               <h4 className="font-black text-xs text-slate-900 truncate">
                 {prop.title}
@@ -384,16 +390,15 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
           </span>
         </div>
 
-        {/* Requirements info & thumbnail row */}
+        {/* Requirements info */}
         <div className="flex items-start gap-2.5">
-          <img
-            src={(req.images && req.images.length > 0) ? req.images[0] : DEFAULT_CARD_IMAGE}
-            alt={`طلب ${req.propertyType}`}
-            className="w-14 h-14 rounded-xl object-cover shrink-0 border border-slate-100 shadow-2xs"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = DEFAULT_CARD_IMAGE;
-            }}
-          />
+          <div className="w-14 h-14 rounded-xl bg-[#002B49] overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center">
+            <img
+              src={DEFAULT_SAKAN_PLACEHOLDER}
+              alt={req.propertyType}
+              className="w-full h-full object-contain p-1"
+            />
+          </div>
           <div className="flex-1 min-w-0">
             <h4 className="font-black text-xs text-slate-900 truncate">
               طلب: {req.propertyType}
