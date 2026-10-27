@@ -22,6 +22,21 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
 }) => {
   const isRent = request.purpose === 'rent';
 
+  // Helper to format unified property type and purpose badge on the card (e.g. "مطلوب شقة للإيجار", "مطلوب شقة للشراء")
+  const getUnifiedTypePurposeBadge = () => {
+    const purposeText = isRent ? 'للإيجار' : 'للشراء';
+    let type = (request.propertyType || '').trim();
+
+    // Natural Arabic contractions for clean badge aesthetic
+    if (type === 'شقة سكنية') type = 'شقة';
+    else if (type === 'قطعة أرض فضاء') type = 'أرض';
+    else if (type === 'مقر إداري / مكاتب') type = 'مكتب إداري';
+    else if (type === 'مخزن / بدروم') type = 'مخزن';
+    else if (!type) type = 'عقار';
+
+    return `مطلوب ${type} ${purposeText}`;
+  };
+
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
     const text = encodeURIComponent(
@@ -64,23 +79,20 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
         
         {/* Top Badges Row */}
         <div className="flex items-center justify-between gap-2 z-10">
+          {/* Right side (أقصى اليمين in RTL): Unified Property Type & Purpose Badge */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            {/* نوع الوحدة على اليمين */}
-            <span className="px-2.5 py-1 rounded-xl bg-white/95 backdrop-blur-xs text-slate-900 text-xs font-bold border border-slate-200 shadow-2xs">
-              {request.propertyType}
-            </span>
-            {/* شارة الغرض في أقصى اليسار */}
             <span
-              className={`px-3 py-1 rounded-xl font-bold text-xs shadow-xs ${
+              className={`px-3 py-1 rounded-xl font-bold text-xs shadow-md backdrop-blur-xs flex items-center gap-1 border ${
                 isRent
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-emerald-600 text-white'
+                  ? 'bg-blue-600 text-white border-blue-400/40'
+                  : 'bg-emerald-600 text-white border-emerald-400/40'
               }`}
             >
-              {isRent ? 'مطلوب للإيجار' : 'مطلوب للشراء'}
+              <span>{getUnifiedTypePurposeBadge()}</span>
             </span>
           </div>
 
+          {/* Left side (أقصى اليسار in RTL): Urgency tag */}
           <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-2xs ${urgencyLabel.color}`}>
             {urgencyLabel.text}
           </span>
@@ -116,37 +128,43 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
           </p>
         </div>
 
-        {/* Specifications Details Row matching PropertyCard */}
-        <div className="bg-slate-50 rounded-2xl py-3 px-4 border border-slate-100 flex items-center justify-around text-xs sm:text-sm text-slate-600 my-0.5">
-          {request.minArea ? (
-            <div className="flex items-center gap-1.5">
-              <Maximize2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="text-slate-500">مساحة:</span>
-              <span className="font-bold text-slate-900">{request.minArea}</span>
-              <span className="text-[11px] text-slate-500">م² فأكثر</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <Building className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="text-slate-700 font-semibold">{request.preferredDistrict}</span>
-            </div>
-          )}
+        {/* Fixed Specifications Details Row: Always 4 fixed slots across all cards */}
+        <div className="bg-slate-50/90 rounded-2xl py-2.5 px-2 border border-slate-100 grid grid-cols-4 divide-x divide-x-reverse divide-slate-200/80 text-xs text-slate-600 my-0.5 select-none">
+          {/* Slot 1: المساحة المطلوبة (Fixed) */}
+          <div className="flex items-center justify-center gap-1 px-1">
+            <Maximize2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="font-bold text-slate-900 truncate">
+              {request.minArea ? `${request.minArea} م²` : (request.maxArea ? `${request.maxArea} م²` : '—')}
+            </span>
+          </div>
 
-          {request.bedrooms !== undefined && request.bedrooms > 0 && (
-            <div className="flex items-center gap-1.5">
-              <Bed className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="font-bold text-slate-900">{request.bedrooms}</span>
-              <span className="text-[11px] text-slate-500">غرف</span>
-            </div>
-          )}
+          {/* Slot 2: عدد الغرف (Fixed) */}
+          <div className="flex items-center justify-center gap-1 px-1">
+            <Bed className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="font-bold text-slate-900 truncate">
+              {request.bedrooms !== undefined && request.bedrooms !== null && request.bedrooms > 0 
+                ? `${request.bedrooms} غرف` 
+                : '—'}
+            </span>
+          </div>
 
-          {request.bathrooms !== undefined && request.bathrooms > 0 && (
-            <div className="flex items-center gap-1.5">
-              <Bath className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="font-bold text-slate-900">{request.bathrooms}</span>
-              <span className="text-[11px] text-slate-500">حمام</span>
-            </div>
-          )}
+          {/* Slot 3: الحمامات (Fixed) */}
+          <div className="flex items-center justify-center gap-1 px-1">
+            <Bath className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="font-bold text-slate-900 truncate">
+              {request.bathrooms !== undefined && request.bathrooms !== null && request.bathrooms > 0 
+                ? `${request.bathrooms} حمام` 
+                : '—'}
+            </span>
+          </div>
+
+          {/* Slot 4: التشطيب / الطابق (Fixed) */}
+          <div className="flex items-center justify-center gap-1 px-1">
+            <Building className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="font-medium text-slate-800 text-[11px] truncate">
+              {request.furnishingStatus ? request.furnishingStatus : '—'}
+            </span>
+          </div>
         </div>
 
         {/* Price & Action Buttons matching PropertyCard layout */}

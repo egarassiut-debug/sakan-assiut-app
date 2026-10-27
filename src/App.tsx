@@ -99,7 +99,8 @@ import {
   Building, 
   DollarSign, 
   Heart,
-  ClipboardList
+  ClipboardList,
+  ArrowUpDown
 } from 'lucide-react';
 
 /**
@@ -375,6 +376,10 @@ export function App() {
   const [isSearchMenuOpen, setIsSearchMenuOpen] = useState(false);
   const [isOffersFilterOpen, setIsOffersFilterOpen] = useState(false);
   const [isRequestsFilterOpen, setIsRequestsFilterOpen] = useState(false);
+
+  // Sorting state: 'newest' (الأحدث أولاً - Primary Default) | 'oldest' (الأقدم أولاً)
+  const [offersSortOrder, setOffersSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [requestsSortOrder, setRequestsSortOrder] = useState<'newest' | 'oldest'>('newest');
 
   // Search & Filter State for Requests
   const [requestSearchQuery, setRequestSearchQuery] = useState('');
@@ -872,7 +877,7 @@ export function App() {
 
   // Filter Properties logic (Index 0: عروض الإيجار المتاحة)
   const filteredProperties = useMemo(() => {
-    return properties.filter((prop) => {
+    const list = properties.filter((prop) => {
       // Must be approved for public regular view (unless viewed by admin)
       const isPubliclyAllowed = prop.isApproved !== false && (prop.status === 'approved' || prop.status === 'rented' || prop.status === 'sold');
       if (!isAdmin && !isPubliclyAllowed) return false;
@@ -919,11 +924,21 @@ export function App() {
 
       return true;
     });
-  }, [properties, isAdmin, purposeFilter, selectedDistrict, selectedPropertyType, searchQuery, minPrice, maxPrice, excludeEnded]);
+
+    // Sort by Date (الأحدث أولاً كوضع افتراضي أو الأقدم أولاً)
+    return [...list].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (timeA !== timeB) {
+        return offersSortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+      }
+      return offersSortOrder === 'newest' ? b.code.localeCompare(a.code) : a.code.localeCompare(b.code);
+    });
+  }, [properties, isAdmin, purposeFilter, selectedDistrict, selectedPropertyType, searchQuery, minPrice, maxPrice, excludeEnded, offersSortOrder]);
 
   // Filter Tenant Requests logic (طلبات الإيجار المطلوبة)
   const filteredTenantRequests = useMemo(() => {
-    return tenantRequests.filter((req) => {
+    const list = tenantRequests.filter((req) => {
       // Must be approved for public view (unless viewed by admin)
       if (!isAdmin && (req.status === 'pending_approval' || req.isApproved === false)) return false;
 
@@ -945,7 +960,19 @@ export function App() {
 
       return true;
     });
-  }, [tenantRequests, isAdmin, requestPurpose, requestDistrict, requestPropertyType, requestSearchQuery]);
+
+    // Sort by Date (الأحدث أولاً كوضع افتراضي أو الأقدم أولاً)
+    return [...list].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (timeA !== timeB) {
+        return requestsSortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+      }
+      const codeA = a.requestCode || a.id;
+      const codeB = b.requestCode || b.id;
+      return requestsSortOrder === 'newest' ? codeB.localeCompare(codeA) : codeA.localeCompare(codeB);
+    });
+  }, [tenantRequests, isAdmin, requestPurpose, requestDistrict, requestPropertyType, requestSearchQuery, requestsSortOrder]);
 
   // User Ads count for regular user BottomNavBar badge
   const myAdsCount = useMemo(() => {
@@ -1839,11 +1866,37 @@ export function App() {
                 {/* Subtle vertical separator */}
                 <div className="h-6 w-px bg-slate-200 shrink-0 mx-1.5 sm:mx-2" />
 
+                {/* Sort Toggle Button (⬇️⬆️ الأحدث / الأقدم) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextOrder = offersSortOrder === 'newest' ? 'oldest' : 'newest';
+                    setOffersSortOrder(nextOrder);
+                    addToast({
+                      type: 'info',
+                      title: nextOrder === 'newest' ? 'الترتيب: الأحدث أولاً ⬇️' : 'الترتيب: الأقدم أولاً ⬆️',
+                      message: nextOrder === 'newest' ? 'يتم الآن عرض أحدث العروض العقارية أولاً.' : 'يتم الآن عرض أقدم العروض أولاً.',
+                    });
+                  }}
+                  className={`relative flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 border ${
+                    offersSortOrder === 'oldest'
+                      ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border-slate-200'
+                  }`}
+                  title={`ترتيب العروض: ${offersSortOrder === 'newest' ? 'الأحدث أولاً' : 'الأقدم أولاً'} (انقر للتبديل)`}
+                  aria-label="تبديل ترتيب العرض"
+                >
+                  <ArrowUpDown className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="hidden xs:inline sm:inline">
+                    {offersSortOrder === 'newest' ? 'الأحدث' : 'الأقدم'}
+                  </span>
+                </button>
+
                 {/* Integrated Filter Toggle Button */}
                 <button
                   type="button"
                   onClick={() => setIsOffersFilterOpen(!isOffersFilterOpen)}
-                  className={`relative flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  className={`relative flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ml-1.5 ${
                     (selectedDistrict !== 'all' || selectedPropertyType !== 'all')
                       ? 'bg-amber-50 text-amber-800 border border-amber-300 shadow-xs'
                       : isOffersFilterOpen
@@ -2175,11 +2228,37 @@ export function App() {
                 {/* Subtle vertical separator */}
                 <div className="h-6 w-px bg-slate-200 shrink-0 mx-1.5 sm:mx-2" />
 
+                {/* Sort Toggle Button (⬇️⬆️ الأحدث / الأقدم) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextOrder = requestsSortOrder === 'newest' ? 'oldest' : 'newest';
+                    setRequestsSortOrder(nextOrder);
+                    addToast({
+                      type: 'info',
+                      title: nextOrder === 'newest' ? 'الترتيب: الأحدث أولاً ⬇️' : 'الترتيب: الأقدم أولاً ⬆️',
+                      message: nextOrder === 'newest' ? 'يتم الآن عرض أحدث الطلبات العقارية أولاً.' : 'يتم الآن عرض أقدم الطلبات أولاً.',
+                    });
+                  }}
+                  className={`relative flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 border ${
+                    requestsSortOrder === 'oldest'
+                      ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border-slate-200'
+                  }`}
+                  title={`ترتيب الطلبات: ${requestsSortOrder === 'newest' ? 'الأحدث أولاً' : 'الأقدم أولاً'} (انقر للتبديل)`}
+                  aria-label="تبديل ترتيب الطلبات"
+                >
+                  <ArrowUpDown className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="hidden xs:inline sm:inline">
+                    {requestsSortOrder === 'newest' ? 'الأحدث' : 'الأقدم'}
+                  </span>
+                </button>
+
                 {/* Integrated Filter Toggle Button */}
                 <button
                   type="button"
                   onClick={() => setIsRequestsFilterOpen(!isRequestsFilterOpen)}
-                  className={`relative flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  className={`relative flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ml-1.5 ${
                     (requestDistrict !== 'all' || requestPropertyType !== 'all')
                       ? 'bg-amber-50 text-amber-800 border border-amber-300 shadow-xs'
                       : isRequestsFilterOpen

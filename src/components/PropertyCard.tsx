@@ -230,7 +230,38 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Top Floating Badges */}
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none z-10">
-          {/* Left: Property Code Chip & Favorite Button */}
+          {/* Right side (أقصى اليمين in RTL): Unified Purpose & Type Badge + Status */}
+          <div className="flex items-center gap-1.5 flex-wrap pointer-events-auto">
+            {/* شارة واحدة مدمجة تجمع (نوع العقار) و(نوع المعاملة) في أقصى اليمين */}
+            <span className={`px-3 py-1 rounded-xl font-bold text-xs shadow-md backdrop-blur-xs flex items-center gap-1 border ${
+              property.purpose === 'rent'
+                ? 'bg-blue-600 text-white border-blue-400/40'
+                : 'bg-amber-500 text-slate-950 border-amber-300/40'
+            }`}>
+              <span>{getUnifiedTypePurposeBadge()}</span>
+            </span>
+
+            {property.status === 'rented' && (
+              <span className="px-2.5 py-1 rounded-xl bg-amber-500 text-slate-950 font-black text-xs shadow-md border border-amber-300 flex items-center gap-1 animate-pulse">
+                <Lock className="w-3 h-3 text-slate-950" />
+                <span>مؤجر</span>
+              </span>
+            )}
+            {property.status === 'sold' && (
+              <span className="px-2.5 py-1 rounded-xl bg-rose-600 text-white font-black text-xs shadow-md border border-rose-400 flex items-center gap-1">
+                <Tag className="w-3 h-3 text-white" />
+                <span>تم البيع</span>
+              </span>
+            )}
+            {(property.status === 'pending' || property.status === 'pending_approval' || property.status === 'under_review') && (
+              <span className="px-2 py-1 rounded-xl bg-amber-600/90 text-white font-bold text-[10px] shadow-sm flex items-center gap-1 border border-amber-500">
+                <AlertTriangle className="w-3 h-3 text-amber-200" />
+                <span>قيد المراجعة</span>
+              </span>
+            )}
+          </div>
+
+          {/* Left side (أقصى اليسار in RTL): Property Code Chip & Favorite Button */}
           <div className="flex items-center gap-1.5 pointer-events-auto">
             <div 
               onClick={handleCopyCode}
@@ -264,37 +295,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
               </button>
             )}
-          </div>
-
-          {/* Purpose, Type & Status Badge */}
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            {property.status === 'rented' && (
-              <span className="px-2.5 py-1 rounded-xl bg-amber-500 text-slate-950 font-black text-xs shadow-md border border-amber-300 flex items-center gap-1 animate-pulse">
-                <Lock className="w-3 h-3 text-slate-950" />
-                <span>مؤجر</span>
-              </span>
-            )}
-            {property.status === 'sold' && (
-              <span className="px-2.5 py-1 rounded-xl bg-rose-600 text-white font-black text-xs shadow-md border border-rose-400 flex items-center gap-1">
-                <Tag className="w-3 h-3 text-white" />
-                <span>تم البيع</span>
-              </span>
-            )}
-            {(property.status === 'pending' || property.status === 'pending_approval' || property.status === 'under_review') && (
-              <span className="px-2 py-1 rounded-xl bg-amber-600/90 text-white font-bold text-[10px] shadow-sm flex items-center gap-1 border border-amber-500">
-                <AlertTriangle className="w-3 h-3 text-amber-200" />
-                <span>قيد المراجعة</span>
-              </span>
-            )}
-
-            {/* شارة واحدة مدمجة تجمع (نوع العقار) و(نوع المعاملة) */}
-            <span className={`px-3 py-1 rounded-xl font-bold text-xs shadow-md backdrop-blur-xs flex items-center gap-1 border ${
-              property.purpose === 'rent'
-                ? 'bg-blue-600 text-white border-blue-400/40'
-                : 'bg-amber-500 text-slate-950 border-amber-300/40'
-            }`}>
-              <span>{getUnifiedTypePurposeBadge()}</span>
-            </span>
           </div>
         </div>
       </div>
@@ -346,50 +346,54 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
         </div>
 
-        {/* Specifications Details Row: Roomy & clean */}
-        <div className="bg-slate-50 rounded-2xl py-3 px-4 border border-slate-100 flex items-center justify-around text-xs sm:text-sm text-slate-600 my-0.5">
-          {/* Area */}
-          <div className="flex items-center gap-1.5">
+        {/* Fixed Specifications Details Row: Always 4 fixed slots across all cards */}
+        <div className="bg-slate-50/90 rounded-2xl py-2.5 px-2 border border-slate-100 grid grid-cols-4 divide-x divide-x-reverse divide-slate-200/80 text-xs text-slate-600 my-0.5 select-none">
+          {/* Slot 1: المساحة (Fixed) */}
+          <div className="flex items-center justify-center gap-1 px-1">
             <Maximize2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            <span className="font-bold text-slate-900">{property.area}</span>
-            <span className="text-[11px] text-slate-500">م²</span>
+            <span className="font-bold text-slate-900 truncate">
+              {property.area ? `${property.area} م²` : '—'}
+            </span>
           </div>
 
-          {isLand ? (
-            /* Land Facade */
-            <div className="flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="font-semibold text-slate-800 text-[11px]">
-                {property.facade ? property.facade.slice(0, 20) : 'واجهة مميزة'}
-              </span>
-            </div>
-          ) : (
-            /* Standard Apartment Features */
-            <>
-              {property.bedrooms !== undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Bed className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span className="font-bold text-slate-900">{property.bedrooms}</span>
-                  <span className="text-[11px] text-slate-500">غرف</span>
-                </div>
-              )}
-              {property.bathrooms !== undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Bath className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span className="font-bold text-slate-900">{property.bathrooms}</span>
-                  <span className="text-[11px] text-slate-500">حمام</span>
-                </div>
-              )}
-              {property.hasElevator !== undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Building className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span className="text-[11px] text-slate-700 font-medium">
-                    {property.hasElevator ? 'أسانسير' : 'سلم'}
-                  </span>
-                </div>
-              )}
-            </>
-          )}
+          {/* Slot 2: الغرف أو الواجهة (Fixed) */}
+          <div className="flex items-center justify-center gap-1 px-1">
+            {isLand ? (
+              <>
+                <Compass className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="font-semibold text-slate-800 text-[11px] truncate" title={property.facade || ''}>
+                  {property.facade ? property.facade.slice(0, 14) : '—'}
+                </span>
+              </>
+            ) : (
+              <>
+                <Bed className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="font-bold text-slate-900 truncate">
+                  {property.bedrooms !== undefined && property.bedrooms !== null ? `${property.bedrooms} غرف` : '—'}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Slot 3: الحمامات (Fixed) */}
+          <div className="flex items-center justify-center gap-1 px-1">
+            <Bath className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="font-bold text-slate-900 truncate">
+              {property.bathrooms !== undefined && property.bathrooms !== null ? `${property.bathrooms} حمام` : '—'}
+            </span>
+          </div>
+
+          {/* Slot 4: المصعد أو الطابق (Fixed) */}
+          <div className="flex items-center justify-center gap-1 px-1">
+            <Building className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="font-medium text-slate-800 text-[11px] truncate">
+              {property.hasElevator !== undefined && property.hasElevator !== null
+                ? (property.hasElevator ? 'أسانسير' : 'سلم')
+                : (property.floorLevel !== undefined && property.floorLevel !== null
+                    ? (property.floorLevel === 0 ? 'أرضي' : `دور ${property.floorLevel}`)
+                    : '—')}
+            </span>
+          </div>
         </div>
 
         {/* Concise Specs & Details: toggled via direct card container click without visual banner clutter */}
