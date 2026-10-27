@@ -28,7 +28,6 @@ export default defineConfig(() => {
         'react-dropzone',
         '@supabase/supabase-js',
       ],
-      force: true,
     },
     build: {
       target: 'esnext',

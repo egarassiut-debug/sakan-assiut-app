@@ -49,9 +49,10 @@ export const SmartMatchingResultsModal: React.FC<SmartMatchingResultsModalProps>
   onViewProperty,
   onViewRequest,
 }) => {
-  if (!isOpen || !submittedItem) return null;
-
   const totalMatchesCount = exactMatches.length + similarMatches.length;
+
+  // إخفاء اللوحة تماماً وعدم إظهار رسالة الصفر عند عدم وجود مطابقات أو شبه مطابقات
+  if (!isOpen || !submittedItem || totalMatchesCount === 0) return null;
 
   return (
     <div 

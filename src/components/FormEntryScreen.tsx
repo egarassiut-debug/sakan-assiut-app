@@ -29,7 +29,9 @@ import {
   Clock,
   Target,
   ArrowUp,
-  AlertTriangle
+  AlertTriangle,
+  Info,
+  X
 } from 'lucide-react';
 import { RealEstateAgent, Assignment, HourglassTopRounded } from './FlutterIcons';
 import { validatePropertyPayload, validateTenantRequestPayload, dbUpsertProfile } from '../lib/supabase';
@@ -113,13 +115,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
   // Common Form State
   const [propertyType, setPropertyType] = useState<string>(
-    editingProperty?.propertyType || editingTenantRequest?.propertyType || initialDraft?.propertyType || activePropertyTypes[0] || 'شقة سكنية'
+    editingProperty?.propertyType || editingTenantRequest?.propertyType || initialDraft?.propertyType || ''
   );
   const [purpose, setPurpose] = useState<PropertyPurpose>(
     editingProperty?.purpose || editingTenantRequest?.purpose || initialDraft?.purpose || 'rent'
   );
   const [district, setDistrict] = useState<string>(
-    editingProperty?.district || editingTenantRequest?.preferredDistrict || initialDraft?.district || activeDistricts[0] || 'حي الجامعة'
+    editingProperty?.district || editingTenantRequest?.preferredDistrict || initialDraft?.district || ''
   );
   const [address, setAddress] = useState(editingProperty?.address || initialDraft?.address || '');
   const [facade, setFacade] = useState(editingProperty?.facade || initialDraft?.facade || '');
@@ -136,6 +138,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [submittedListingId, setSubmittedListingId] = useState('');
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
   // Validation Refs for Smooth Auto-Scroll
   const propertyTypeRef = useRef<HTMLSelectElement | null>(null);
@@ -270,14 +273,14 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const [title, setTitle] = useState(editingProperty?.title || initialDraft?.title || '');
   const [price, setPrice] = useState<number | ''>(editingProperty ? editingProperty.price : (initialDraft?.price ?? ''));
   const [deposit, setDeposit] = useState<number | ''>(editingProperty?.deposit ?? (initialDraft?.deposit ?? ''));
-  const [rentDurationMonths, setRentDurationMonths] = useState<number | ''>(editingProperty?.rentDurationMonths ?? (initialDraft?.rentDurationMonths ?? 12));
-  const [bedrooms, setBedrooms] = useState<number | ''>(editingProperty?.bedrooms ?? (editingTenantRequest?.bedrooms ?? (initialDraft?.bedrooms ?? 3)));
-  const [bathrooms, setBathrooms] = useState<number | ''>(editingProperty?.bathrooms ?? (editingTenantRequest?.bathrooms ?? (initialDraft?.bathrooms ?? 1)));
-  const [totalFloors, setTotalFloors] = useState<number | ''>(editingProperty?.totalFloors ?? (initialDraft?.totalFloors ?? 8));
-  const [floorLevel, setFloorLevel] = useState<number | ''>(editingProperty?.floorLevel ?? (initialDraft?.floorLevel ?? 3));
+  const [rentDurationMonths, setRentDurationMonths] = useState<number | ''>(editingProperty?.rentDurationMonths ?? (initialDraft?.rentDurationMonths ?? ''));
+  const [bedrooms, setBedrooms] = useState<number | ''>(editingProperty?.bedrooms ?? (editingTenantRequest?.bedrooms ?? (initialDraft?.bedrooms ?? '')));
+  const [bathrooms, setBathrooms] = useState<number | ''>(editingProperty?.bathrooms ?? (editingTenantRequest?.bathrooms ?? (initialDraft?.bathrooms ?? '')));
+  const [totalFloors, setTotalFloors] = useState<number | ''>(editingProperty?.totalFloors ?? (initialDraft?.totalFloors ?? ''));
+  const [floorLevel, setFloorLevel] = useState<number | ''>(editingProperty?.floorLevel ?? (initialDraft?.floorLevel ?? ''));
   const [hasElevator, setHasElevator] = useState(editingProperty?.hasElevator ?? (initialDraft?.hasElevator ?? true));
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>(
-    editingProperty?.paymentMethods?.length ? editingProperty.paymentMethods : (initialDraft?.selectedPaymentMethods ?? [activePaymentMethods[0] || 'إيجار شهري مقدماً'])
+    editingProperty?.paymentMethods?.length ? editingProperty.paymentMethods : (initialDraft?.selectedPaymentMethods ?? [])
   );
   const [utilities] = useState<PropertyUtilities>(() => {
     if (editingProperty?.utilities) return editingProperty.utilities;
@@ -292,13 +295,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
   // Request-specific state (طلب عقار)
   const [minPrice, setMinPrice] = useState<number | ''>(editingTenantRequest?.minPrice ?? (initialDraft?.minPrice ?? ''));
-  const [maxPrice, setMaxPrice] = useState<number | ''>(editingTenantRequest?.maxPrice ?? (initialDraft?.maxPrice ?? 4000));
+  const [maxPrice, setMaxPrice] = useState<number | ''>(editingTenantRequest?.maxPrice ?? (initialDraft?.maxPrice ?? ''));
   const minArea = editingTenantRequest?.minArea ?? (initialDraft?.minArea ?? '');
   const maxArea = editingTenantRequest?.maxArea ?? (initialDraft?.maxArea ?? '');
   const urgency = editingTenantRequest?.urgency || initialDraft?.urgency || 'immediate';
 
   // Admin-specific state for 3rd-party coordination
-  const [fee, setFee] = useState<number | ''>(editingProperty?.fee ?? (initialDraft?.fee ?? 200));
+  const [fee, setFee] = useState<number | ''>(editingProperty?.fee ?? (initialDraft?.fee ?? ''));
   const [inspectionDate, setInspectionDate] = useState<string>(editingProperty?.inspectionDate ?? (initialDraft?.inspectionDate ?? ''));
 
   // Land detection
@@ -315,7 +318,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     setTitle('');
     setPrice('');
     setDeposit('');
-    setRentDurationMonths(12);
+    setRentDurationMonths('');
     setAddress('');
     setFacade('');
     setArea('');
@@ -326,12 +329,16 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     setHasAgreedDeclaration(false);
     setSelectedUtilities({});
     setMinPrice('');
-    setMaxPrice(4000);
-    setBedrooms(3);
-    setBathrooms(1);
-    setTotalFloors(8);
-    setFloorLevel(3);
+    setMaxPrice('');
+    setBedrooms('');
+    setBathrooms('');
+    setTotalFloors('');
+    setFloorLevel('');
     setHasElevator(true);
+    setPropertyType('');
+    setDistrict('');
+    setSelectedPaymentMethods([]);
+    setFee('');
   };
 
   // تأثير الحفظ التلقائي عند كتابة أو تعديل أي بيان داخل النموذج
@@ -826,6 +833,82 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     }
   };
 
+  // Reusable Info Tooltip Component for Form Fields (المطابقة الذكية)
+  const FieldInfoTooltip: React.FC<{
+    fieldKey: string;
+    title: string;
+    hint: string;
+  }> = ({ fieldKey, title, hint }) => {
+    const isOpen = activeTooltip === fieldKey;
+
+    return (
+      <span className="relative inline-flex items-center align-middle mx-1">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setActiveTooltip(isOpen ? null : fieldKey);
+          }}
+          className={`w-4 h-4 rounded-full inline-flex items-center justify-center transition-all cursor-pointer ${
+            isOpen
+              ? 'bg-amber-500 text-white shadow-xs scale-110 ring-2 ring-amber-300/60'
+              : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+          }`}
+          title={`معلومات حقل (${title}) للمطابقة الذكية (اضغط للتوضيح)`}
+          aria-label={`توضيح أهمية حقل ${title} للمطابقة الذكية`}
+        >
+          <Info className="w-3 h-3 shrink-0" />
+        </button>
+
+        {isOpen && (
+          <>
+            {/* Backdrop to dismiss when clicking anywhere */}
+            <div
+              className="fixed inset-0 z-40"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTooltip(null);
+              }}
+            />
+            {/* Tooltip Popover Box */}
+            <div
+              className="absolute z-50 right-0 top-full mt-2 w-64 sm:w-72 p-3 bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-amber-400/40 text-[11px] leading-relaxed animate-in fade-in zoom-in-95 duration-150 text-right select-none"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-1.5">
+                <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>أهمية دقة {title}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTooltip(null)}
+                  className="text-slate-400 hover:text-white p-0.5 rounded-full cursor-pointer transition-colors"
+                  title="إغلاق"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <p className="text-slate-200 leading-normal font-normal">
+                {hint}
+              </p>
+
+              <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between text-[10px] text-amber-400 font-semibold">
+                <span className="flex items-center gap-1">
+                  <span>🎯</span>
+                  <span>يزيد فرص المطابقة الذكية</span>
+                </span>
+                <span className="text-slate-400 font-normal">سكن أسيوط</span>
+              </div>
+            </div>
+          </>
+        )}
+      </span>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F7FA] pb-24 text-slate-800 animate-in fade-in duration-150">
       {/* Flutter Style AppBar */}
@@ -1021,8 +1104,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
             {/* Property Type Dropdown */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                نوع العقار * <span className="text-slate-500 font-normal">(إجباري)</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                <span>نوع العقار * <span className="text-slate-500 font-normal">(إجباري)</span></span>
+                <FieldInfoTooltip
+                  fieldKey="propertyType"
+                  title="نوع العقار"
+                  hint="تحديد نوع الوحدة بدقة (مثل شقة أو مكتب أو أرض) يضمن لنظام المطابقة الذكية ربط إعلانك فوراً مع المهتمين بنفس الفئة وتفادي الطلبات غير المناسبة."
+                />
               </label>
               <select
                 ref={propertyTypeRef}
@@ -1056,8 +1144,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             {/* Purpose: Sale vs Rent (Only visible if NOT land) */}
             {!isLand && (
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  الغرض من العقار
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center">
+                  <span>الغرض من العقار</span>
+                  <FieldInfoTooltip
+                    fieldKey="purpose"
+                    title="الغرض من العقار"
+                    hint="تحديد ما إذا كان العقار للإيجار أو البيع هو المعيار الحاسم في فرز الإعلانات وربط العروض بالطلبات المقابلة تلقائياً."
+                  />
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -1097,8 +1190,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* District */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  المنطقة / الحي بأسيوط
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                  <span>المنطقة / الحي بأسيوط</span>
+                  <FieldInfoTooltip
+                    fieldKey="district"
+                    title="المنطقة والحي"
+                    hint="الموقع الجغرافي هو الركن الأساسي في البحث؛ تحديد الحي بدقة بأسيوط يرفع فرص ظهور إعلانك في نتائج المطابقة الجغرافية بنسبة تفوق 90%."
+                  />
                 </label>
                 <select
                   ref={districtRef}
@@ -1106,6 +1204,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   onChange={(e) => setDistrict(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
                 >
+                  <option value="" disabled>اختر المنطقة / الحي...</option>
                   {activeDistricts.map((d) => (
                     <option key={d} value={d}>
                       {d}
@@ -1116,8 +1215,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
               {/* Area */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  المساحة الإجمالية (م²) * <span className="text-slate-500 font-normal">(إجباري)</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                  <span>المساحة الإجمالية (م²) * <span className="text-slate-500 font-normal">(إجباري)</span></span>
+                  <FieldInfoTooltip
+                    fieldKey="area"
+                    title="المساحة بالمتر المربع"
+                    hint="المساحة الصحيحة تساعد خوارزمية المطابقة الذكية على حصر الباحثين عن هذه المساحة وتجنب رفض الإعلان أو ضياع المشترين الجادين."
+                  />
                 </label>
                 <div className="relative">
                   <Maximize2 className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
@@ -1143,8 +1247,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
             {/* Address */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                العنوان بالتفصيل أو الشارع
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                <span>العنوان بالتفصيل أو الشارع</span>
+                <FieldInfoTooltip
+                  fieldKey="address"
+                  title="العنوان التفصيلي"
+                  hint="ذكر معالم الشارع أو العمارة بدقة يعزز موثوقية إعلانك لدى فريق المراجعة ويسهل ترتيب المعاينات الميدانية الرسمية."
+                />
               </label>
               <input
                 type="text"
@@ -1157,8 +1266,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
             {/* Facade / الواجهة (متاحة للأرض والعقارات) */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                الواجهة (إن وجد)
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                <span>الواجهة (إن وجد)</span>
+                <FieldInfoTooltip
+                  fieldKey="facade"
+                  title="الواجهة والإطلالة"
+                  hint="توضيح اتجاه الواجهة (بحرية، شرقية، أو عرض الشارع) يلبي تفضيلات خاصة لكثير من الباحثين ويزيد سرعة التوفيق."
+                />
               </label>
               <div className="relative">
                 <Compass className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
@@ -1176,8 +1290,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             {isOffer ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    {isLand || purpose === 'sale' ? 'السعر الإجمالي (ج.م) * (إجباري)' : 'الإيجار الشهري (ج.م) * (إجباري)'}
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                    <span>{isLand || purpose === 'sale' ? 'السعر الإجمالي (ج.م) * (إجباري)' : 'الإيجار الشهري (ج.م) * (إجباري)'}</span>
+                    <FieldInfoTooltip
+                      fieldKey="price"
+                      title="السعر والإيجار"
+                      hint="تحديد القيمة السعرية الواقعية بدقة يتيح للنظام مطابقة إعلانك فوراً مع ميزانيات الباحثين المتوافقة دون إضاعة الوقت في مفاوضات غير متكافئة."
+                    />
                   </label>
                   <div className="relative">
                     <DollarSign className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
@@ -1202,8 +1321,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
                 {!isLand && purpose === 'rent' && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      مبلغ التأمين (ج.م)
+                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                      <span>مبلغ التأمين (ج.م)</span>
+                      <FieldInfoTooltip
+                        fieldKey="deposit"
+                        title="مبلغ التأمين"
+                        hint="توضيح مبلغ التأمين يمنح المستأجر وضوحاً كاملاً بشأن الالتزامات المالية قبل حجز المعاينة."
+                      />
                     </label>
                     <input
                       type="number"
@@ -1218,8 +1342,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    الحد الأدنى للميزانية (ج.م)
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                    <span>الحد الأدنى للميزانية (ج.م)</span>
+                    <FieldInfoTooltip
+                      fieldKey="minPrice"
+                      title="الحد الأدنى للميزانية"
+                      hint="تحديد الحد الأدنى يمنع ظهور عقارات أقل من المستوى الذي تطمح إليه."
+                    />
                   </label>
                   <input
                     type="number"
@@ -1230,8 +1359,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    أقصى ميزانية مقبولة (ج.م) * <span className="text-slate-500 font-normal">(إجباري)</span>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                    <span>أقصى ميزانية مقبولة (ج.م) * <span className="text-slate-500 font-normal">(إجباري)</span></span>
+                    <FieldInfoTooltip
+                      fieldKey="maxPrice"
+                      title="أقصى ميزانية مقبولة"
+                      hint="سقف الميزانية هو أساس ترشيح العروض المتطابقة مع إمكانياتك المالية بدقة تامة."
+                    />
                   </label>
                   <input
                     ref={maxPriceInputRef}
@@ -1264,8 +1398,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    عدد الغرف
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                    <span>عدد الغرف</span>
+                    <FieldInfoTooltip
+                      fieldKey="bedrooms"
+                      title="عدد الغرف"
+                      hint="عدد الغرف الدقيق يوجه إعلانك مباشرة للعائلات أو الأفراد والطلاب الباحثين عن السعة المناسبة لاحتياجاتهم."
+                    />
                   </label>
                   <div className="relative">
                     <Bed className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
@@ -1279,8 +1418,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    عدد الحمامات
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                    <span>عدد الحمامات</span>
+                    <FieldInfoTooltip
+                      fieldKey="bathrooms"
+                      title="عدد الحمامات"
+                      hint="بيان عدد الحمامات يكمل تفاصيل الوحدة السكنية ويزيد من جاذبيتها في نتائج المطابقة المتقدمة."
+                    />
                   </label>
                   <div className="relative">
                     <Bath className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
@@ -1296,8 +1440,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 {isOffer && (
                   <>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        رقم الطابق
+                      <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                        <span>رقم الطابق</span>
+                        <FieldInfoTooltip
+                          fieldKey="floorLevel"
+                          title="رقم الطابق"
+                          hint="الكثير من العملاء يشترطون أدواراً محددة (مثل الأرضي أو الأدوار الأولى)، ودقة هذا الحقل تمنع المعاينات غير المجدية."
+                        />
                       </label>
                       <input
                         ref={floorLevelRef}
@@ -1310,8 +1459,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        إجمالي الأدوار
+                      <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                        <span>إجمالي الأدوار</span>
+                        <FieldInfoTooltip
+                          fieldKey="totalFloors"
+                          title="إجمالي أدوار العمارة"
+                          hint="معرفة ارتفاع المبنى يعطي انطباعاً واضحاً عن طبيعة البرج السكني وعدد الوحدات."
+                        />
                       </label>
                       <input
                         type="number"
@@ -1327,7 +1481,14 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
               {isOffer && (
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                  <span className="text-xs font-bold text-slate-700">توفر مصعد (أسانسير) بالعمارة:</span>
+                  <span className="text-xs font-bold text-slate-700 flex items-center">
+                    <span>توفر مصعد (أسانسير) بالعمارة:</span>
+                    <FieldInfoTooltip
+                      fieldKey="elevator"
+                      title="توفر المصعد"
+                      hint="وجود المصعد من أهم العوامل الحاسمة لدى العائلات وكبار السن، وتحديده يضاعف نسبة التوفيق."
+                    />
+                  </span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -1359,6 +1520,11 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <Zap className="w-4 h-4 text-[#FFB300]" />
                     <span>المرافق والتجهيزات (مربوطة ديناميكياً بلوحة التحكم)</span>
+                    <FieldInfoTooltip
+                      fieldKey="utilities"
+                      title="المرافق والعدادات"
+                      hint="توضيح توفر الغاز الطبيعي والعدادات المستقلة والإنترنت يرفع تصنيف الإعلان ويزيد تقييم جودته واكتماله للمطابقة السريعة."
+                    />
                   </span>
                   <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-bold">
                     يزيد اكتمال الإعلان
@@ -1476,8 +1642,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  الاسم بالكامل
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                  <span>الاسم بالكامل</span>
+                  <FieldInfoTooltip
+                    fieldKey="contactName"
+                    title="الاسم بالكامل"
+                    hint="تسجيل الاسم بوضوح يضفي طابعاً احترافياً ويسهل الترحيب بك والتواصل معك أثناء استفسارات المعاينة."
+                  />
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
@@ -1493,8 +1664,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  رقم الهاتف (واتساب / اتصال)*
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                  <span>رقم الهاتف (واتساب / اتصال)*</span>
+                  <FieldInfoTooltip
+                    fieldKey="contactPhone"
+                    title="رقم الهاتف"
+                    hint="رقم الهاتف الصحيح والمفعل بالواتساب يضمن استقبال إشعارات المطابقة الذكية ومواعيد المعاينات فور اعتماد إعلانك."
+                  />
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
@@ -1539,8 +1715,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                ملاحظات وتفاصيل إضافية
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                <span>ملاحظات وتفاصيل إضافية</span>
+                <FieldInfoTooltip
+                  fieldKey="notes"
+                  title="الملاحظات والمميزات"
+                  hint="الملاحظات الدقيقة حول التشطيب والفرش وطبيعة العقار تبرز المزايا الفريدة وتمنح الباحثين ثقة مضاعفة."
+                />
               </label>
               <textarea
                 rows={3}

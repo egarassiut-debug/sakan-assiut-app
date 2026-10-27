@@ -180,21 +180,21 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#002B49] to-[#001D33] text-white flex items-center justify-between border-b border-[#001D33]">
+        <div className="p-4 sm:p-5 bg-slate-50 text-slate-800 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFB300]/20 text-[#FFB300] border border-[#FFB300]/30 flex items-center justify-center">
-              <Star className="w-5 h-5 fill-[#FFB300] text-[#FFB300]" />
+            <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center">
+              <Star className="w-5 h-5 fill-amber-400 text-amber-500" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h3 className="text-sm sm:text-base font-black text-white">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900">
                   تقييمات المعاينة الموثقة
                 </h3>
-                <span className="text-[10px] bg-[#FFB300] text-[#002B49] font-black px-1.5 py-0.2 rounded-md">
+                <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-md">
                   كود: {property.code}
                 </span>
               </div>
-              <p className="text-xs text-white/70 truncate max-w-[280px] sm:max-w-md">
+              <p className="text-xs text-slate-500 truncate max-w-[280px] sm:max-w-md">
                 {property.title}
               </p>
             </div>
@@ -203,7 +203,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer"
             aria-label="إغلاق"
           >
             <X className="w-4 h-4" />
@@ -217,11 +217,11 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
             onClick={() => setActiveTab('reviews')}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'reviews'
-                ? 'bg-white text-[#002B49] shadow-xs font-black'
+                ? 'bg-white text-slate-900 shadow-xs font-bold border border-slate-200'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Star className="w-3.5 h-3.5 fill-[#FFB300] text-[#FFB300]" />
+            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
             <span>استعراض التقييمات ({totalCount})</span>
           </button>
 
@@ -230,7 +230,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
             onClick={() => setActiveTab('rate')}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'rate'
-                ? 'bg-[#002B49] text-[#FFB300] shadow-xs font-black'
+                ? 'bg-blue-600 text-white shadow-xs font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -254,7 +254,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
               <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 {/* Score */}
                 <div className="text-center sm:text-right flex items-center gap-3">
-                  <div className="text-3xl sm:text-4xl font-black text-[#002B49]">
+                  <div className="text-3xl sm:text-4xl font-black text-slate-900">
                     {averageScore > 0 ? averageScore.toFixed(1) : '—'}
                   </div>
                   <div>
@@ -319,7 +319,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveTab('rate')}
-                      className="px-4 py-2 rounded-xl bg-[#002B49] text-[#FFB300] text-xs font-black shadow-xs cursor-pointer inline-flex items-center gap-1.5 mt-1"
+                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-1.5 mt-1"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>أنت مؤهل! أضف تقييمك الآن</span>
@@ -347,7 +347,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                     >
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-[#002B49] text-white flex items-center justify-center text-xs font-black">
+                          <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold">
                             {rating.userName.charAt(0)}
                           </div>
                           <div>
@@ -512,7 +512,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                       ))}
                     </div>
 
-                    <div className="text-xs font-black text-[#002B49] bg-white border border-slate-200 py-1.5 px-3 rounded-xl inline-block shadow-2xs">
+                    <div className="text-xs font-bold text-slate-800 bg-white border border-slate-200 py-1.5 px-3 rounded-xl inline-block shadow-2xs">
                       {RATING_LABELS[displayStars] || `${displayStars} نجوم`}
                     </div>
                   </div>
@@ -527,7 +527,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                       onChange={(e) => setComment(e.target.value)}
                       rows={3}
                       placeholder="اذكر رأيك في نظافة العقار، مطابقة الصور للمعاينة الواقعية، هدوء المنطقة، أو تعامل المالك لمساعدة زملائك الباحثين..."
-                      className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                      className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
 
@@ -542,9 +542,9 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                   <div className="pt-2 flex items-center gap-2">
                     <button
                       type="submit"
-                      className="flex-1 py-3 px-4 rounded-xl bg-[#002B49] hover:bg-[#001D33] text-[#FFB300] font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-98 cursor-pointer"
+                      className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs active:scale-98 cursor-pointer"
                     >
-                      <Star className="w-4 h-4 fill-[#FFB300]" />
+                      <Star className="w-4 h-4 fill-amber-300 text-amber-300" />
                       <span>{userExistingRating ? 'تحديث وحفظ التقييم' : 'اعتماد ونشر التقييم الموثق'}</span>
                     </button>
 
@@ -581,3 +581,6 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
     </div>
   );
 };
+
+export default PropertyRatingModal;
+

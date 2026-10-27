@@ -134,7 +134,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
       {/* Top Media Slider & Badges */}
       <div 
         className={`relative h-48 sm:h-52 w-full overflow-hidden select-none flex items-center justify-center ${
-          isDefaultImage ? 'bg-gradient-to-br from-[#002B49] via-[#0B1E36] to-[#011627]' : 'bg-slate-100'
+          isDefaultImage ? 'bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200 border-b border-slate-200' : 'bg-slate-100'
         }`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
@@ -143,19 +143,19 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           src={images[currentImageIndex] || images[0] || DEFAULT_SAKAN_PLACEHOLDER}
           alt={`${property.title} - صورة ${currentImageIndex + 1}`}
           className={`w-full h-full transition-all duration-300 group-hover:scale-102 ${
-            isDefaultImage ? 'object-contain p-4 drop-shadow-md' : 'object-cover'
+            isDefaultImage ? 'object-contain p-4 drop-shadow-xs' : 'object-cover'
           }`}
           loading="lazy"
           decoding="async"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = DEFAULT_SAKAN_PLACEHOLDER;
-            target.className = 'w-full h-full object-contain p-4 drop-shadow-md transition-all duration-300 group-hover:scale-102';
+            target.className = 'w-full h-full object-contain p-4 drop-shadow-xs transition-all duration-300 group-hover:scale-102';
           }}
         />
 
         {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/40 pointer-events-none" />
+        <div className={`absolute inset-0 ${isDefaultImage ? 'bg-gradient-to-t from-slate-900/15 via-transparent to-transparent' : 'bg-gradient-to-t from-slate-950/75 via-transparent to-black/35'} pointer-events-none`} />
 
         {/* Multi-Image Slider Controls */}
         {hasMultipleImages && (
@@ -207,11 +207,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Status Overlay Watermark for Rented / Sold properties */}
         {(property.status === 'rented' || property.status === 'sold') && (
-          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[1px] z-10 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 bg-slate-900/35 backdrop-blur-xs z-10 flex items-center justify-center pointer-events-none">
             <div className={`px-4 py-2 rounded-2xl shadow-xl font-black text-sm sm:text-base tracking-wide flex items-center gap-2 border ${
               property.status === 'sold'
-                ? 'bg-rose-600/95 text-white border-rose-300/60 shadow-rose-950/40'
-                : 'bg-amber-500/95 text-slate-950 border-amber-200/80 shadow-amber-950/40'
+                ? 'bg-rose-600/95 text-white border-rose-300/60 shadow-md'
+                : 'bg-amber-500/95 text-slate-900 border-amber-200/80 shadow-md'
             }`}>
               {property.status === 'sold' ? (
                 <>
@@ -607,14 +607,14 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               e.stopPropagation();
               onEdit?.(property);
             }}
-            className="mt-2 p-2.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/60 border border-amber-600/80 text-xs text-amber-300 font-semibold flex items-center justify-between gap-2 cursor-pointer shadow-2xs transition-all"
+            className="mt-2 p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100/90 border border-amber-300 text-xs text-amber-900 font-semibold flex items-center justify-between gap-2 cursor-pointer shadow-2xs transition-all"
             title="انقر هنا للدخول مباشرة لشاشة التعديل واستيفاء البيانات المطلوبة"
           >
             <div className="flex items-start gap-1.5 flex-1">
-              <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
               <div>
-                <span className="font-bold block text-amber-300">مطلوب استيفاء بيان وتصحيح:</span>
-                <span className="text-amber-200 text-[11px] leading-relaxed">{property.adminNote}</span>
+                <span className="font-bold block text-amber-900">مطلوب استيفاء بيان وتصحيح:</span>
+                <span className="text-amber-800 text-[11px] leading-relaxed">{property.adminNote}</span>
               </div>
             </div>
             {onEdit && (
@@ -624,7 +624,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                   e.stopPropagation();
                   onEdit(property);
                 }}
-                className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] shrink-0 shadow-2xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] shrink-0 shadow-2xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
               >
                 <Edit3 className="w-3 h-3" />
                 <span>الدخول للخطأ</span>

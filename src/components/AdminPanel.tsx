@@ -527,11 +527,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     onClick={() => setActiveSection(item.id)}
                     className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                       isActive
-                        ? 'bg-[#002B49] text-white shadow-xs'
+                        ? 'bg-blue-600 text-white shadow-xs'
                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200'
                     }`}
                   >
-                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-amber-400' : 'text-slate-500'}`} />
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                     <span className="whitespace-nowrap">{item.title}</span>
                     {badge !== null && (
                       <span
@@ -1051,10 +1051,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => onEditProperty && onEditProperty(item)}
-                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-[#002B49] hover:bg-[#00385F] text-[#FFB300] font-black text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-blue-900 shadow-2xs cursor-pointer"
+                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-blue-200 shadow-2xs cursor-pointer"
                               title="تعديل بيانات هذا الإعلان"
                             >
-                              <Edit3 className="w-4 h-4 text-[#FFB300] shrink-0" />
+                              <Edit3 className="w-4 h-4 text-blue-700 shrink-0" />
                               <span className="truncate">تعديل</span>
                             </button>
 
@@ -1318,10 +1318,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => onEditTenantRequest && onEditTenantRequest(req)}
-                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-[#002B49] hover:bg-[#00385F] text-[#FFB300] font-black text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-blue-900 shadow-2xs cursor-pointer"
+                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-blue-200 shadow-2xs cursor-pointer"
                               title="تعديل هذا الطلب"
                             >
-                              <Edit3 className="w-4 h-4 text-[#FFB300] shrink-0" />
+                              <Edit3 className="w-4 h-4 text-blue-700 shrink-0" />
                               <span className="truncate">تعديل</span>
                             </button>
 
@@ -1781,9 +1781,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <button
                     type="button"
                     onClick={handleSaveSbConfig}
-                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#002B49] hover:bg-[#00385F] text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 border border-blue-900"
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 border border-blue-600"
                   >
-                    <CheckCircle2 className="w-4 h-4 text-[#FFB300]" />
+                    <CheckCircle2 className="w-4 h-4 text-white" />
                     <span>حفظ وتفعيل الاتصال فوراً</span>
                   </button>
 

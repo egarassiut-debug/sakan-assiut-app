@@ -61,12 +61,12 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
       className="group bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-slate-300 transition-all duration-300 overflow-hidden mb-6 flex flex-col justify-between cursor-pointer"
     >
       {/* Top Banner / Visual Header matching PropertyCard height */}
-      <div className="relative h-44 sm:h-48 bg-gradient-to-br from-[#002B49] via-[#0B1E36] to-[#011627] p-4 flex flex-col justify-between border-b border-slate-200 select-none overflow-hidden">
+      <div className="relative h-44 sm:h-48 bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200 p-4 flex flex-col justify-between border-b border-slate-200 select-none overflow-hidden">
         {/* Background Image / Default Sakan Assiut Placeholder */}
         <img
           src={DEFAULT_SAKAN_PLACEHOLDER}
           alt={`طلب ${request.propertyType} في ${request.preferredDistrict}`}
-          className="absolute inset-0 w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-300 pointer-events-none drop-shadow-md"
+          className="absolute inset-0 w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-300 pointer-events-none drop-shadow-xs"
           loading="lazy"
           decoding="async"
           onError={(e) => {
@@ -75,7 +75,7 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
         />
 
         {/* Gradient Overlay for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-black/20 to-black/40 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/15 via-transparent to-transparent pointer-events-none" />
         
         {/* Top Badges Row */}
         <div className="flex items-center justify-between gap-2 z-10">

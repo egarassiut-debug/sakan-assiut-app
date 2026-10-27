@@ -160,7 +160,7 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
       return {
         ...item,
         badge: blockedUsersCount > 0 ? blockedUsersCount : null,
-        badgeColor: 'bg-rose-950/80 text-rose-300 border border-rose-800',
+        badgeColor: 'bg-rose-100 text-rose-700 border border-rose-200',
       };
     }
     return item;

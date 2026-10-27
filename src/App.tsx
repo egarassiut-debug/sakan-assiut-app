@@ -83,7 +83,7 @@ const InspectionModal = lazyWithRetry(() => import('./components/InspectionModal
 const SmartMatchingResultsModal = lazyWithRetry(() => import('./components/SmartMatchingResultsModal').then(m => ({ default: m.SmartMatchingResultsModal })));
 const SavedSearchModal = lazyWithRetry(() => import('./components/SavedSearchModal').then(m => ({ default: m.SavedSearchModal })));
 const FavoritesModal = lazyWithRetry(() => import('./components/FavoritesModal').then(m => ({ default: m.FavoritesModal })));
-const PropertyRatingModal = lazyWithRetry(() => import('./components/PropertyRatingModal').then(m => ({ default: m.PropertyRatingModal })));
+import PropertyRatingModal from './components/PropertyRatingModal';
 import { 
   Search, 
   Building2, 
@@ -1074,26 +1074,28 @@ export function App() {
       }, 500);
     }
 
-    // 4. واجهة النتائج المباشرة بعد التسجيل (Post-Submission UI)
-    setSmartMatchModalData({
-      isOpen: true,
-      submittedItem: {
-        id: newProp.id,
-        code: newProp.code,
-        type: 'عرض',
-        title: newProp.title,
-        propertyType: newProp.propertyType,
-        purpose: newProp.purpose,
-        district: newProp.district,
-        price: newProp.price,
-        area: newProp.area,
-        bedrooms: newProp.bedrooms,
-        bathrooms: newProp.bathrooms,
-        images: newProp.images,
-      },
-      exactMatches: exactMatchList,
-      similarMatches: similarMatchList,
-    });
+    // 4. واجهة النتائج المباشرة بعد التسجيل (تظهر فقط إذا وُجدت مطابقات فعلية أكبر من صفر)
+    if (exactMatchList.length > 0 || similarMatchList.length > 0) {
+      setSmartMatchModalData({
+        isOpen: true,
+        submittedItem: {
+          id: newProp.id,
+          code: newProp.code,
+          type: 'عرض',
+          title: newProp.title,
+          propertyType: newProp.propertyType,
+          purpose: newProp.purpose,
+          district: newProp.district,
+          price: newProp.price,
+          area: newProp.area,
+          bedrooms: newProp.bedrooms,
+          bathrooms: newProp.bathrooms,
+          images: newProp.images,
+        },
+        exactMatches: exactMatchList,
+        similarMatches: similarMatchList,
+      });
+    }
   };
 
   // Add Tenant Request with persistence & Smart Matching
@@ -1162,25 +1164,27 @@ export function App() {
       }, 500);
     }
 
-    // 4. واجهة النتائج المباشرة بعد التسجيل (Post-Submission UI)
-    setSmartMatchModalData({
-      isOpen: true,
-      submittedItem: {
-        id: newReq.id,
-        code: newReq.requestCode || newReq.id,
-        type: 'طلب',
-        title: `مطلوب ${newReq.propertyType} في ${newReq.preferredDistrict}`,
-        propertyType: newReq.propertyType,
-        purpose: newReq.purpose,
-        district: newReq.preferredDistrict,
-        price: newReq.maxPrice,
-        area: newReq.maxArea || newReq.minArea,
-        bedrooms: newReq.bedrooms,
-        bathrooms: newReq.bathrooms,
-      },
-      exactMatches: exactMatchList,
-      similarMatches: similarMatchList,
-    });
+    // 4. واجهة النتائج المباشرة بعد التسجيل (تظهر فقط إذا وُجدت مطابقات فعلية أكبر من صفر)
+    if (exactMatchList.length > 0 || similarMatchList.length > 0) {
+      setSmartMatchModalData({
+        isOpen: true,
+        submittedItem: {
+          id: newReq.id,
+          code: newReq.requestCode || newReq.id,
+          type: 'طلب',
+          title: `مطلوب ${newReq.propertyType} في ${newReq.preferredDistrict}`,
+          propertyType: newReq.propertyType,
+          purpose: newReq.purpose,
+          district: newReq.preferredDistrict,
+          price: newReq.maxPrice,
+          area: newReq.maxArea || newReq.minArea,
+          bedrooms: newReq.bedrooms,
+          bathrooms: newReq.bathrooms,
+        },
+        exactMatches: exactMatchList,
+        similarMatches: similarMatchList,
+      });
+    }
   };
 
   // Start Editing Property
