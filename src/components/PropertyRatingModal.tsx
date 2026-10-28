@@ -176,25 +176,25 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
       onClick={onClose}
     >
       <div 
-        className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150"
+        className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-[#D6DEE5] overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 bg-slate-50 text-slate-800 flex items-center justify-between border-b border-slate-200">
+        <div className="p-4 sm:p-5 bg-[#F5F9F8] text-[#24313D] flex items-center justify-between border-b border-[#D6DEE5]">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center">
-              <Star className="w-5 h-5 fill-amber-400 text-amber-500" />
+            <div className="w-10 h-10 rounded-2xl bg-[#FFF3D6] text-[#8B641C] border border-[#D6A84F]/40 flex items-center justify-center">
+              <Star className="w-5 h-5 fill-[#D6A84F] text-[#D6A84F]" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                <h3 className="text-sm sm:text-base font-bold text-[#24313D]">
                   تقييمات المعاينة الموثقة
                 </h3>
-                <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-md">
+                <span className="text-[10px] bg-[#EAF3EF] text-[#124C46] font-bold px-2 py-0.5 rounded-md border border-[#124C46]/20">
                   كود: {property.code}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 truncate max-w-[280px] sm:max-w-md">
+              <p className="text-xs text-[#5D6B78] truncate max-w-[280px] sm:max-w-md">
                 {property.title}
               </p>
             </div>
@@ -203,7 +203,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-white hover:bg-slate-100 text-slate-600 hover:text-[#24313D] flex items-center justify-center transition-colors border border-[#D6DEE5] cursor-pointer"
             aria-label="إغلاق"
           >
             <X className="w-4 h-4" />
@@ -211,17 +211,17 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
         </div>
 
         {/* Tab Switcher */}
-        <div className="p-2.5 bg-slate-100/80 border-b border-slate-200 flex items-center gap-2">
+        <div className="p-2.5 bg-[#F5F9F8] border-b border-[#D6DEE5] flex items-center gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('reviews')}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'reviews'
-                ? 'bg-white text-slate-900 shadow-xs font-bold border border-slate-200'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-[#24313D] shadow-xs font-bold border border-[#D6DEE5]'
+                : 'text-[#5D6B78] hover:text-[#24313D]'
             }`}
           >
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+            <Star className="w-3.5 h-3.5 fill-[#D6A84F] text-[#D6A84F]" />
             <span>استعراض التقييمات ({totalCount})</span>
           </button>
 
@@ -230,54 +230,50 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
             onClick={() => setActiveTab('rate')}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'rate'
-                ? 'bg-blue-600 text-white shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#124C46] text-white shadow-xs font-bold'
+                : 'text-[#5D6B78] hover:text-[#24313D]'
             }`}
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-[#16856B]" />
             <span>{userExistingRating ? 'تعديل تقييمي' : 'تسجيل تقييم موثق'}</span>
             {isEligible && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-[#16856B] animate-pulse" />
             )}
           </button>
         </div>
 
         {/* Body Content */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
-          
-          {/* =============================================================== */}
-          {/* TAB 1: REVIEWS LIST */}
-          {/* =============================================================== */}
           {activeTab === 'reviews' && (
             <div className="space-y-4">
               {/* Summary Card */}
-              <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="bg-[#F5F9F8] border border-[#D6DEE5] rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 {/* Score */}
                 <div className="text-center sm:text-right flex items-center gap-3">
-                  <div className="text-3xl sm:text-4xl font-black text-slate-900">
+                  <div className="text-3xl sm:text-4xl font-black text-[#24313D]">
                     {averageScore > 0 ? averageScore.toFixed(1) : '—'}
                   </div>
                   <div>
-                    <div className="flex items-center gap-1 text-[#FFB300]">
+                    <div className="flex items-center gap-1 text-[#D6A84F]">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
                           key={star}
                           className={`w-4 h-4 ${
                             star <= Math.round(averageScore)
-                              ? 'fill-[#FFB300] text-[#FFB300]'
+                              ? 'fill-[#D6A84F] text-[#D6A84F]'
                               : 'text-slate-300'
                           }`}
                         />
                       ))}
                     </div>
-                    <div className="text-xs text-slate-500 font-semibold mt-0.5">
+                    <div className="text-xs text-[#5D6B78] font-semibold mt-0.5">
                       بناءً على {totalCount} تقييم ميداني موثق
                     </div>
                   </div>
                 </div>
 
                 {/* Rating Distribution Bars */}
-                <div className="w-full sm:w-48 space-y-1 text-[11px] font-semibold text-slate-600">
+                <div className="w-full sm:w-48 space-y-1 text-[11px] font-semibold text-[#5D6B78]">
                   {[5, 4, 3, 2, 1].map((stars) => {
                     const count = distribution[stars] || 0;
                     const pct = totalCount > 0 ? (count / totalCount) * 100 : 0;
@@ -286,7 +282,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                         <span className="w-4 text-left">{stars}★</span>
                         <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-[#FFB300] rounded-full transition-all duration-500" 
+                            className="h-full bg-[#D6A84F] rounded-full transition-all duration-500" 
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -298,8 +294,8 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
               </div>
 
               {/* Verified Anti-Fraud Notice Badge */}
-              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-teal-50/80 border border-teal-200 text-xs text-teal-950">
-                <ShieldCheck className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-[#EAF3EF] border border-[#124C46]/20 text-xs text-[#124C46]">
+                <ShieldCheck className="w-4 h-4 text-[#124C46] shrink-0 mt-0.5" />
                 <div className="leading-relaxed">
                   <strong>نظام النزاهة ومنع التقييمات الوهمية:</strong> جميع التقييمات المعروضة هنا صادرة حصرياً عن مستأجرين أرسلوا طلبات معاينة رسمية وسددوا رسوم المعاينة وتمت الزيارة الميدانية بالفعل بإشراف المنظومة.
                 </div>
@@ -308,18 +304,18 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
               {/* Reviews List */}
               {relevantRatings.length === 0 ? (
                 <div className="py-8 text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                  <div className="w-12 h-12 rounded-full bg-[#F5F9F8] text-slate-400 flex items-center justify-center mx-auto border border-[#D6DEE5]">
                     <Star className="w-6 h-6 text-slate-300" />
                   </div>
-                  <h4 className="font-bold text-slate-700 text-sm">لا توجد تقييمات مسجلة بعد لهذا العقار</h4>
-                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  <h4 className="font-bold text-[#24313D] text-sm">لا توجد تقييمات مسجلة بعد لهذا العقار</h4>
+                  <p className="text-xs text-[#5D6B78] max-w-xs mx-auto">
                     كن أول من يقيّم هذا العقار بعد حجز وإتمام المعاينة الميدانية الرسمية وسداد رسومها.
                   </p>
                   {isEligible ? (
                     <button
                       type="button"
                       onClick={() => setActiveTab('rate')}
-                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-1.5 mt-1"
+                      className="px-4 py-2 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-1.5 mt-1"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>أنت مؤهل! أضف تقييمك الآن</span>
@@ -331,7 +327,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                         onClose();
                         onRequestInspection(property);
                       }}
-                      className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-1.5 mt-1"
+                      className="px-4 py-2 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-1.5 mt-1"
                     >
                       <Calendar className="w-3.5 h-3.5" />
                       <span>طلب معاينة ميدانية للعقار</span>
@@ -343,18 +339,18 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                   {relevantRatings.map((rating) => (
                     <div
                       key={rating.id}
-                      className="bg-white rounded-2xl border border-slate-200/90 p-3.5 space-y-2 shadow-2xs"
+                      className="bg-white rounded-2xl border border-[#D6DEE5] p-3.5 space-y-2 shadow-2xs"
                     >
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold">
+                          <div className="w-7 h-7 rounded-full bg-[#EAF3EF] text-[#124C46] flex items-center justify-center text-xs font-bold">
                             {rating.userName.charAt(0)}
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-xs text-slate-900">{rating.userName}</span>
-                              <span className="inline-flex items-center gap-0.5 text-[9px] bg-teal-50 text-teal-800 border border-teal-200 px-1.5 py-0.2 rounded-full font-bold">
-                                <UserCheck className="w-2.5 h-2.5 text-teal-600" />
+                              <span className="font-bold text-xs text-[#24313D]">{rating.userName}</span>
+                              <span className="inline-flex items-center gap-0.5 text-[9px] bg-[#E4F4EC] text-[#16856B] border border-[#16856B]/30 px-1.5 py-0.2 rounded-full font-bold">
+                                <UserCheck className="w-2.5 h-2.5 text-[#16856B]" />
                                 <span>معاينة موثقة</span>
                               </span>
                             </div>
@@ -369,7 +365,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                               key={s}
                               className={`w-3.5 h-3.5 ${
                                 s <= rating.score
-                                  ? 'fill-[#FFB300] text-[#FFB300]'
+                                  ? 'fill-[#D6A84F] text-[#D6A84F]'
                                   : 'text-slate-200'
                               }`}
                             />
@@ -378,7 +374,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                       </div>
 
                       {rating.comment && (
-                        <p className="text-xs text-slate-700 leading-relaxed font-medium bg-slate-50/70 p-2.5 rounded-xl border border-slate-100">
+                        <p className="text-xs text-[#5D6B78] leading-relaxed font-medium bg-[#F5F9F8] p-2.5 rounded-xl border border-[#D6DEE5]/60">
                           {rating.comment}
                         </p>
                       )}
@@ -389,48 +385,42 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
             </div>
           )}
 
-          {/* =============================================================== */}
-          {/* TAB 2: SUBMIT / EDIT RATING */}
-          {/* =============================================================== */}
           {activeTab === 'rate' && (
             <div>
-              {/* Case A: Not logged in */}
               {!currentUser ? (
-                <div className="py-8 text-center space-y-3 bg-amber-50/70 border border-amber-200 rounded-3xl p-6">
-                  <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto shadow-2xs">
-                    <Lock className="w-7 h-7 text-amber-700" />
+                <div className="py-8 text-center space-y-3 bg-[#FFF3D6] border border-[#D6A84F]/40 rounded-3xl p-6">
+                  <div className="w-14 h-14 rounded-2xl bg-[#D6A84F]/20 text-[#8B641C] flex items-center justify-center mx-auto shadow-2xs">
+                    <Lock className="w-7 h-7 text-[#8B641C]" />
                   </div>
-                  <h4 className="font-black text-slate-900 text-sm sm:text-base">
+                  <h4 className="font-black text-[#24313D] text-sm sm:text-base">
                     تسجيل الدخول مطلوب
                   </h4>
-                  <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
+                  <p className="text-xs text-[#5D6B78] max-w-sm mx-auto leading-relaxed">
                     لحماية النظام من التقييمات العشوائية، يجب تسجيل الدخول برقم هاتفك أولاً للتحقق من سجل المعاينات الميدانية وسداد الرسوم.
                   </p>
                 </div>
               ) : !isEligible ? (
-                /* Case B: Logged in but not eligible (no completed & paid inspection) */
                 <div className="space-y-4">
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50/60 border border-amber-200/90 rounded-3xl p-5 sm:p-6 text-center space-y-3">
-                    <div className="w-14 h-14 rounded-2xl bg-amber-200/80 text-amber-900 flex items-center justify-center mx-auto shadow-2xs border border-amber-300/80">
-                      <Lock className="w-7 h-7 text-amber-800" />
+                  <div className="bg-[#FFF3D6] border border-[#D6A84F]/40 rounded-3xl p-5 sm:p-6 text-center space-y-3">
+                    <div className="w-14 h-14 rounded-2xl bg-[#D6A84F]/20 text-[#8B641C] flex items-center justify-center mx-auto shadow-2xs">
+                      <Lock className="w-7 h-7 text-[#8B641C]" />
                     </div>
-                    <h4 className="font-black text-slate-900 text-sm sm:text-base">
+                    <h4 className="font-black text-[#24313D] text-sm sm:text-base">
                       خاصية التقييم محجوزة للمعاينات الفعلية
                     </h4>
-                    <p className="text-xs text-slate-700 max-w-md mx-auto leading-relaxed">
+                    <p className="text-xs text-[#5D6B78] max-w-md mx-auto leading-relaxed">
                       تنفيذاً لسياسة النزاهة وحماية ملاك ومستأجري أسيوط، <strong>لا يُسمح بالتقييم إلا للمستخدمين الذين أرسلوا طلب معاينة وسددوا رسوم المعاينة الرسمية (50 ج.م) وتمت المعاينة الميدانية بالفعل</strong>.
                     </p>
 
-                    {/* Specific user status note */}
                     {userInspectionStatus ? (
-                      <div className="bg-white/80 border border-amber-300 p-3 rounded-2xl text-xs text-amber-950 font-bold flex items-center gap-2 text-right">
-                        <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                      <div className="bg-white border border-[#D6A84F]/40 p-3 rounded-2xl text-xs text-[#8B641C] font-bold flex items-center gap-2 text-right">
+                        <Clock className="w-4 h-4 text-[#8B641C] shrink-0" />
                         <span>{userInspectionStatus}</span>
                       </div>
                     ) : (
-                      <div className="bg-white/80 border border-amber-200 p-3 rounded-2xl text-xs text-slate-600 flex items-center justify-between text-right">
-                        <span>رقم هاتفك المسجل: <strong dir="ltr" className="text-slate-900 font-mono">{currentUser.phone}</strong></span>
-                        <span className="text-[11px] text-amber-700 font-bold">لا يوجد سجل معاينة مكتملة</span>
+                      <div className="bg-white border border-[#D6DEE5] p-3 rounded-2xl text-xs text-[#5D6B78] flex items-center justify-between text-right">
+                        <span>رقم هاتفك المسجل: <strong dir="ltr" className="text-[#24313D] font-mono">{currentUser.phone}</strong></span>
+                        <span className="text-[11px] text-[#A96F0B] font-bold">لا يوجد سجل معاينة مكتملة</span>
                       </div>
                     )}
 
@@ -442,7 +432,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                             onClose();
                             onRequestInspection(property);
                           }}
-                          className="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-black text-xs transition-all shadow-md active:scale-95 cursor-pointer inline-flex items-center gap-1.5"
+                          className="px-5 py-2.5 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer inline-flex items-center gap-1.5"
                         >
                           <Calendar className="w-4 h-4" />
                           <span>طلب معاينة ميدانية رسمية لهذا العقار</span>
@@ -452,44 +442,41 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                   </div>
                 </div>
               ) : (
-                /* Case C: ELIGIBLE USER (Completed & Paid Inspection Verified) */
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Verified inspection credentials card */}
-                  <div className="bg-emerald-50/90 border border-emerald-300/80 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+                  <div className="bg-[#E4F4EC] border border-[#16856B]/40 rounded-2xl p-3.5 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <div className="w-8 h-8 rounded-xl bg-[#16856B] text-white flex items-center justify-center shrink-0 shadow-xs">
                         <CheckCircle2 className="w-4.5 h-4.5" />
                       </div>
                       <div>
-                        <div className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                        <div className="text-xs font-bold text-[#16856B] flex items-center gap-1.5">
                           <span>معاينة مكتملة ومسددة الرسوم رسمياً</span>
-                          <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded-md">موثق ✓</span>
+                          <span className="text-[9px] bg-[#16856B] text-white px-1.5 py-0.2 rounded-md">موثق ✓</span>
                         </div>
-                        <div className="text-[11px] text-emerald-800 font-medium">
+                        <div className="text-[11px] text-[#16856B] font-medium">
                           العميل: {currentUser.name} • كود المعاينة: {eligibleInspection?.id}
                         </div>
                       </div>
                     </div>
 
-                    <div className="text-left text-[11px] font-mono text-emerald-900 bg-white/70 px-2 py-1 rounded-lg border border-emerald-200">
+                    <div className="text-left text-[11px] font-mono text-[#16856B] bg-white px-2 py-1 rounded-lg border border-[#16856B]/30">
                       رسوم مسددة 50 ج.م
                     </div>
                   </div>
 
                   {userExistingRating && (
-                    <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 font-medium flex items-center gap-1.5">
-                      <ThumbsUp className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <div className="p-2.5 rounded-xl bg-[#E8F0FC] border border-[#3469A8]/30 text-xs text-[#3469A8] font-medium flex items-center gap-1.5">
+                      <ThumbsUp className="w-3.5 h-3.5 text-[#3469A8] shrink-0" />
                       <span>لقد قمت بتقييم هذا العقار سابقاً. يمكنك تعديل تقييمك الآن وحفظه مجدداً.</span>
                     </div>
                   )}
 
                   {/* Star Rating Selector */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center space-y-2.5">
-                    <label className="block text-xs font-black text-slate-800">
+                  <div className="bg-[#F5F9F8] border border-[#D6DEE5] rounded-2xl p-4 text-center space-y-2.5">
+                    <label className="block text-xs font-bold text-[#24313D]">
                       حدد تقييمك للعقار من 1 إلى 5 نجوم:
                     </label>
 
-                    {/* Interactive 5 Stars */}
                     <div className="flex items-center justify-center gap-2 py-2">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -504,7 +491,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                           <Star
                             className={`w-7 h-7 sm:w-9 sm:h-9 transition-colors ${
                               star <= displayStars
-                                ? 'fill-[#FFB300] text-[#FFB300] drop-shadow-xs'
+                                ? 'fill-[#D6A84F] text-[#D6A84F] drop-shadow-xs'
                                 : 'text-slate-300'
                             }`}
                           />
@@ -512,14 +499,14 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                       ))}
                     </div>
 
-                    <div className="text-xs font-bold text-slate-800 bg-white border border-slate-200 py-1.5 px-3 rounded-xl inline-block shadow-2xs">
+                    <div className="text-xs font-bold text-[#24313D] bg-white border border-[#D6DEE5] py-1.5 px-3 rounded-xl inline-block shadow-2xs">
                       {RATING_LABELS[displayStars] || `${displayStars} نجوم`}
                     </div>
                   </div>
 
                   {/* Comment Textarea */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
+                    <label className="block text-xs font-bold text-[#24313D]">
                       ملاحظاتك وانطباعك الميداني عن العقار (اختياري):
                     </label>
                     <textarea
@@ -527,31 +514,30 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                       onChange={(e) => setComment(e.target.value)}
                       rows={3}
                       placeholder="اذكر رأيك في نظافة العقار، مطابقة الصور للمعاينة الواقعية، هدوء المنطقة، أو تعامل المالك لمساعدة زملائك الباحثين..."
-                      className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                      className="w-full p-3 rounded-2xl bg-white border border-[#D6DEE5] text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
                     />
                   </div>
 
                   {errorMsg && (
-                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-1.5">
+                    <div className="p-3 rounded-xl bg-[#FCE8EC] border border-[#C9364F]/30 text-xs text-[#C9364F] flex items-center gap-1.5">
                       <AlertCircle className="w-4 h-4 shrink-0" />
                       <span>{errorMsg}</span>
                     </div>
                   )}
 
-                  {/* Submit Button */}
                   <div className="pt-2 flex items-center gap-2">
                     <button
                       type="submit"
-                      className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs active:scale-98 cursor-pointer"
+                      className="flex-1 py-3 px-4 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs active:scale-98 cursor-pointer"
                     >
-                      <Star className="w-4 h-4 fill-amber-300 text-amber-300" />
+                      <Star className="w-4 h-4 fill-[#D6A84F] text-[#D6A84F]" />
                       <span>{userExistingRating ? 'تحديث وحفظ التقييم' : 'اعتماد ونشر التقييم الموثق'}</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setActiveTab('reviews')}
-                      className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                      className="py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-[#24313D] border border-[#D6DEE5] font-bold text-xs transition-colors cursor-pointer"
                     >
                       إلغاء
                     </button>
@@ -564,15 +550,15 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+        <div className="p-3 bg-[#F5F9F8] border-t border-[#D6DEE5] flex items-center justify-between text-xs text-[#5D6B78]">
           <span className="flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+            <ShieldCheck className="w-3.5 h-3.5 text-[#16856B]" />
             <span>نظام موثوق للمعاينة الميدانية الحقيقية</span>
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-[#24313D] border border-[#D6DEE5] font-bold transition-colors cursor-pointer"
           >
             إغلاق
           </button>
@@ -583,4 +569,3 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
 };
 
 export default PropertyRatingModal;
-

@@ -18,6 +18,7 @@ import {
 import { UserManagement } from './UserManagement';
 import { ScreenshotConverter } from './ScreenshotConverter';
 import { AdminDrawer, AdminSectionId, ADMIN_NAVIGATION_ITEMS } from './AdminDrawer';
+import { SupabaseConnectionStatus } from './SupabaseConnectionStatus';
 import { exportToCSV, exportToPrintablePDF } from '../utils/exportUtils';
 import { 
   isSupabaseActive, 
@@ -483,24 +484,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="flex-1 min-w-0 w-full space-y-4">
           {/* Top Admin Bar: Single Compact, Flat Horizontal Strip */}
           <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs flex items-center justify-between gap-2.5">
-            {/* Right: Sleek mini Drawer Trigger Button (located right under header/logo) + Active Section */}
+            {/* Right: Sleek mini Drawer Trigger Button + Active Section */}
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(true)}
-                className="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-2xs shrink-0"
+                className="w-8 h-8 rounded-xl bg-[#EAF3EF] hover:bg-[#DCECE7] text-[#124C46] border border-[#DCECE7] flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-2xs shrink-0"
                 title="فتح القائمة الجانبية للأقسام (أو اسحب الشاشة من اليمين)"
               >
-                <Menu className="w-4 h-4 text-blue-600 stroke-[2.5]" />
+                <Menu className="w-4 h-4 text-[#124C46] stroke-[2.5]" />
               </button>
 
-              <div className="h-5 w-px bg-slate-200 shrink-0 hidden sm:block" />
+              <div className="h-5 w-px bg-[#D6DEE5] shrink-0 hidden sm:block" />
 
               <div className="flex items-center gap-1.5 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-[#FDF8ED] text-[#D6A84F] border border-[#D6A84F]/30 flex items-center justify-center shrink-0">
                   {React.createElement(activeNavItem.icon, { className: 'w-3.5 h-3.5' })}
                 </div>
-                <span className="text-xs font-bold text-slate-800 truncate hidden md:inline max-w-[140px]">
+                <span className="text-xs font-bold text-[#24313D] truncate hidden md:inline max-w-[140px]">
                   {activeNavItem.title}
                 </span>
               </div>
@@ -527,8 +528,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     onClick={() => setActiveSection(item.id)}
                     className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                       isActive
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200'
+                        ? 'bg-[#124C46] text-white shadow-xs'
+                        : 'bg-white hover:bg-[#F5F9F8] text-[#5D6B78] hover:text-[#24313D] border border-[#D6DEE5]'
                     }`}
                   >
                     <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
@@ -549,8 +550,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               })}
             </div>
 
-            {/* Left: Quick Status Alert & Lock button */}
+            {/* Left Corner: Supabase Connection Status, Quick Moderation Alert & Lock button */}
             <div className="flex items-center gap-1.5 shrink-0">
+              <SupabaseConnectionStatus
+                onOpenSettings={() => setActiveSection('export_settings')}
+              />
+
               {pendingModerationCount > 0 && (
                 <button
                   type="button"

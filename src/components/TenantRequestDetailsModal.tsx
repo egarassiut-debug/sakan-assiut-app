@@ -35,86 +35,85 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
 
   const handleWhatsApp = () => {
     const text = encodeURIComponent(
-      `السلام عليكم، أود التواصل مع إدارة تطبيق عَرضَه أسيوط بخصوص طلب العقار كود (${request.requestCode || request.id}): مطلوب ${isRent ? 'إيجار' : 'شراء'} ${request.propertyType} في ${request.preferredDistrict} بميزانية حتى ${request.maxPrice.toLocaleString('ar-EG')} ج.م.`
+      `السلام عليكم، أود التواصل مع إدارة تطبيق سكن أسيوط بخصوص طلب العقار كود (${request.requestCode || request.id}): مطلوب ${isRent ? 'إيجار' : 'شراء'} ${request.propertyType} في ${request.preferredDistrict} بميزانية حتى ${request.maxPrice.toLocaleString('ar-EG')} ج.م.`
     );
     window.open(`https://wa.me/201002345678?text=${text}`, '_blank');
   };
 
   const urgencyLabel = {
-    immediate: { text: 'عاجل وفوري', color: 'bg-rose-100 text-rose-800 border-rose-300' },
-    within_month: { text: 'خلال شهر', color: 'bg-amber-100 text-amber-800 border-amber-300' },
-    exploring: { text: 'مقارنة واستكشاف', color: 'bg-blue-100 text-blue-800 border-blue-300' },
+    immediate: { text: 'عاجل وفوري', color: 'bg-[#FCE8EC] text-[#C9364F] border-[#FCE8EC]' },
+    within_month: { text: 'خلال شهر', color: 'bg-[#FFF2D6] text-[#A96F0B] border-[#FFF2D6]' },
+    exploring: { text: 'مقارنة واستكشاف', color: 'bg-[#E8F0FC] text-[#3469A8] border-[#E8F0FC]' },
   }[request.urgency || 'within_month'];
 
   return (
     <div 
       dir="rtl"
-      className="fixed inset-0 z-[9995] bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200 select-none"
+      className="fixed inset-0 z-[9995] bg-[#24313D]/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200 select-none"
     >
-      <div className="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 my-auto animate-in zoom-in-95 duration-150 flex flex-col">
+      <div className="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] overflow-y-auto shadow-xl border border-[#D6DEE5] my-auto animate-in zoom-in-95 duration-150 flex flex-col">
         {/* Sticky Header */}
-        <div className="sticky top-0 bg-[#002B49] text-white z-10 px-5 py-4 border-b border-[#001D33] flex items-center justify-between">
+        <div className="sticky top-0 bg-[#124C46] text-white z-10 px-5 py-3.5 border-b border-[#0D3D38] flex items-center justify-between">
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={handleCopyCode}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#FFB300] text-slate-950 font-black text-xs shadow-xs hover:bg-[#ffa000] transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#D6A84F] hover:bg-[#c49842] text-[#24313D] font-bold text-xs shadow-xs transition-colors cursor-pointer"
               title="نسخ كود الطلب"
             >
               <span>كود: {request.requestCode || request.id}</span>
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-900" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-[#124C46]" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
-            <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${isRent ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white'}`}>
+            <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-white/15 text-white">
               {isRent ? 'مطلوب للإيجار' : 'مطلوب للشراء'}
             </span>
           </div>
 
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
             aria-label="إغلاق"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Visual Request Banner */}
-        <div className="relative bg-gradient-to-br from-[#002B49] via-[#0B1E36] to-[#011627] h-36 w-full flex items-center justify-center overflow-hidden border-b border-slate-100">
+        <div className="relative bg-[#E8EDF1] h-32 w-full flex items-center justify-center overflow-hidden border-b border-[#D6DEE5]">
           <img
             src={DEFAULT_SAKAN_PLACEHOLDER}
             alt="سكن أسيوط"
-            className="w-full h-full object-contain p-4 drop-shadow-md"
+            className="w-full h-full object-contain p-3 drop-shadow-xs"
             loading="lazy"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 sm:p-6 space-y-5 flex-1">
+        <div className="p-5 sm:p-6 space-y-4 flex-1">
           {/* Main Title & District */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <h2 className="text-lg sm:text-xl font-black text-[#002B49] flex items-center gap-2">
-                <Building className="w-5 h-5 text-teal-700 shrink-0" />
+              <h2 className="text-lg sm:text-xl font-bold text-[#24313D] flex items-center gap-2 font-['Tajawal','Cairo',sans-serif]">
+                <Building className="w-5 h-5 text-[#124C46] shrink-0" />
                 <span>مطلوب: {request.propertyType}</span>
               </h2>
               <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${urgencyLabel.color}`}>
                 {urgencyLabel.text}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-600 font-semibold">
-              <MapPin className="w-4 h-4 text-teal-600 shrink-0" />
+            <div className="flex items-center gap-1.5 text-xs text-[#5D6B78] font-semibold">
+              <MapPin className="w-4 h-4 text-[#124C46] shrink-0" />
               <span>الحي المفضل: {request.preferredDistrict} (أسيوط)</span>
             </div>
           </div>
 
           {/* Budget & Key Specifications Box */}
-          <div className="bg-gradient-to-br from-slate-50 to-teal-50/30 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+          <div className="bg-[#F5F7F9] border border-[#D6DEE5] rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <span className="text-xs text-slate-600 font-bold flex items-center gap-1">
-                <DollarSign className="w-4 h-4 text-teal-700" />
+              <span className="text-xs text-[#5D6B78] font-bold flex items-center gap-1">
+                <DollarSign className="w-4 h-4 text-[#124C46]" />
                 <span>الميزانية المقترحة من صاحب الطلب:</span>
               </span>
-              <span className="text-base font-black text-teal-900 font-mono">
+              <span className="text-base font-black text-[#8B641C] font-mono">
                 {request.minPrice
                   ? `${request.minPrice.toLocaleString('ar-EG')} - ${request.maxPrice.toLocaleString('ar-EG')} ج.م`
                   : `حتى ${request.maxPrice.toLocaleString('ar-EG')} ج.م`}
@@ -122,29 +121,29 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-200/70 text-xs text-slate-700">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-[#D6DEE5] text-xs text-[#24313D]">
               {(request.minArea || request.maxArea) && (
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">المساحة المطلوبة:</span>
+                <div className="bg-white p-2.5 rounded-lg border border-[#D6DEE5]">
+                  <span className="text-[10px] text-[#788593] block font-bold">المساحة المطلوبة:</span>
                   <span className="font-bold">{request.minArea ? `${request.minArea} إلى ` : ''}{request.maxArea || request.minArea} م²</span>
                 </div>
               )}
               {request.bedrooms !== undefined && request.bedrooms > 0 && (
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">عدد الغرف:</span>
+                <div className="bg-white p-2.5 rounded-lg border border-[#D6DEE5]">
+                  <span className="text-[10px] text-[#788593] block font-bold">عدد الغرف:</span>
                   <span className="font-bold">{request.bedrooms} غرف</span>
                 </div>
               )}
               {request.bathrooms !== undefined && request.bathrooms > 0 && (
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">عدد الحمامات:</span>
+                <div className="bg-white p-2.5 rounded-lg border border-[#D6DEE5]">
+                  <span className="text-[10px] text-[#788593] block font-bold">عدد الحمامات:</span>
                   <span className="font-bold">{request.bathrooms} حمام</span>
                 </div>
               )}
               {request.furnishingStatus && (
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
-                  <span className="text-[10px] text-slate-400 block font-bold">حالة الفرش:</span>
-                  <span className="font-bold text-teal-800">{request.furnishingStatus}</span>
+                <div className="bg-white p-2.5 rounded-lg border border-[#D6DEE5] col-span-2 sm:col-span-1">
+                  <span className="text-[10px] text-[#788593] block font-bold">حالة الفرش:</span>
+                  <span className="font-bold text-[#124C46]">{request.furnishingStatus}</span>
                 </div>
               )}
             </div>
@@ -153,17 +152,17 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
           {/* Required Utilities */}
           {request.utilitiesRequired && request.utilitiesRequired.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-teal-700" />
+              <h4 className="text-xs font-bold text-[#24313D] flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-[#124C46]" />
                 <span>المرافق والخدمات المشترطة:</span>
               </h4>
               <div className="flex flex-wrap gap-1.5">
                 {request.utilitiesRequired.map((u, i) => (
                   <span
                     key={i}
-                    className="text-xs bg-teal-50 text-teal-800 px-3 py-1 rounded-xl border border-teal-200 font-semibold flex items-center gap-1.5"
+                    className="text-xs bg-[#EAF3EF] text-[#124C46] px-3 py-1 rounded-lg border border-[#DCECE7] font-semibold flex items-center gap-1.5"
                   >
-                    <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                    <CheckCircle2 className="w-3 h-3 text-[#16856B]" />
                     {u}
                   </span>
                 ))}
@@ -173,9 +172,9 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
 
           {/* Notes */}
           {request.notes && (
-            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-1">
-              <span className="font-bold text-xs text-amber-900 block">ملاحظات واشتراطات خاصة:</span>
-              <p className="text-xs text-slate-700 leading-relaxed font-medium">
+            <div className="p-3.5 rounded-xl bg-[#FFF2D6]/60 border border-[#FFF2D6] space-y-1">
+              <span className="font-bold text-xs text-[#A96F0B] block">ملاحظات واشتراطات خاصة:</span>
+              <p className="text-xs text-[#24313D] leading-relaxed font-medium">
                 {request.notes}
               </p>
             </div>
@@ -183,30 +182,30 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
 
           {/* Privacy Note (Hidden in Admin views) */}
           {!isAdmin ? (
-            <div className="flex items-center gap-2 p-3 rounded-2xl bg-teal-50/80 border border-teal-200/80 text-xs text-teal-900">
-              <ShieldCheck className="w-4 h-4 text-teal-700 shrink-0" />
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-[#EAF3EF] border border-[#DCECE7] text-xs text-[#124C46]">
+              <ShieldCheck className="w-4 h-4 text-[#124C46] shrink-0" />
               <span>بيانات مقدم الطلب محفوظة بسرية تامة لدى إدارة المنصة لحماية الخصوصية.</span>
             </div>
           ) : (
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-800 space-y-1">
-              <span className="font-bold text-[#002B49] block">بيانات مقدم الطلب (معاينة الإدارة):</span>
-              <div className="grid grid-cols-2 gap-2 text-slate-700">
-                <div>الاسم: <strong>{request.tenantName}</strong></div>
-                <div>الهاتف: <strong dir="ltr">{request.tenantPhone}</strong></div>
+            <div className="p-3 rounded-xl bg-[#F5F7F9] border border-[#D6DEE5] text-xs text-[#24313D] space-y-1">
+              <span className="font-bold text-[#124C46] block">بيانات مقدم الطلب (معاينة الإدارة):</span>
+              <div className="grid grid-cols-2 gap-2 text-[#5D6B78]">
+                <div>الاسم: <strong className="text-[#24313D]">{request.tenantName}</strong></div>
+                <div>الهاتف: <strong className="text-[#24313D]" dir="ltr">{request.tenantPhone}</strong></div>
               </div>
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2.5">
+        <div className="p-4 bg-[#F5F7F9] border-t border-[#D6DEE5] flex items-center justify-between gap-2.5">
           {onEdit && (
             <button
               onClick={() => {
                 onClose();
                 onEdit(request);
               }}
-              className="py-2.5 px-4 rounded-xl bg-[#002B49] hover:bg-[#001D33] text-[#FFB300] font-black text-xs transition-colors cursor-pointer"
+              className="py-2.5 px-4 rounded-xl bg-white hover:bg-[#F5F9F8] border border-[#D6DEE5] text-[#24313D] font-bold text-xs transition-colors cursor-pointer"
             >
               تعديل الطلب
             </button>
@@ -215,7 +214,7 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
           <div className="flex items-center gap-2 flex-1 justify-end">
             <button
               onClick={handleWhatsApp}
-              className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-98 cursor-pointer"
+              className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
             >
               <MessageCircle className="w-4 h-4" />
               <span>تواصل مع الإدارة بشأن هذا الطلب</span>
@@ -223,7 +222,7 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
 
             <button
               onClick={onClose}
-              className="py-2.5 px-4 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+              className="py-2.5 px-4 rounded-xl bg-white hover:bg-[#F5F9F8] border border-[#D6DEE5] text-[#5D6B78] font-bold text-xs transition-colors cursor-pointer"
             >
               إغلاق
             </button>

@@ -4,7 +4,7 @@ import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
   Copy, Check, MapPin, Maximize2, Bed, Bath, ArrowUpRight, 
   MessageSquare, Compass, Building, ChevronLeft, ChevronRight, Camera, Edit3, AlertTriangle, Heart, Star,
-  ChevronDown, Layers, Zap, Droplets, Flame, Wifi, Calendar, Lock, Tag
+  Lock, Tag, ShieldCheck, Sparkles
 } from 'lucide-react';
 
 interface PropertyCardProps {
@@ -33,10 +33,9 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Toggle card expansion when clicking an empty space on the card without opening full modal
+  // Toggle card expansion when clicking empty space
   const handleCardClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    // Do not toggle expansion if an interactive control (button, link, input, data-no-expand) was clicked
     if (
       target.closest('button') || 
       target.closest('a') || 
@@ -52,7 +51,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     : [DEFAULT_SAKAN_PLACEHOLDER];
 
   const isDefaultImage = !property.images || property.images.length === 0 || images[currentImageIndex] === DEFAULT_SAKAN_PLACEHOLDER;
-
   const hasMultipleImages = images.length > 1;
 
   const handleNextImage = (e: React.MouseEvent) => {
@@ -100,7 +98,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
     const text = encodeURIComponent(
-      `السلام عليكم، أود التواصل مع إدارة التطبيق للاستفسار وطلب معاينة رسمية للعقار كود (${property.code}) - ${property.title} بأسيوط.`
+      `السلام عليكم، أود الاستفسار وطلب معاينة رسمية للعقار كود (${property.code}) - ${property.title} بأسيوط عبر منصة سكن أسيوط.`
     );
     window.open(`https://wa.me/201002345678?text=${text}`, '_blank');
   };
@@ -109,12 +107,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     return new Intl.NumberFormat('ar-EG').format(price);
   };
 
-  // Helper to format unified property type and purpose badge (e.g. "هنجر للإيجار", "شقة للبيع")
+  // Helper to format unified property type and purpose badge
   const getUnifiedTypePurposeBadge = () => {
     const purposeText = property.purpose === 'rent' ? 'للإيجار' : 'للبيع';
     let type = (property.propertyType || '').trim();
 
-    // Natural Arabic contractions for optimal card aesthetics
     if (type === 'شقة سكنية') type = 'شقة';
     else if (type === 'قطعة أرض فضاء') type = 'أرض';
     else if (type === 'مقر إداري / مكاتب') type = 'مكتب إداري';
@@ -124,17 +121,34 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     return `${type} ${purposeText}`;
   };
 
+  // Trust indicator assessment: Check whether advertiser / property is verified
+  const isVerifiedAdvertiser = property.status === 'approved' || property.isApproved !== false || property.featured;
+  const advertiserLabel = property.source || 'وسيط معتمد';
+
   return (
     <div 
       onClick={handleCardClick}
-      className={`bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-slate-300 transition-all duration-300 overflow-hidden mb-6 cursor-pointer group flex flex-col ${
-        isExpanded ? 'border-amber-500/70 ring-2 ring-amber-500/20' : ''
-      }`}
+      className={`bg-white rounded-3xl border transition-all duration-300 overflow-hidden mb-6 cursor-pointer group flex flex-col shadow-xs hover:shadow-lg ${
+        property.featured ? 'border-[#D6A84F]/60' : 'border-[#D6DEE5]'
+      } ${isExpanded ? 'ring-2 ring-[#124C46]/30' : ''}`}
     >
+      {/* Featured Banner at top of card if property.featured is true */}
+      {property.featured && (
+        <div className="bg-[#FFF3D6] text-[#8B641C] border-b border-[#D6A84F]/30 px-4 py-1.5 flex items-center justify-between text-xs font-bold">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-[#D6A84F]" />
+            <span>عقار مميز ومختار من الإدارة</span>
+          </div>
+          <span className="text-[10px] bg-[#D6A84F]/20 text-[#8B641C] px-2 py-0.5 rounded-full font-bold">
+            أولوية العرض
+          </span>
+        </div>
+      )}
+
       {/* Top Media Slider & Badges */}
       <div 
         className={`relative h-48 sm:h-52 w-full overflow-hidden select-none flex items-center justify-center ${
-          isDefaultImage ? 'bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200 border-b border-slate-200' : 'bg-slate-100'
+          isDefaultImage ? 'bg-gradient-to-br from-slate-100 via-[#F5F9F8] to-slate-200 border-b border-[#D6DEE5]' : 'bg-slate-100'
         }`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
@@ -160,21 +174,19 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         {/* Multi-Image Slider Controls */}
         {hasMultipleImages && (
           <>
-            {/* Prev Button */}
             <button
               type="button"
-              onClick={handlePrevImage}
-              aria-label="الصورة السابقة"
+              onClick={handleNextImage}
+              aria-label="الصورة التالية"
               className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 hover:scale-110 shadow-md z-10 cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            {/* Next Button */}
             <button
               type="button"
-              onClick={handleNextImage}
-              aria-label="الصورة التالية"
+              onClick={handlePrevImage}
+              aria-label="الصورة السابقة"
               className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 hover:scale-110 shadow-md z-10 cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
@@ -196,7 +208,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                   aria-label={`الانتقال للصورة ${idx + 1}`}
                   className={`h-1.5 rounded-full transition-all cursor-pointer ${
                     idx === currentImageIndex 
-                      ? 'w-5 bg-amber-400 shadow-xs' 
+                      ? 'w-5 bg-[#D6A84F] shadow-xs' 
                       : 'w-1.5 bg-white/50 hover:bg-white'
                   }`}
                 />
@@ -207,11 +219,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Status Overlay Watermark for Rented / Sold properties */}
         {(property.status === 'rented' || property.status === 'sold') && (
-          <div className="absolute inset-0 bg-slate-900/35 backdrop-blur-xs z-10 flex items-center justify-center pointer-events-none">
-            <div className={`px-4 py-2 rounded-2xl shadow-xl font-black text-sm sm:text-base tracking-wide flex items-center gap-2 border ${
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs z-10 flex items-center justify-center pointer-events-none">
+            <div className={`px-4 py-2 rounded-2xl shadow-xl font-bold text-sm sm:text-base tracking-wide flex items-center gap-2 border ${
               property.status === 'sold'
-                ? 'bg-rose-600/95 text-white border-rose-300/60 shadow-md'
-                : 'bg-amber-500/95 text-slate-900 border-amber-200/80 shadow-md'
+                ? 'bg-[#C9364F] text-white border-white/30'
+                : 'bg-[#A96F0B] text-white border-white/30'
             }`}>
               {property.status === 'sold' ? (
                 <>
@@ -220,7 +232,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 </>
               ) : (
                 <>
-                  <Lock className="w-4 h-4 text-slate-950" />
+                  <Lock className="w-4 h-4 text-white" />
                   <span>مؤجر حالياً</span>
                 </>
               )}
@@ -230,32 +242,27 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Top Floating Badges */}
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none z-10">
-          {/* Right side (أقصى اليمين in RTL): Unified Purpose & Type Badge + Status */}
+          {/* Right side (أقصى اليمين in RTL): Unified Purpose & Type Badge */}
           <div className="flex items-center gap-1.5 flex-wrap pointer-events-auto">
-            {/* شارة واحدة مدمجة تجمع (نوع العقار) و(نوع المعاملة) في أقصى اليمين */}
-            <span className={`px-3 py-1 rounded-xl font-bold text-xs shadow-md backdrop-blur-xs flex items-center gap-1 border ${
-              property.purpose === 'rent'
-                ? 'bg-blue-600 text-white border-blue-400/40'
-                : 'bg-amber-500 text-slate-950 border-amber-300/40'
-            }`}>
+            <span className="px-3 py-1 rounded-xl font-bold text-xs shadow-md backdrop-blur-xs flex items-center gap-1 bg-[#124C46] text-white border border-white/20">
               <span>{getUnifiedTypePurposeBadge()}</span>
             </span>
 
             {property.status === 'rented' && (
-              <span className="px-2.5 py-1 rounded-xl bg-amber-500 text-slate-950 font-black text-xs shadow-md border border-amber-300 flex items-center gap-1 animate-pulse">
-                <Lock className="w-3 h-3 text-slate-950" />
+              <span className="px-2.5 py-1 rounded-xl bg-[#FFF2D6] text-[#A96F0B] font-bold text-xs shadow-xs border border-[#A96F0B]/30 flex items-center gap-1">
+                <Lock className="w-3 h-3 text-[#A96F0B]" />
                 <span>مؤجر</span>
               </span>
             )}
             {property.status === 'sold' && (
-              <span className="px-2.5 py-1 rounded-xl bg-rose-600 text-white font-black text-xs shadow-md border border-rose-400 flex items-center gap-1">
-                <Tag className="w-3 h-3 text-white" />
+              <span className="px-2.5 py-1 rounded-xl bg-[#FCE8EC] text-[#C9364F] font-bold text-xs shadow-xs border border-[#C9364F]/30 flex items-center gap-1">
+                <Tag className="w-3 h-3 text-[#C9364F]" />
                 <span>تم البيع</span>
               </span>
             )}
             {(property.status === 'pending' || property.status === 'pending_approval' || property.status === 'under_review') && (
-              <span className="px-2 py-1 rounded-xl bg-amber-600/90 text-white font-bold text-[10px] shadow-sm flex items-center gap-1 border border-amber-500">
-                <AlertTriangle className="w-3 h-3 text-amber-200" />
+              <span className="px-2 py-1 rounded-xl bg-[#FFF2D6] text-[#A96F0B] font-bold text-[10px] shadow-xs flex items-center gap-1 border border-[#A96F0B]/30">
+                <AlertTriangle className="w-3 h-3 text-[#A96F0B]" />
                 <span>قيد المراجعة</span>
               </span>
             )}
@@ -265,12 +272,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           <div className="flex items-center gap-1.5 pointer-events-auto">
             <div 
               onClick={handleCopyCode}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/95 backdrop-blur-xs text-slate-800 font-bold text-xs shadow-xs hover:bg-white transition-colors cursor-pointer select-none border border-slate-200"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/95 backdrop-blur-xs text-[#24313D] font-bold text-xs shadow-xs hover:bg-white transition-colors cursor-pointer select-none border border-[#D6DEE5]"
               title="انقر لنسخ الكود"
             >
               <span>كود: {property.code}</span>
               {copied ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <Check className="w-3.5 h-3.5 text-[#16856B]" />
               ) : (
                 <Copy className="w-3.5 h-3.5 text-slate-400" />
               )}
@@ -284,10 +291,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                   e.stopPropagation();
                   onToggleFavorite(property.id);
                 }}
-                className={`w-7.5 h-7.5 rounded-xl flex items-center justify-center transition-all shadow-xs active:scale-125 cursor-pointer backdrop-blur-md border border-slate-200 ${
+                className={`w-7.5 h-7.5 rounded-xl flex items-center justify-center transition-all shadow-xs active:scale-125 cursor-pointer backdrop-blur-md border border-[#D6DEE5] ${
                   isFavorite
-                    ? 'bg-rose-500 text-white'
-                    : 'bg-white/95 text-slate-500 hover:bg-white hover:text-rose-500'
+                    ? 'bg-[#C9364F] text-white'
+                    : 'bg-white/95 text-slate-500 hover:bg-white hover:text-[#C9364F]'
                 }`}
                 title={isFavorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}
                 aria-label="إضافة للمفضلة"
@@ -299,26 +306,26 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
       </div>
 
-      {/* Body Info: Increased padding & breathing room */}
-      <div className="p-5 sm:p-5.5 flex-1 flex flex-col justify-between space-y-4">
+      {/* Body Info */}
+      <div className="p-5 sm:p-5.5 flex-1 flex flex-col justify-between space-y-3.5">
         <div className="space-y-2">
-          {/* Title */}
-          <h3 className="font-bold text-slate-900 text-base sm:text-lg leading-snug line-clamp-2 group-hover:text-amber-600 transition-colors">
-            {property.title}
-          </h3>
+          {/* Trust Score & Advertiser Badge (Requirement #6) */}
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-[#5D6B78] font-medium">المعلن:</span>
+              <span className="font-bold text-[#24313D] text-[12px]">{property.ownerName || advertiserLabel}</span>
+              {isVerifiedAdvertiser && (
+                <span 
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E4F4EC] text-[#16856B] border border-[#16856B]/30 text-[10px] font-bold"
+                  title="مؤشر الثقة: معلن موثق رسمياً لدى المنصة"
+                >
+                  <ShieldCheck className="w-3 h-3 text-[#16856B]" />
+                  <span>موثق (مؤشر ثقة)</span>
+                </span>
+              )}
+            </div>
 
-          {/* Address with integrated District & Verified 5-Star Rating Row */}
-          <div className="flex items-center justify-between gap-3 pt-0.5 flex-wrap">
-            <p className="text-xs sm:text-sm text-slate-500 flex items-center gap-1.5 line-clamp-1 min-w-0">
-              <MapPin className="w-4 h-4 text-amber-500 shrink-0" />
-              <span className="truncate">
-                {property.district && !property.address.includes(property.district)
-                  ? `${property.district} • ${property.address}`
-                  : property.address}
-              </span>
-            </p>
-
-            {/* 5-Star Rating Chip displaying average score */}
+            {/* 5-Star Rating Chip */}
             <div
               onClick={(e) => {
                 if (onOpenRatingModal) {
@@ -328,65 +335,80 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               }}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                 ratingSummary && ratingSummary.count > 0
-                  ? 'bg-amber-50 border-amber-200 text-amber-800 shadow-2xs'
-                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  ? 'bg-[#FFF3D6] border-[#D6A84F]/40 text-[#8B641C] shadow-2xs'
+                  : 'bg-[#F5F9F8] border-[#D6DEE5] text-[#5D6B78] hover:bg-white'
               }`}
-              title="تقييمات المعاينة الميدانية الموثقة (اضغط للمعاينة والتقييم)"
+              title="تقييمات المعاينة الميدانية الموثقة"
             >
-              <Star className={`w-3.5 h-3.5 ${ratingSummary && ratingSummary.count > 0 ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}`} />
+              <Star className={`w-3.5 h-3.5 ${ratingSummary && ratingSummary.count > 0 ? 'fill-[#D6A84F] text-[#D6A84F]' : 'text-slate-400'}`} />
               {ratingSummary && ratingSummary.count > 0 ? (
                 <>
-                  <span className="font-bold text-slate-900">{ratingSummary.average.toFixed(1)}</span>
-                  <span className="text-[10px] text-slate-500 font-medium">({ratingSummary.count})</span>
+                  <span className="font-bold text-[#24313D]">{ratingSummary.average.toFixed(1)}</span>
+                  <span className="text-[10px] text-[#5D6B78] font-medium">({ratingSummary.count})</span>
                 </>
               ) : (
-                <span className="text-[10px] text-slate-500">تقييم موثق</span>
+                <span className="text-[10px] text-[#5D6B78]">معاينة موثقة</span>
               )}
             </div>
           </div>
+
+          {/* Title */}
+          <h3 className="font-bold text-[#24313D] text-base sm:text-lg leading-snug line-clamp-2 group-hover:text-[#124C46] transition-colors">
+            {property.title}
+          </h3>
+
+          {/* Address with integrated District */}
+          <p className="text-xs sm:text-sm text-[#5D6B78] flex items-center gap-1.5 line-clamp-1 min-w-0">
+            <MapPin className="w-4 h-4 text-[#D6A84F] shrink-0" />
+            <span className="truncate">
+              {property.district && !property.address.includes(property.district)
+                ? `${property.district} • ${property.address}`
+                : property.address}
+            </span>
+          </p>
         </div>
 
-        {/* Fixed Specifications Details Row: Always 4 fixed slots across all cards */}
-        <div className="bg-slate-50/90 rounded-2xl py-2.5 px-2 border border-slate-100 grid grid-cols-4 divide-x divide-x-reverse divide-slate-200/80 text-xs text-slate-600 my-0.5 select-none">
-          {/* Slot 1: المساحة (Fixed) */}
+        {/* Fixed Specifications Details Row: 4 fixed slots */}
+        <div className="bg-[#F5F9F8] rounded-2xl py-2.5 px-2 border border-[#D6DEE5]/80 grid grid-cols-4 divide-x divide-x-reverse divide-[#D6DEE5] text-xs text-[#5D6B78] my-0.5 select-none">
+          {/* Slot 1: المساحة */}
           <div className="flex items-center justify-center gap-1 px-1">
-            <Maximize2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            <span className="font-bold text-slate-900 truncate">
+            <Maximize2 className="w-3.5 h-3.5 text-[#124C46] shrink-0" />
+            <span className="font-bold text-[#24313D] truncate">
               {property.area ? `${property.area} م²` : '—'}
             </span>
           </div>
 
-          {/* Slot 2: الغرف أو الواجهة (Fixed) */}
+          {/* Slot 2: الغرف أو الواجهة */}
           <div className="flex items-center justify-center gap-1 px-1">
             {isLand ? (
               <>
-                <Compass className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span className="font-semibold text-slate-800 text-[11px] truncate" title={property.facade || ''}>
+                <Compass className="w-3.5 h-3.5 text-[#124C46] shrink-0" />
+                <span className="font-semibold text-[#24313D] text-[11px] truncate" title={property.facade || ''}>
                   {property.facade ? property.facade.slice(0, 14) : '—'}
                 </span>
               </>
             ) : (
               <>
-                <Bed className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span className="font-bold text-slate-900 truncate">
+                <Bed className="w-3.5 h-3.5 text-[#124C46] shrink-0" />
+                <span className="font-bold text-[#24313D] truncate">
                   {property.bedrooms !== undefined && property.bedrooms !== null ? `${property.bedrooms} غرف` : '—'}
                 </span>
               </>
             )}
           </div>
 
-          {/* Slot 3: الحمامات (Fixed) */}
+          {/* Slot 3: الحمامات */}
           <div className="flex items-center justify-center gap-1 px-1">
-            <Bath className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            <span className="font-bold text-slate-900 truncate">
+            <Bath className="w-3.5 h-3.5 text-[#124C46] shrink-0" />
+            <span className="font-bold text-[#24313D] truncate">
               {property.bathrooms !== undefined && property.bathrooms !== null ? `${property.bathrooms} حمام` : '—'}
             </span>
           </div>
 
-          {/* Slot 4: المصعد أو الطابق (Fixed) */}
+          {/* Slot 4: المصعد أو الطابق */}
           <div className="flex items-center justify-center gap-1 px-1">
-            <Building className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            <span className="font-medium text-slate-800 text-[11px] truncate">
+            <Building className="w-3.5 h-3.5 text-[#124C46] shrink-0" />
+            <span className="font-medium text-[#24313D] text-[11px] truncate">
               {property.hasElevator !== undefined && property.hasElevator !== null
                 ? (property.hasElevator ? 'أسانسير' : 'سلم')
                 : (property.floorLevel !== undefined && property.floorLevel !== null
@@ -396,164 +418,24 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
         </div>
 
-        {/* Concise Specs & Details: toggled via direct card container click without visual banner clutter */}
-        {isExpanded && (
-          <div 
-            className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 text-xs">
-              <span className="font-bold text-amber-700 flex items-center gap-1.5">
-                <Building className="w-4 h-4 text-amber-600" />
-                <span>ملخص مواصفات العقار كود ({property.code})</span>
-              </span>
-              <span className="text-[11px] text-blue-700 font-bold bg-white px-2.5 py-0.5 rounded-lg border border-blue-200 shadow-2xs">
-                {property.propertyType}
-              </span>
-            </div>
-
-            {/* Quick Specs Grid */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs">
-                <span className="text-slate-500 flex items-center gap-1">
-                  <Maximize2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span>المساحة:</span>
-                </span>
-                <span className="font-extrabold text-slate-900">{property.area} م²</span>
-              </div>
-
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs">
-                <span className="text-slate-500 flex items-center gap-1">
-                  <Bed className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span>عدد الغرف:</span>
-                </span>
-                <span className="font-bold text-slate-900">
-                  {property.bedrooms !== undefined ? `${property.bedrooms} غرف` : 'غير محدد'}
-                </span>
-              </div>
-
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs">
-                <span className="text-slate-500 flex items-center gap-1">
-                  <Bath className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span>الحمامات:</span>
-                </span>
-                <span className="font-bold text-slate-900">
-                  {property.bathrooms !== undefined ? `${property.bathrooms} حمام` : 'غير محدد'}
-                </span>
-              </div>
-
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs">
-                <span className="text-slate-500 flex items-center gap-1">
-                  <Building className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span>الدور / الطابق:</span>
-                </span>
-                <span className="font-bold text-slate-900">
-                  {property.floorLevel !== undefined 
-                    ? (property.floorLevel === 0 ? 'الأرضي' : `الدور ${property.floorLevel}`)
-                    : (property.totalFloors ? `${property.totalFloors} أدوار` : 'غير محدد')}
-                </span>
-              </div>
-
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between col-span-2 shadow-2xs">
-                <span className="text-slate-500 flex items-center gap-1">
-                  <Compass className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span>الواجهة والمصعد:</span>
-                </span>
-                <span className="font-semibold text-slate-800 text-[11px] truncate max-w-[65%]">
-                  {property.facade || 'واجهة بحرية'} • {property.hasElevator ? 'يوجد مصعد كهربائي' : 'سلم مريح'}
-                </span>
-              </div>
-            </div>
-
-            {/* Utilities Chips */}
-            {property.utilities && (
-              <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-200">
-                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 ${
-                  property.utilities.electricity?.available ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-400 border border-slate-200'
-                }`}>
-                  <Zap className="w-3 h-3 text-amber-600" />
-                  <span>كهرباء</span>
-                </span>
-                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 ${
-                  property.utilities.water?.available ? 'bg-sky-50 text-sky-800 border border-sky-200' : 'bg-slate-100 text-slate-400 border border-slate-200'
-                }`}>
-                  <Droplets className="w-3 h-3 text-sky-600" />
-                  <span>مياه</span>
-                </span>
-                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 ${
-                  property.utilities.gas?.available ? 'bg-orange-50 text-orange-800 border border-orange-200' : 'bg-slate-100 text-slate-400 border border-slate-200'
-                }`}>
-                  <Flame className="w-3 h-3 text-orange-600" />
-                  <span>غاز طبيعي</span>
-                </span>
-                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 ${
-                  property.utilities.internet?.available ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-400 border border-slate-200'
-                }`}>
-                  <Wifi className="w-3 h-3 text-emerald-600" />
-                  <span>إنترنت</span>
-                </span>
-              </div>
-            )}
-
-            {/* Description excerpt */}
-            {property.description && (
-              <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200/80 leading-relaxed line-clamp-2">
-                <span className="font-bold text-amber-700 block mb-0.5">نبذة مختصرة:</span>
-                {property.description}
-              </div>
-            )}
-
-            {/* Quick Actions inside expanded preview */}
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenDetails(property);
-                }}
-                className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                title="فتح النافذة التفصيلية الكاملة مع الصور الكاملة والمستندات"
-              >
-                <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
-                <span>فتح النافذة التفصيلية الكاملة</span>
-              </button>
-
-              {onRequestInspection && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRequestInspection(property);
-                  }}
-                  className="py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                  title="حجز موعد معاينة ميدانية رسمية"
-                >
-                  <Calendar className="w-3.5 h-3.5 shrink-0" />
-                  <span>طلب معاينة</span>
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Price & Action Buttons: Resilient flex layout with generous spacing */}
-        <div className="pt-3.5 border-t border-slate-100 flex items-center justify-between gap-3">
+        {/* Price & Action Buttons */}
+        <div className="pt-3 border-t border-[#D6DEE5]/60 flex items-center justify-between gap-3">
           {/* Price */}
           <div className="min-w-0 max-w-[46%] sm:max-w-[48%]">
-            <div className="text-amber-600 font-extrabold text-base sm:text-lg leading-tight truncate">
+            <div className="text-[#8B641C] font-black text-base sm:text-lg leading-tight truncate">
               {formatPrice(property.price)}
-              <span className="text-[11px] sm:text-xs font-semibold text-slate-500 mr-1.5">
+              <span className="text-[11px] sm:text-xs font-semibold text-[#5D6B78] mr-1.5">
                 {property.purpose === 'rent' ? 'ج.م / شهر' : 'ج.م إجمالي'}
               </span>
             </div>
             {property.deposit && (
-              <span className="text-[10px] text-slate-500 block truncate mt-1">
+              <span className="text-[10px] text-[#788593] block truncate mt-1">
                 تأمين: {formatPrice(property.deposit)} ج.م
               </span>
             )}
           </div>
 
-          {/* Actions Container */}
+          {/* Actions Container: Primary is Petroleum #124C46, Secondary is light neutral */}
           <div className="flex items-center gap-2 shrink-0">
             {onEdit && (
               <button
@@ -562,11 +444,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                   e.stopPropagation();
                   onEdit(property);
                 }}
-                className={`h-9.5 px-3 rounded-xl text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors shadow-2xs shrink-0 cursor-pointer ${
-                  property.status === 'needs_completion'
-                    ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                }`}
+                className="h-9.5 px-3 rounded-xl text-xs font-semibold inline-flex items-center justify-center gap-1.5 bg-white hover:bg-[#F5F9F8] text-[#24313D] border border-[#D6DEE5] shadow-2xs transition-colors shrink-0 cursor-pointer"
                 title="تعديل بيانات الإعلان"
               >
                 <Edit3 className="w-4 h-4 shrink-0" />
@@ -575,24 +453,26 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 </span>
               </button>
             )}
+
             <button
               type="button"
               onClick={handleWhatsApp}
-              className="h-9.5 px-3 sm:px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
+              className="h-9.5 px-3 sm:px-3.5 rounded-xl bg-white hover:bg-[#F5F9F8] text-[#124C46] border border-[#D6DEE5] text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
               title="تواصل مع إدارة التطبيق عبر واتساب"
             >
-              <MessageSquare className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">تواصل مع الإدارة</span>
-              <span className="sm:hidden">الإدارة</span>
+              <MessageSquare className="w-4 h-4 text-[#16856B] shrink-0" />
+              <span className="hidden sm:inline">تواصل للإفادة</span>
+              <span className="sm:hidden">تواصل</span>
             </button>
+
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenDetails(property);
               }}
-              className="h-9.5 px-3.5 sm:px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
-              title="عرض التفاصيل"
+              className="h-9.5 px-3.5 sm:px-4 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
+              title="عرض التفاصيل الكاملة"
             >
               <ArrowUpRight className="w-4 h-4 shrink-0" />
               <span>تفاصيل</span>
@@ -607,14 +487,14 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               e.stopPropagation();
               onEdit?.(property);
             }}
-            className="mt-2 p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100/90 border border-amber-300 text-xs text-amber-900 font-semibold flex items-center justify-between gap-2 cursor-pointer shadow-2xs transition-all"
+            className="mt-2 p-2.5 rounded-xl bg-[#FFF2D6] hover:bg-[#FFF3D6] border border-[#A96F0B]/40 text-xs text-[#A96F0B] font-semibold flex items-center justify-between gap-2 cursor-pointer shadow-2xs transition-all"
             title="انقر هنا للدخول مباشرة لشاشة التعديل واستيفاء البيانات المطلوبة"
           >
             <div className="flex items-start gap-1.5 flex-1">
-              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-[#A96F0B] mt-0.5 shrink-0" />
               <div>
-                <span className="font-bold block text-amber-900">مطلوب استيفاء بيان وتصحيح:</span>
-                <span className="text-amber-800 text-[11px] leading-relaxed">{property.adminNote}</span>
+                <span className="font-bold block text-[#A96F0B]">مطلوب استيفاء بيان وتصحيح:</span>
+                <span className="text-[#8B641C] text-[11px] leading-relaxed">{property.adminNote}</span>
               </div>
             </div>
             {onEdit && (
@@ -624,7 +504,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                   e.stopPropagation();
                   onEdit(property);
                 }}
-                className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] shrink-0 shadow-2xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg bg-[#A96F0B] hover:bg-[#8B641C] text-white font-bold text-[11px] shrink-0 shadow-2xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
               >
                 <Edit3 className="w-3 h-3" />
                 <span>الدخول للخطأ</span>
@@ -636,3 +516,4 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     </div>
   );
 };
+export default PropertyCard;

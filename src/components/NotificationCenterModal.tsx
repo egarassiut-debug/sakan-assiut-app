@@ -85,23 +85,23 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
       dir="rtl"
       className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 select-none"
     >
-      <div className="bg-white text-slate-800 w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[88vh]">
+      <div className="bg-white text-[#24313D] w-full max-w-lg rounded-2xl shadow-xl border border-[#D6DEE5] overflow-hidden flex flex-col max-h-[88vh]">
         {/* Header */}
-        <div className="bg-[#002B49] text-white p-4.5 flex items-center justify-between border-b border-[#001D33]">
+        <div className="bg-[#124C46] text-white p-4.5 flex items-center justify-between border-b border-[#0D3D38]">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-400/20 flex items-center justify-center text-amber-300 border border-amber-400/30">
-              <Bell className="w-5 h-5 text-amber-300" />
+            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-white">
+              <Bell className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-base font-black text-white flex items-center gap-2">
+              <h3 className="text-base font-bold text-white flex items-center gap-2 font-['Tajawal','Cairo',sans-serif]">
                 <span>تنبيهات الدفع (In-App Push)</span>
                 {unreadCount > 0 && (
-                  <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full">
+                  <span className="bg-[#D6A84F] text-[#24313D] text-[10px] font-bold px-2 py-0.5 rounded-full">
                     {unreadCount} جديد
                   </span>
                 )}
               </h3>
-              <p className="text-[11px] text-white/70">
+              <p className="text-[11px] text-[#DCECE7]">
                 إشعارات المطابقة الذكية، حالة الإعلانات، والرسائل الفورية
               </p>
             </div>
@@ -110,14 +110,14 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => playPushChime('smart_match')}
-              className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
               title="تجربة صوت التنبيه"
             >
               <Volume2 className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
               aria-label="إغلاق"
             >
               <X className="w-5 h-5" />
@@ -126,20 +126,20 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         </div>
 
         {/* Action Bar (Filters + Mark All as Read + Clear) */}
-        <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-slate-200">
+        <div className="p-3 bg-[#F5F7F9] border-b border-[#D6DEE5] flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-[#D6DEE5]">
             <button
               onClick={() => setFilter('all')}
-              className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${
-                filter === 'all' ? 'bg-[#002B49] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1 rounded-md font-bold text-[11px] transition-all cursor-pointer ${
+                filter === 'all' ? 'bg-[#124C46] text-white shadow-xs' : 'text-[#5D6B78] hover:text-[#24313D]'
               }`}
             >
               الكل ({notifications.length})
             </button>
             <button
               onClick={() => setFilter('unread')}
-              className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${
-                filter === 'unread' ? 'bg-[#002B49] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1 rounded-md font-bold text-[11px] transition-all cursor-pointer ${
+                filter === 'unread' ? 'bg-[#124C46] text-white shadow-xs' : 'text-[#5D6B78] hover:text-[#24313D]'
               }`}
             >
               غير مقروء ({unreadCount})
@@ -150,7 +150,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             {unreadCount > 0 && (
               <button
                 onClick={onMarkAllAsRead}
-                className="text-blue-600 hover:text-blue-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                className="text-[#124C46] hover:text-[#0D3D38] font-bold text-[11px] flex items-center gap-1 cursor-pointer"
                 title="تحديد الكل كمقروء"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
@@ -161,7 +161,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             {notifications.length > 0 && (
               <button
                 onClick={onClearAll}
-                className="text-rose-600 hover:text-rose-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                className="text-[#C9364F] hover:underline font-bold text-[11px] flex items-center gap-1 cursor-pointer"
                 title="مسح كافة الإشعارات"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -172,14 +172,14 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         </div>
 
         {/* Notifications List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2.5 bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-4 space-y-2.5 bg-[#E8EDF1]/30">
           {filteredList.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mx-auto text-slate-400 shadow-xs">
+            <div className="py-12 text-center text-[#5D6B78] space-y-2 bg-white rounded-xl border border-[#D6DEE5]">
+              <div className="w-12 h-12 rounded-xl bg-[#F5F7F9] border border-[#D6DEE5] flex items-center justify-center mx-auto text-[#788593] shadow-xs">
                 <Bell className="w-6 h-6" />
               </div>
-              <p className="font-bold text-xs text-slate-700">لا توجد تنبيهات حالياً</p>
-              <p className="text-[11px] text-slate-500">
+              <p className="font-bold text-xs text-[#24313D]">لا توجد تنبيهات حالياً</p>
+              <p className="text-[11px] text-[#5D6B78]">
                 ستصلك إشعارات دفع فورية عند وجود تطابق ذكي كلي أو اعتماد إعلاناتك
               </p>
             </div>
@@ -188,22 +188,22 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               <div
                 key={item.id}
                 onClick={() => onSelectNotification?.(item)}
-                className={`p-3.5 rounded-2xl border transition-all text-right cursor-pointer group ${
+                className={`p-3.5 rounded-xl border transition-all text-right cursor-pointer group ${
                   !item.isRead
-                    ? 'bg-white border-amber-300 shadow-sm hover:border-amber-400'
-                    : 'bg-white/70 border-slate-200 hover:bg-white hover:border-slate-300'
+                    ? 'bg-white border-[#124C46]/30 shadow-xs hover:border-[#124C46]'
+                    : 'bg-white/80 border-[#D6DEE5] hover:bg-white hover:border-[#D6DEE5]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2 mb-1.5">
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 group-hover:scale-105 transition-transform">
+                    <div className="p-1.5 rounded-lg bg-[#F5F7F9] border border-[#D6DEE5] group-hover:scale-105 transition-transform">
                       {getIcon(item.type)}
                     </div>
                     <div>
-                      <h4 className="font-black text-xs text-slate-900 group-hover:text-amber-600 transition-colors">
+                      <h4 className="font-bold text-xs text-[#24313D] group-hover:text-[#124C46] transition-colors">
                         {item.title}
                       </h4>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-[#788593] font-mono">
                         {item.createdAt}
                       </span>
                     </div>
@@ -212,12 +212,12 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   <div className="flex items-center gap-1.5">
                     {getBadge(item.type)}
                     {!item.isRead && (
-                      <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 shadow-xs" title="غير مقروء" />
+                      <span className="w-2 h-2 rounded-full bg-[#124C46] shrink-0 shadow-xs" title="غير مقروء" />
                     )}
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-600 leading-relaxed font-medium pr-8">
+                <p className="text-xs text-[#5D6B78] leading-relaxed font-medium pr-8">
                   {item.body}
                 </p>
 

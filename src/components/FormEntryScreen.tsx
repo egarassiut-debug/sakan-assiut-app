@@ -37,6 +37,23 @@ import { RealEstateAgent, Assignment, HourglassTopRounded } from './FlutterIcons
 import { validatePropertyPayload, validateTenantRequestPayload, dbUpsertProfile } from '../lib/supabase';
 import { safeStorageGetItem, safeSaveDraft, safeStorageRemoveItem } from '../utils/storageManager';
 
+// Flutter-specified unit types defined statically at module level
+const FLUTTER_UNIT_TYPES = [
+  'شقة سكنية',
+  'استوديو',
+  'دوبلكس',
+  'محل تجاري',
+  'مقر إداري / مكتب',
+  'سكن طلابي (ذكور)',
+  'غرفة طلابات مشتركة',
+  'غرفة عمال مشتركة',
+  'روف سكنى',
+  'مخزن / بدروم',
+  'شاليه',
+  'قطعة أرض فضاء',
+  'عيادة طبية مجهزة'
+] as const;
+
 interface FormEntryScreenProps {
   isOffer: boolean; // true = عرض عقار (متاح), false = طلب عقار (مطلوب)
   onBack: () => void;
@@ -68,40 +85,25 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 }) => {
   const isEditing = Boolean(editingProperty || editingTenantRequest);
   const isOffer = editingProperty ? true : editingTenantRequest ? false : propIsOffer;
-  // Flutter-specified unit types
-  const flutterUnitTypes = useMemo(() => [
-    'شقة سكنية',
-    'استوديو',
-    'دوبلكس',
-    'محل تجاري',
-    'مقر إداري / مكتب',
-    'سكن طلابي (ذكور)',
-    'غرفة طلابات مشتركة',
-    'غرفة عمال مشتركة',
-    'روف سكنى',
-    'مخزن / بدروم',
-    'شاليه',
-    'قطعة أرض فضاء',
-    'عيادة طبية مجهزة'
-  ], []);
 
   // Extract active options dynamically from parent state, ensuring flutter items are included
   const activePropertyTypes = useMemo(() => {
-    const fromCategories = (dropdownCategories.propertyTypes?.items || [])
+    const fromCategories = (dropdownCategories?.propertyTypes?.items || [])
       .filter((i) => i.isActive)
       .map((i) => i.name);
-    const combined = [...flutterUnitTypes];
+    const combined: string[] = [...FLUTTER_UNIT_TYPES];
     for (const item of fromCategories) {
       if (!combined.includes(item)) {
         combined.push(item);
       }
     }
     return combined;
-  }, [dropdownCategories, flutterUnitTypes]);
-  const activeDistricts = (dropdownCategories.districts?.items || [])
+  }, [dropdownCategories]);
+
+  const activeDistricts = (dropdownCategories?.districts?.items || [])
     .filter((i) => i.isActive)
     .map((i) => i.name);
-  const activePaymentMethods = (dropdownCategories.paymentMethods?.items || [])
+  const activePaymentMethods = (dropdownCategories?.paymentMethods?.items || [])
     .filter((i) => i.isActive)
     .map((i) => i.name);
 
@@ -113,26 +115,26 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     return safeStorageGetItem<any>(draftStorageKey, null);
   }, [isEditing, draftStorageKey]);
 
-  // Common Form State
+  // Common Form State - empty by default on fresh entry
   const [propertyType, setPropertyType] = useState<string>(
-    editingProperty?.propertyType || editingTenantRequest?.propertyType || initialDraft?.propertyType || ''
+    editingProperty?.propertyType || editingTenantRequest?.propertyType || ''
   );
   const [purpose, setPurpose] = useState<PropertyPurpose>(
-    editingProperty?.purpose || editingTenantRequest?.purpose || initialDraft?.purpose || 'rent'
+    editingProperty?.purpose || editingTenantRequest?.purpose || 'rent'
   );
   const [district, setDistrict] = useState<string>(
-    editingProperty?.district || editingTenantRequest?.preferredDistrict || initialDraft?.district || ''
+    editingProperty?.district || editingTenantRequest?.preferredDistrict || ''
   );
-  const [address, setAddress] = useState(editingProperty?.address || initialDraft?.address || '');
-  const [facade, setFacade] = useState(editingProperty?.facade || initialDraft?.facade || '');
+  const [address, setAddress] = useState(editingProperty?.address || '');
+  const [facade, setFacade] = useState(editingProperty?.facade || '');
   const [area, setArea] = useState<number | ''>(
-    editingProperty ? editingProperty.area : (editingTenantRequest?.maxArea || editingTenantRequest?.minArea || initialDraft?.area || '')
+    editingProperty ? editingProperty.area : (editingTenantRequest?.maxArea || editingTenantRequest?.minArea || '')
   );
-  const [notes, setNotes] = useState(editingProperty?.description || editingTenantRequest?.notes || initialDraft?.notes || '');
-  const [contactName, setContactName] = useState(editingProperty?.ownerName || editingTenantRequest?.tenantName || initialDraft?.contactName || currentUser?.name || '');
-  const [contactPhone, setContactPhone] = useState(editingProperty?.ownerPhone || editingTenantRequest?.tenantPhone || initialDraft?.contactPhone || currentUser?.phone || '');
-  const [uploadedImages, setUploadedImages] = useState<string[]>(editingProperty?.images || initialDraft?.uploadedImages || []);
-  const [hasAgreedDeclaration, setHasAgreedDeclaration] = useState(Boolean(editingProperty || editingTenantRequest || initialDraft?.hasAgreedDeclaration));
+  const [notes, setNotes] = useState(editingProperty?.description || editingTenantRequest?.notes || '');
+  const [contactName, setContactName] = useState(editingProperty?.ownerName || editingTenantRequest?.tenantName || '');
+  const [contactPhone, setContactPhone] = useState(editingProperty?.ownerPhone || editingTenantRequest?.tenantPhone || '');
+  const [uploadedImages, setUploadedImages] = useState<string[]>(editingProperty?.images || []);
+  const [hasAgreedDeclaration, setHasAgreedDeclaration] = useState(Boolean(editingProperty || editingTenantRequest));
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [invalidField, setInvalidField] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -269,18 +271,18 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const [hasRestoredDraft, setHasRestoredDraft] = useState<boolean>(() => Boolean(initialDraft && (initialDraft.title || initialDraft.address || initialDraft.area || initialDraft.price || initialDraft.notes || initialDraft.maxPrice)));
   const [lastSavedNotice, setLastSavedNotice] = useState<string | null>(() => initialDraft?.savedAt ? `تم استرجاع مسودة من ${initialDraft.savedAt}` : null);
 
-  // Offer-specific state (عرض عقار)
-  const [title, setTitle] = useState(editingProperty?.title || initialDraft?.title || '');
-  const [price, setPrice] = useState<number | ''>(editingProperty ? editingProperty.price : (initialDraft?.price ?? ''));
-  const [deposit, setDeposit] = useState<number | ''>(editingProperty?.deposit ?? (initialDraft?.deposit ?? ''));
-  const [rentDurationMonths, setRentDurationMonths] = useState<number | ''>(editingProperty?.rentDurationMonths ?? (initialDraft?.rentDurationMonths ?? ''));
-  const [bedrooms, setBedrooms] = useState<number | ''>(editingProperty?.bedrooms ?? (editingTenantRequest?.bedrooms ?? (initialDraft?.bedrooms ?? '')));
-  const [bathrooms, setBathrooms] = useState<number | ''>(editingProperty?.bathrooms ?? (editingTenantRequest?.bathrooms ?? (initialDraft?.bathrooms ?? '')));
-  const [totalFloors, setTotalFloors] = useState<number | ''>(editingProperty?.totalFloors ?? (initialDraft?.totalFloors ?? ''));
-  const [floorLevel, setFloorLevel] = useState<number | ''>(editingProperty?.floorLevel ?? (initialDraft?.floorLevel ?? ''));
-  const [hasElevator, setHasElevator] = useState(editingProperty?.hasElevator ?? (initialDraft?.hasElevator ?? true));
+  // Offer-specific state (عرض عقار) - empty by default on fresh entry
+  const [title, setTitle] = useState(editingProperty?.title || '');
+  const [price, setPrice] = useState<number | ''>(editingProperty ? editingProperty.price : '');
+  const [deposit, setDeposit] = useState<number | ''>(editingProperty?.deposit ?? '');
+  const [rentDurationMonths, setRentDurationMonths] = useState<number | ''>(editingProperty?.rentDurationMonths ?? '');
+  const [bedrooms, setBedrooms] = useState<number | ''>(editingProperty?.bedrooms ?? (editingTenantRequest?.bedrooms ?? ''));
+  const [bathrooms, setBathrooms] = useState<number | ''>(editingProperty?.bathrooms ?? (editingTenantRequest?.bathrooms ?? ''));
+  const [totalFloors, setTotalFloors] = useState<number | ''>(editingProperty?.totalFloors ?? '');
+  const [floorLevel, setFloorLevel] = useState<number | ''>(editingProperty?.floorLevel ?? '');
+  const [hasElevator, setHasElevator] = useState(editingProperty?.hasElevator ?? false);
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>(
-    editingProperty?.paymentMethods?.length ? editingProperty.paymentMethods : (initialDraft?.selectedPaymentMethods ?? [])
+    editingProperty?.paymentMethods?.length ? editingProperty.paymentMethods : []
   );
   const [utilities] = useState<PropertyUtilities>(() => {
     if (editingProperty?.utilities) return editingProperty.utilities;
@@ -293,22 +295,22 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     };
   });
 
-  // Request-specific state (طلب عقار)
-  const [minPrice, setMinPrice] = useState<number | ''>(editingTenantRequest?.minPrice ?? (initialDraft?.minPrice ?? ''));
-  const [maxPrice, setMaxPrice] = useState<number | ''>(editingTenantRequest?.maxPrice ?? (initialDraft?.maxPrice ?? ''));
-  const minArea = editingTenantRequest?.minArea ?? (initialDraft?.minArea ?? '');
-  const maxArea = editingTenantRequest?.maxArea ?? (initialDraft?.maxArea ?? '');
-  const urgency = editingTenantRequest?.urgency || initialDraft?.urgency || 'immediate';
+  // Request-specific state (طلب عقار) - empty by default on fresh entry
+  const [minPrice, setMinPrice] = useState<number | ''>(editingTenantRequest?.minPrice ?? '');
+  const [maxPrice, setMaxPrice] = useState<number | ''>(editingTenantRequest?.maxPrice ?? '');
+  const minArea = editingTenantRequest?.minArea ?? '';
+  const maxArea = editingTenantRequest?.maxArea ?? '';
+  const urgency = editingTenantRequest?.urgency || 'within_month';
 
   // Admin-specific state for 3rd-party coordination
-  const [fee, setFee] = useState<number | ''>(editingProperty?.fee ?? (initialDraft?.fee ?? ''));
-  const [inspectionDate, setInspectionDate] = useState<string>(editingProperty?.inspectionDate ?? (initialDraft?.inspectionDate ?? ''));
+  const [fee, setFee] = useState<number | ''>(editingProperty?.fee ?? '');
+  const [inspectionDate, setInspectionDate] = useState<string>(editingProperty?.inspectionDate ?? '');
 
   // Land detection
   const isLand = propertyType.includes('أرض') || propertyType.includes('فضاء');
 
-  // خريطة لحفظ اختيارات المستخدم بناءً على معرف المرفق من لوحة التحكم (Flutter: Map<String, String> selectedUtilities)
-  const [selectedUtilities, setSelectedUtilities] = useState<Record<string, string>>(initialDraft?.selectedUtilities || {});
+  // خريطة لحفظ اختيارات المستخدم بناءً على معرف المرفق من لوحة التحكم
+  const [selectedUtilities, setSelectedUtilities] = useState<Record<string, string>>({});
 
   // دالة مسح المسودة والبدء من جديد
   const handleClearDraft = () => {
@@ -910,14 +912,14 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA] pb-24 text-slate-800 animate-in fade-in duration-150">
+    <div className="min-h-screen bg-[#E8EDF1] pb-24 text-[#24313D] animate-in fade-in duration-150">
       {/* Flutter Style AppBar */}
-      <header className="sticky top-0 z-30 bg-[#002B49] text-white shadow-md">
+      <header className="sticky top-0 z-30 bg-[#124C46] text-white shadow-md">
         <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
           <button
             type="button"
             onClick={onBack}
-            className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors text-white"
+            className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors text-white cursor-pointer"
             title="رجوع"
             aria-label="رجوع"
           >
@@ -938,7 +940,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 ? 'إضافة عرض عقار (متاح)'
                 : 'إضافة طلب عقار (مطلوب)'}
             </h1>
-            <p className="text-[11px] text-[#FFB300] font-semibold">
+            <p className="text-[11px] text-[#D6A84F] font-semibold">
               {isEditing
                 ? 'تحديث البيانات وإعادة الإرسال لمراجعة الإدارة'
                 : isAdmin
@@ -951,9 +953,9 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
           <div className="w-10 flex items-center justify-center">
             {isOffer ? (
-              <RealEstateAgent className="w-6 h-6 text-[#FFB300]" />
+              <RealEstateAgent className="w-6 h-6 text-[#D6A84F]" />
             ) : (
-              <Assignment className="w-6 h-6 text-[#FFB300]" />
+              <Assignment className="w-6 h-6 text-[#D6A84F]" />
             )}
           </div>
         </div>
@@ -990,7 +992,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         {/* ------------------------------------------------------------- */}
         {/* دائرِة نسبة اكتمال ملء البيانات - Flutter Completion Card */}
         {/* ------------------------------------------------------------- */}
-        <div className="bg-[#002B49] text-white p-4 sm:p-5 rounded-2xl shadow-md flex items-center gap-4">
+        <div className="bg-[#124C46] text-white p-4 sm:p-5 rounded-2xl shadow-xs flex items-center gap-4 border border-[#124C46]/20">
           <div className="relative w-[55px] h-[55px] shrink-0 flex items-center justify-center">
             {/* SVG Circular Progress Indicator */}
             <svg className="w-[55px] h-[55px] -rotate-90" viewBox="0 0 55 55">
@@ -999,7 +1001,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 cy="27.5"
                 r="22"
                 fill="none"
-                stroke="rgba(255, 255, 255, 0.24)"
+                stroke="rgba(255, 255, 255, 0.2)"
                 strokeWidth="5"
               />
               <circle
@@ -1007,7 +1009,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 cy="27.5"
                 r="22"
                 fill="none"
-                stroke="#FFB300"
+                stroke="#D6A84F"
                 strokeWidth="5"
                 strokeDasharray={2 * Math.PI * 22}
                 strokeDashoffset={2 * Math.PI * 22 * (1 - progress)}
@@ -1024,16 +1026,16 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             <h4 className="text-sm sm:text-base font-bold text-white">
               نسبة اكتمال الإعلان
             </h4>
-            <p className="text-[11px] text-white/70 mt-1 leading-relaxed">
+            <p className="text-[11px] text-white/80 mt-1 leading-relaxed">
               كلما أضفت بيانات اختيارية أكثر، زادت فرصة قبول وثقة الإعلان لدى الإدارة والمشترين.
             </p>
           </div>
         </div>
 
         {/* Voice Dictation Card Banner */}
-        <div className="bg-linear-to-r from-[#002B49] to-[#00406C] rounded-2xl p-4 text-white shadow-md flex items-center justify-between gap-3">
+        <div className="bg-linear-to-r from-[#124C46] to-[#0D3D38] rounded-2xl p-4 text-white shadow-xs flex items-center justify-between gap-3 border border-[#124C46]/20">
           <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-[#FFB300] text-xs font-bold">
+            <div className="flex items-center gap-1.5 text-[#D6A84F] text-xs font-bold">
               <Sparkles className="w-4 h-4 animate-spin" />
               <span>المساعد الصوتي الذكي</span>
             </div>
@@ -1041,17 +1043,17 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               تحدث بدلاً من الكتابة لتعبئة نموذج {isOffer ? 'العرض' : 'الطلب'} تلقائياً
             </p>
             {voiceStatus && (
-              <p className="text-[11px] text-amber-200 font-medium">{voiceStatus}</p>
+              <p className="text-[11px] text-[#FFF3D6] font-medium">{voiceStatus}</p>
             )}
           </div>
 
           <button
             type="button"
             onClick={toggleRecording}
-            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-transform active:scale-95 shadow-md shrink-0 ${
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-transform active:scale-95 shadow-xs shrink-0 cursor-pointer ${
               isRecording
                 ? 'bg-rose-500 text-white animate-pulse'
-                : 'bg-[#FFB300] hover:bg-[#FFA000] text-black'
+                : 'bg-[#D6A84F] hover:bg-[#8B641C] text-[#24313D] hover:text-white'
             }`}
           >
             {isRecording ? (
@@ -1061,7 +1063,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               </>
             ) : (
               <>
-                <Mic className="w-4 h-4 text-black" />
+                <Mic className="w-4 h-4" />
                 <span>تسجيل صوتي</span>
               </>
             )}
@@ -1097,8 +1099,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         <form onSubmit={handleSubmit} noValidate className="space-y-5">
           {/* Section 1: نوع العقار والغرض */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-[#002B49] flex items-center gap-2 border-b border-slate-100 pb-2">
-              <Building2 className="w-4 h-4 text-[#FFB300]" />
+            <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
+              <Building2 className="w-4 h-4 text-[#D6A84F]" />
               <span>البيانات الأساسية للعقار</span>
             </h3>
 
@@ -1117,7 +1119,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 value={propertyType}
                 onChange={(e) => handleTypeChange(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-[#002B49] transition-all cursor-pointer"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-[#124C46] transition-all cursor-pointer"
               >
                 <option value="" disabled>اختر نوع العقار...</option>
                 {activePropertyTypes.map((type) => (
@@ -1158,7 +1160,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     onClick={() => setPurpose('rent')}
                     className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
                       purpose === 'rent'
-                        ? 'bg-[#002B49] text-[#FFB300] border-[#002B49] shadow-xs'
+                        ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46] shadow-xs'
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
@@ -1169,7 +1171,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     onClick={() => setPurpose('sale')}
                     className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
                       purpose === 'sale'
-                        ? 'bg-[#002B49] text-[#FFB300] border-[#002B49] shadow-xs'
+                        ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46] shadow-xs'
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
@@ -1182,8 +1184,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
           {/* Section 2: الموقع والتسعير (إجباري *) */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-            <h3 className="text-[14px] font-bold text-[#002B49] flex items-center gap-2 border-b border-slate-100 pb-2">
-              <MapPin className="w-4 h-4 text-[#FFB300]" />
+            <h3 className="text-[14px] font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
+              <MapPin className="w-4 h-4 text-[#D6A84F]" />
               <span>الموقع والتسعير (إجباري *)</span>
             </h3>
 
@@ -1202,7 +1204,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   ref={districtRef}
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
                 >
                   <option value="" disabled>اختر المنطقة / الحي...</option>
                   {activeDistricts.map((d) => (
@@ -1238,7 +1240,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     className={`w-full pr-9 pl-3 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden transition-all ${
                       invalidField === 'area'
                         ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
-                        : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#002B49]'
+                        : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#124C46]'
                     }`}
                   />
                 </div>
@@ -1260,7 +1262,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="مثال: شارع الجمهورية المتفرع من شارع المحطة"
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
               />
             </div>
 
@@ -1281,7 +1283,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   value={facade}
                   onChange={(e) => setFacade(e.target.value)}
                   placeholder="مثال: بحرية على شارع رئيسي بعرض 16 متر"
-                  className="w-full pr-9 pl-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                  className="w-full pr-9 pl-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
                 />
               </div>
             </div>
@@ -1310,10 +1312,10 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                       }}
                       placeholder="مثال: 3500"
                       required
-                      className={`w-full pr-9 pl-3 py-2 rounded-xl border text-xs font-bold text-[#002B49] focus:outline-hidden transition-all ${
+                      className={`w-full pr-9 pl-3 py-2 rounded-xl border text-xs font-bold text-[#124C46] focus:outline-hidden transition-all ${
                         invalidField === 'price'
                           ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
-                          : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#002B49]'
+                          : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#124C46]'
                       }`}
                     />
                   </div>
@@ -1334,7 +1336,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                       value={deposit}
                       onChange={(e) => setDeposit(e.target.value ? Number(e.target.value) : '')}
                       placeholder="مثال: 3500"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
                     />
                   </div>
                 )}
@@ -1355,7 +1357,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value ? Number(e.target.value) : '')}
                     placeholder="مثال: 2000"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
                   />
                 </div>
                 <div>
@@ -1377,10 +1379,10 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     }}
                     placeholder="مثال: 4500"
                     required
-                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold text-[#002B49] focus:outline-hidden transition-all ${
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold text-[#124C46] focus:outline-hidden transition-all ${
                       invalidField === 'maxPrice'
                         ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
-                        : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#002B49]'
+                        : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#124C46]'
                     }`}
                   />
                 </div>
@@ -1391,8 +1393,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           {/* Section 3: تفاصيل الغرف والمباني (مخفية كلياً إذا كان أرض فضاء) */}
           {!isLand && (
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-              <h3 className="text-sm font-bold text-[#002B49] flex items-center gap-2 border-b border-slate-100 pb-2">
-                <Bed className="w-4 h-4 text-[#FFB300]" />
+              <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
+                <Bed className="w-4 h-4 text-[#D6A84F]" />
                 <span>مواصفات وتجهيزات المبنى</span>
               </h3>
 
@@ -1494,7 +1496,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                       type="button"
                       onClick={() => setHasElevator(true)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                        hasElevator ? 'bg-[#002B49] text-[#FFB300]' : 'bg-slate-100 text-slate-600'
+                        hasElevator ? 'bg-[#124C46] text-[#D6A84F]' : 'bg-slate-100 text-slate-600'
                       }`}
                     >
                       يوجد أسانسير
@@ -1503,7 +1505,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                       type="button"
                       onClick={() => setHasElevator(false)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                        !hasElevator ? 'bg-[#002B49] text-[#FFB300]' : 'bg-slate-100 text-slate-600'
+                        !hasElevator ? 'bg-[#124C46] text-[#D6A84F]' : 'bg-slate-100 text-slate-600'
                       }`}
                     >
                       بدون أسانسير
@@ -1518,7 +1520,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               <div className="pt-3 border-t border-slate-100 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Zap className="w-4 h-4 text-[#FFB300]" />
+                    <Zap className="w-4 h-4 text-[#D6A84F]" />
                     <span>المرافق والتجهيزات (مربوطة ديناميكياً بلوحة التحكم)</span>
                     <FieldInfoTooltip
                       fieldKey="utilities"
@@ -1560,7 +1562,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                               return updated;
                             });
                           }}
-                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#002B49] text-slate-800"
+                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46] text-slate-800"
                         >
                           <option value="">-- لم يتم التحديد (اختياري) --</option>
                           {utility.statusOptions.map((option) => (
@@ -1580,8 +1582,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           {/* Section 4: مدة الإيجار وطرق الدفع والخدمات (مخفية كلياً إذا كان أرض فضاء) */}
           {!isLand && isOffer && (
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-3">
-              <h3 className="text-sm font-bold text-[#002B49] flex items-center gap-2 border-b border-slate-100 pb-2">
-                <Clock className="w-4 h-4 text-[#FFB300]" />
+              <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
+                <Clock className="w-4 h-4 text-[#D6A84F]" />
                 <span>مدة الإيجار وطرق السداد</span>
               </h3>
 
@@ -1620,7 +1622,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                         }}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                           isSelected
-                            ? 'bg-[#002B49] text-[#FFB300] border-[#002B49]'
+                            ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46]'
                             : 'bg-slate-50 text-slate-600 border-slate-200'
                         }`}
                       >
@@ -1635,8 +1637,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
           {/* Section 5: معلومات التواصل والوصف */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-[#002B49] flex items-center gap-2 border-b border-slate-100 pb-2">
-              <User className="w-4 h-4 text-[#FFB300]" />
+            <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
+              <User className="w-4 h-4 text-[#D6A84F]" />
               <span>بيانات الاتصال والتواصل</span>
             </h3>
 
@@ -1658,7 +1660,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
                     placeholder="مثال: م. أحمد عبد الرحيم"
-                    className="w-full pr-9 pl-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                    className="w-full pr-9 pl-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
                   />
                 </div>
               </div>
@@ -1689,7 +1691,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     className={`w-full pr-9 pl-16 py-2 rounded-xl border text-xs font-bold text-slate-800 focus:outline-hidden text-right transition-all ${
                       invalidField === 'phone'
                         ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
-                        : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#002B49]'
+                        : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#124C46]'
                     }`}
                   />
                   {isValidEgyptianPhone(contactPhone) ? (
@@ -1728,7 +1730,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="أي مميزات إضافية، شروط خاصة، أو تفاصيل ترغب في توضيحها..."
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#002B49]"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
               />
             </div>
 
@@ -1797,7 +1799,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     setHasAgreedDeclaration(e.target.checked);
                     if (invalidField === 'declaration') setInvalidField(null);
                   }}
-                  className="mt-0.5 rounded text-[#002B49] focus:ring-[#002B49] w-4 h-4 cursor-pointer"
+                  className="mt-0.5 rounded text-[#124C46] focus:ring-[#124C46] w-4 h-4 cursor-pointer"
                 />
                 <span className="text-amber-950 font-medium leading-relaxed">
                   <strong>إقرار إجباري:</strong> أقر أنا المعلن بأنني المالك أو الوكيل الرسمي المفوض لهذا العقار، وأن جميع البيانات المدخلة صحيحة تماماً ومطابقة للمعاينة على أرض الواقع.
@@ -1844,9 +1846,9 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full py-3.5 px-6 rounded-2xl bg-[#002B49] hover:bg-[#001D33] text-[#FFB300] font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all active:scale-[0.99] cursor-pointer"
+              className="w-full py-3.5 px-6 rounded-2xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all active:scale-[0.99] cursor-pointer"
             >
-              <CheckCircle2 className="w-5 h-5 text-[#FFB300]" />
+              <CheckCircle2 className="w-5 h-5 text-[#D6A84F]" />
               <span>
                 {isEditing
                   ? 'حفظ واستيفاء البيانات وإعادة الإرسال للمراجعة'
@@ -1874,7 +1876,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           >
             {/* Title */}
             <div className="flex items-center gap-2">
-              <HourglassTopRounded className="w-6 h-6 text-[#FFB300] shrink-0" />
+              <HourglassTopRounded className="w-6 h-6 text-[#D6A84F] shrink-0" />
               <h3 className="text-[16px] font-bold text-slate-900 leading-none">
                 {isAdmin ? 'تم نشر الإعلان بنجاح' : 'تم تسجيل الطلب'}
               </h3>
@@ -1890,7 +1892,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               {submittedListingId && (
                 <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
                   <span>كود الإعلان:</span>
-                  <span className="font-mono font-bold text-sm text-[#002B49]">{submittedListingId}</span>
+                  <span className="font-mono font-bold text-sm text-[#124C46]">{submittedListingId}</span>
                 </div>
               )}
             </div>
@@ -1903,7 +1905,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   setShowSuccessDialog(false); // إغلاق النافذة
                   onBack(); // العودة للشاشة الرئيسية
                 }}
-                style={{ backgroundColor: '#002B49' }}
+                style={{ backgroundColor: '#124C46' }}
                 className="px-6 py-2 rounded-xl text-white font-bold text-sm hover:opacity-95 active:scale-95 transition-all shadow-md cursor-pointer"
               >
                 حسناً
@@ -1920,7 +1922,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-200 pointer-events-auto cursor-pointer max-w-sm w-full px-4"
           title="انقر هنا للانتقال فوراً لمكان الخطأ"
         >
-          <div className="bg-[#002B49]/95 text-white p-3.5 rounded-2xl shadow-2xl border border-rose-400/40 flex items-center justify-between gap-3 backdrop-blur-md hover:bg-[#001D33] transition-all">
+          <div className="bg-[#124C46]/95 text-white p-3.5 rounded-2xl shadow-2xl border border-rose-400/40 flex items-center justify-between gap-3 backdrop-blur-md hover:bg-[#001D33] transition-all">
             <div className="flex items-center gap-3 flex-1">
               <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0">
                 <AlertCircle className="w-5 h-5 text-rose-400" />
@@ -1947,3 +1949,5 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     </div>
   );
 };
+
+export default FormEntryScreen;

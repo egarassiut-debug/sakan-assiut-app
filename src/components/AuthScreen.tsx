@@ -307,36 +307,46 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     }
   };
 
+  const handleQuickDemoLogin = (role: 'admin' | 'user') => {
+    const demoUser: AppUser = role === 'admin' ? DEFAULT_USERS[1] : DEFAULT_USERS[0];
+    saveSecureSession(demoUser);
+    safeStorageSetItem('ardaw_saved_credentials', { phone: demoUser.phone, pin: demoUser.pin });
+    onLoginSuccess(demoUser);
+  };
+
   return (
     <div 
-      className="min-h-screen bg-gradient-to-b from-[#002B49] via-[#001D33] to-slate-900 flex flex-col justify-center items-center px-4 py-8 text-slate-800 font-['Cairo'] select-none"
+      className="min-h-screen bg-[#E8EDF1] flex flex-col justify-center items-center px-4 py-8 text-[#24313D] font-['Tajawal','Cairo',sans-serif] select-none"
       dir="rtl"
     >
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-[#D6DEE5] animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Branding */}
-        <div className="bg-gradient-to-b from-[#0F172A] via-[#002B49] to-[#0F172A] p-6 text-center text-white relative">
+        <div className="bg-[#124C46] p-6 text-center text-white relative">
           
-          {/* Top Badge: تطبيق سكن أسيوط - المنظومة العقارية المعتمدة بأسرها */}
-          <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 text-amber-300 border border-amber-400/40 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold mb-3 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          {/* Subtle gold accent divider */}
+          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[#D6A84F] to-transparent" />
+
+          {/* Top Badge: تطبيق سكن أسيوط - المنظومة العقارية المعتمدة */}
+          <div className="inline-flex items-center gap-1.5 bg-[#FDF8ED]/10 text-[#D6A84F] border border-[#D6A84F]/40 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold mb-3 shadow-xs">
+            <Sparkles className="w-3.5 h-3.5 text-[#D6A84F] shrink-0" />
             <span>تطبيق سكن أسيوط - المنظومة العقارية المعتمدة بأسرها</span>
           </div>
 
           {/* Official Sakan Logo Image */}
-          <div className="w-20 h-20 mx-auto rounded-3xl overflow-hidden ring-4 ring-amber-400/80 shadow-2xl shadow-black/50 mb-3 bg-[#0A1D1A] flex items-center justify-center p-1 group hover:scale-105 transition-all">
+          <div className="w-20 h-20 mx-auto rounded-3xl overflow-hidden ring-4 ring-[#D6A84F]/60 shadow-xl mb-3 bg-white flex items-center justify-center p-1.5 group hover:scale-105 transition-all">
             <img 
               src="/sakan-logo.png" 
               alt="شعار تطبيق سكن أسيوط" 
-              className="w-full h-full object-cover rounded-2xl" 
+              className="w-full h-full object-contain" 
               loading="eager"
             />
           </div>
 
           <h1 className="text-2xl font-black text-white tracking-tight">
-            سكن <span className="text-amber-400">أسيوط</span>
+            سكن <span className="text-[#D6A84F]">أسيوط</span>
           </h1>
-          <p className="text-xs text-slate-200 mt-1.5 font-medium leading-relaxed max-w-xs mx-auto">
+          <p className="text-xs text-[#DCECE7] mt-1.5 font-medium leading-relaxed max-w-xs mx-auto">
             تطبيق سكن أسيوط - المنظومة العقارية المعتمدة بأسرها
           </p>
 
@@ -345,8 +355,32 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           </div>
         </div>
 
-        {/* Tab Switcher: Only 2 options (تسجيل الدخول / حساب جديد) without any admin references */}
-        <div className="flex border-b border-slate-200 bg-slate-50 p-1.5 gap-1.5 text-xs font-bold">
+        {/* Quick Demo Access Bar */}
+        <div className="bg-[#F5F9F8] p-3 border-b border-[#D6DEE5] flex items-center justify-between gap-2">
+          <span className="text-[11px] text-[#5D6B78] font-bold">دخول تجريبي سريع:</span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleQuickDemoLogin('admin')}
+              className="px-2.5 py-1 rounded-lg bg-[#124C46] hover:bg-[#0D3D38] text-white text-[11px] font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
+              title="دخول مباشر بصلاحية مدير المنظومة"
+            >
+              <Sparkles className="w-3 h-3 text-[#D6A84F]" />
+              <span>مدير (Admin)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickDemoLogin('user')}
+              className="px-2.5 py-1 rounded-lg bg-white hover:bg-[#F5F9F8] text-[#124C46] border border-[#D6DEE5] text-[11px] font-bold transition-all cursor-pointer"
+              title="دخول مباشر كمستخدم عادي"
+            >
+              <span>مستخدم عادي</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Switcher: Only 2 options (تسجيل الدخول / حساب جديد) */}
+        <div className="flex border-b border-[#D6DEE5] bg-[#F5F7F9] p-1.5 gap-1.5 text-xs font-bold">
           <button
             type="button"
             onClick={() => {
@@ -355,8 +389,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             }}
             className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               authMode === 'login'
-                ? 'bg-[#002B49] text-[#FFB300] shadow-xs font-black'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#124C46] text-white shadow-xs font-black'
+                : 'text-[#5D6B78] hover:text-[#24313D]'
             }`}
           >
             <LogIn className="w-4 h-4" />
@@ -371,8 +405,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             }}
             className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               authMode === 'register'
-                ? 'bg-[#002B49] text-[#FFB300] shadow-xs font-black'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#124C46] text-white shadow-xs font-black'
+                : 'text-[#5D6B78] hover:text-[#24313D]'
             }`}
           >
             <UserPlus className="w-4 h-4" />
@@ -385,8 +419,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           
           {/* Error Banner */}
           {errorMessage && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2 text-xs text-rose-800 font-semibold animate-in fade-in">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div className="p-3 bg-[#FCE8EC] border border-[#C9364F]/30 rounded-2xl flex items-start gap-2 text-xs text-[#C9364F] font-semibold animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-[#C9364F] shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
@@ -504,12 +538,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
             {/* Remember Me Option */}
             <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+              <label className="flex items-center gap-2 text-xs font-bold text-[#5D6B78] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded text-[#002B49] focus:ring-[#002B49] w-4 h-4 cursor-pointer"
+                  className="rounded text-[#124C46] focus:ring-[#124C46] w-4 h-4 cursor-pointer"
                 />
                 <span>تذكر بيانات الدخول</span>
               </label>
@@ -521,7 +555,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                     setAuthMode('register');
                     setErrorMessage(null);
                   }}
-                  className="text-xs text-[#002B49] font-black hover:underline cursor-pointer"
+                  className="text-xs text-[#124C46] font-bold hover:underline cursor-pointer"
                 >
                   حساب جديد؟
                 </button>
@@ -532,7 +566,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                     setAuthMode('login');
                     setErrorMessage(null);
                   }}
-                  className="text-xs text-[#002B49] font-black hover:underline cursor-pointer"
+                  className="text-xs text-[#124C46] font-bold hover:underline cursor-pointer"
                 >
                   لديك حساب؟ تسجيل الدخول
                 </button>
@@ -542,7 +576,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             {/* Single Large Action Button */}
             <button
               type="submit"
-              className="w-full py-3.5 px-4 rounded-xl bg-[#002B49] hover:bg-[#001D33] text-[#FFB300] font-black text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer mt-3"
+              className="w-full py-3.5 px-4 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-black text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer mt-3"
             >
               {authMode === 'register' ? (
                 <>

@@ -14,14 +14,15 @@ export interface HeaderProps {
   pageTitle?: string;
   isAdminView?: boolean;
   onToggleAdminDrawer?: () => void;
+  onToggleNavDrawer?: () => void;
 }
 
 /**
  * Top AppBar Header:
- * 1. Logo (Right): Crisp emblem without white background, padding, or borders.
- * 2. Greeting & User Name (Right, next to logo): User name in white, and "أهلاً بك في" below it in slate-400.
- * 3. Center Title: "سكن أسيوط" in prominent text-2xl font-black with golden amber-400 color.
- * 4. Left Toolbar: PWA install, Favorites, Notifications, Logout + Admin Drawer button when in Admin view.
+ * 1. Logo (Right): Crisp emblem without harsh borders.
+ * 2. Greeting & User Name: User name in dark text (#24313D).
+ * 3. Center Title: "سكن أسيوط" in petroleum #124C46 with luxurious styling.
+ * 4. Left Toolbar: PWA install, Favorites, Notifications, Logout + Admin Drawer button.
  */
 export const Header: React.FC<HeaderProps> = ({ 
   currentUser, 
@@ -33,33 +34,34 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenFavorites,
   isAdminView = false,
   onToggleAdminDrawer,
+  onToggleNavDrawer,
 }) => {
   const isAdmin = currentUser?.role === 'admin';
 
-  // 1. Username Truncation: strictly first 8 characters max + ellipsis if longer
+  // Username Truncation: first 8 characters max + ellipsis
   const rawName = currentUser?.name?.trim() || currentUser?.phone || 'مستخدم';
   const truncatedName = rawName.length > 8 ? `${rawName.slice(0, 8)}...` : rawName;
 
+  const handleOpenDrawer = onToggleNavDrawer || onToggleAdminDrawer;
+
   return (
-    <header className="relative bg-white/95 backdrop-blur-md text-slate-800 shadow-xs sticky top-0 z-40 border-b border-slate-200 select-none overflow-hidden">
-      {/* Subtle Amber Accent Line */}
-      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent opacity-80" />
+    <header className="relative bg-white/95 backdrop-blur-md text-[#24313D] shadow-xs sticky top-0 z-40 border-b border-[#D6DEE5] select-none overflow-hidden">
+      {/* Subtle Petroleum/Gold Brand Accent Line */}
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#124C46]/20 via-[#D6A84F] to-[#124C46]/20 opacity-80" />
 
       <div className="max-w-6xl mx-auto px-3 sm:px-4 h-15 sm:h-16 relative flex items-center justify-between gap-2 sm:gap-4">
         
-        {/* ================================================================= */}
-        {/* 1. Zone 1 (Right): Logo + Truncated Username + Admin Drawer Trigger */}
-        {/* ================================================================= */}
+        {/* Zone 1 (Right): Menu Trigger Button + Logo + Truncated Username */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 z-10">
-          {/* Admin Drawer Toggle Button in Header */}
-          {isAdminView && onToggleAdminDrawer && (
+          {handleOpenDrawer && (
             <button
               type="button"
-              onClick={onToggleAdminDrawer}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
-              title="فتح القائمة الجانبية للوحة التحكم"
+              onClick={handleOpenDrawer}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F5F9F8] hover:bg-[#EAF3EF] text-[#124C46] border border-[#D6DEE5] flex items-center justify-center shadow-xs transition-all active:scale-95 cursor-pointer shrink-0 group"
+              title="فتح القائمة الرئيسية والجانبية"
+              aria-label="القائمة الجانبية"
             >
-              <Menu className="w-5 h-5 text-slate-700" />
+              <Menu className="w-5 h-5 text-[#124C46] group-hover:scale-105 transition-transform" />
             </button>
           )}
 
@@ -69,8 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-2 cursor-pointer group"
             title="سكن أسيوط - الرئيسية"
           >
-            {/* Logo Emblem */}
-            <div className="w-[44px] h-[44px] sm:w-[50px] sm:h-[50px] bg-transparent p-0 m-0 border-0 shrink-0 flex items-center justify-center drop-shadow-xs">
+            <div className="w-[42px] h-[42px] sm:w-[48px] sm:h-[48px] bg-transparent p-0 m-0 border-0 shrink-0 flex items-center justify-center drop-shadow-xs">
               <img 
                 src="/sakan-logo.png" 
                 alt="شعار سكن أسيوط" 
@@ -79,55 +80,48 @@ export const Header: React.FC<HeaderProps> = ({
               />
             </div>
 
-            {/* User Name (strictly truncated to 8 chars) & Greeting */}
             <div className="flex flex-col text-right justify-center leading-tight">
               <span 
-                className="text-xs sm:text-sm font-extrabold text-slate-900 truncate max-w-[90px] sm:max-w-[120px]"
+                className="text-xs sm:text-sm font-extrabold text-[#24313D] truncate max-w-[90px] sm:max-w-[120px]"
                 title={rawName}
               >
                 {truncatedName}
               </span>
-              <span className="text-[10px] text-slate-500 font-normal">
+              <span className="text-[10px] text-[#5D6B78] font-normal">
                 أهلاً بك في
               </span>
             </div>
           </div>
         </div>
 
-        {/* ================================================================= */}
-        {/* 2. Center: "سكن أسيوط" with prominent luxury Arabic typography */}
-        {/* ================================================================= */}
+        {/* Center: "سكن أسيوط" */}
         <div 
           onClick={() => onSelectTab && onSelectTab('home')}
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-pointer group select-none pointer-events-auto"
           title="سكن أسيوط - الرئيسية"
         >
-          <div className="flex flex-col items-center justify-center py-1 px-3 sm:px-5 rounded-2xl bg-amber-50/70 border border-amber-200/80 group-hover:border-amber-400 group-hover:bg-amber-100/60 transition-all shadow-2xs">
-            <span className="text-xl sm:text-2xl md:text-3xl font-black tracking-wide text-amber-600 group-hover:text-amber-700 whitespace-nowrap font-['Tajawal','Cairo',sans-serif]">
+          <div className="flex flex-col items-center justify-center py-1 px-3 sm:px-5 rounded-2xl bg-[#EAF3EF]/70 border border-[#124C46]/20 group-hover:border-[#124C46]/40 transition-all shadow-2xs">
+            <span className="text-xl sm:text-2xl md:text-3xl font-black tracking-wide text-[#124C46] group-hover:text-[#0D3D38] whitespace-nowrap font-['Tajawal','Cairo',sans-serif]">
               سكن أسيوط
             </span>
           </div>
         </div>
 
-        {/* ================================================================= */}
-        {/* 3. Left Toolbar (Favorites, Notifications, Logout, PWA) */}
-        {/* ================================================================= */}
+        {/* Left Toolbar */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap z-10">
-
-          {/* PWA Install Button */}
           <PWAInstallButton />
 
-          {/* Favorites Heart Button for Regular Users */}
+          {/* Favorites Heart Button */}
           {onOpenFavorites && !isAdmin && (
             <button
               onClick={onOpenFavorites}
-              className="relative p-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 transition-all cursor-pointer border border-slate-200 shrink-0"
+              className="relative p-2 rounded-xl bg-white hover:bg-[#F5F9F8] active:scale-95 text-[#5D6B78] transition-all cursor-pointer border border-[#D6DEE5] shrink-0"
               title="العقارات المفضلة"
               aria-label="المفضلة"
             >
-              <Heart className={`w-4 h-4 ${favoritesCount > 0 ? 'fill-rose-500 text-rose-500' : 'text-slate-600'}`} />
+              <Heart className={`w-4 h-4 ${favoritesCount > 0 ? 'fill-[#C9364F] text-[#C9364F]' : 'text-[#5D6B78]'}`} />
               {favoritesCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-bold text-[9px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs">
+                <span className="absolute -top-1 -right-1 bg-[#C9364F] text-white font-bold text-[9px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs">
                   {favoritesCount > 9 ? '9+' : favoritesCount}
                 </span>
               )}
@@ -138,13 +132,13 @@ export const Header: React.FC<HeaderProps> = ({
           {onOpenNotifications && (
             <button
               onClick={onOpenNotifications}
-              className="relative p-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-amber-600 transition-all cursor-pointer border border-slate-200 shrink-0"
+              className="relative p-2 rounded-xl bg-white hover:bg-[#F5F9F8] active:scale-95 text-[#124C46] transition-all cursor-pointer border border-[#D6DEE5] shrink-0"
               title="مركز الإشعارات والتنبيهات"
               aria-label="مركز الإشعارات"
             >
-              <Bell className="w-4 h-4 text-amber-600" />
+              <Bell className="w-4 h-4 text-[#124C46]" />
               {unreadNotificationCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-bold text-[9px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs animate-pulse">
+                <span className="absolute -top-1 -right-1 bg-[#C9364F] text-white font-bold text-[9px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs animate-pulse">
                   {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
                 </span>
               )}
@@ -155,10 +149,10 @@ export const Header: React.FC<HeaderProps> = ({
           {onLogout && (
             <button
               onClick={onLogout}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 hover:border-rose-300 text-rose-700 active:scale-95 text-xs font-bold transition-all cursor-pointer border border-rose-200 shrink-0"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#FCE8EC] hover:bg-[#F8D2D9] text-[#C9364F] active:scale-95 text-xs font-bold transition-all cursor-pointer border border-[#C9364F]/30 shrink-0"
               title="تسجيل الخروج من الحساب"
             >
-              <LogOut className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+              <LogOut className="w-3.5 h-3.5 text-[#C9364F] shrink-0" />
               <span className="hidden sm:inline">خروج</span>
             </button>
           )}
@@ -168,3 +162,4 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+export default Header;

@@ -68,6 +68,103 @@ export function isSupabaseActive(): boolean {
   return getSupabaseClient() !== null;
 }
 
+export interface SupabaseHealthStatus {
+  isConnected: boolean;
+  isConfigured: boolean;
+  latencyMs?: number;
+  error?: string;
+  url?: string;
+  lastChecked: string;
+}
+
+/**
+ * Perform a real-time lightweight ping against Supabase to verify connectivity and measure latency
+ */
+export async function checkSupabaseConnection(): Promise<SupabaseHealthStatus> {
+  const config = getSupabaseConfig();
+  const now = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  if (!config?.url || !config?.anonKey) {
+    return {
+      isConnected: false,
+      isConfigured: false,
+      error: 'إعدادات الاتصال (URL / Anon Key) غير مضبوطة',
+      lastChecked: now,
+    };
+  }
+
+  const client = getSupabaseClient();
+  if (!client) {
+    return {
+      isConnected: false,
+      isConfigured: true,
+      url: config.url,
+      error: 'تعذر تهيئة عميل Supabase',
+      lastChecked: now,
+    };
+  }
+
+  const startTime = performance.now();
+  try {
+    const timeoutPromise = new Promise<{ data: null; error: { message: string; code?: string } }>((_, reject) =>
+      setTimeout(() => reject(new Error('انتهت مهلة استجابة الخادم (تجاوز 7 ثوانٍ)')), 7000)
+    );
+
+    const queryPromise = client
+      .from('properties')
+      .select('id', { count: 'exact', head: true })
+      .limit(1);
+
+    const result = (await Promise.race([queryPromise, timeoutPromise])) as any;
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+
+    if (result && result.error) {
+      // 42P01 means table does not exist, but network and auth connection is valid and working
+      if (result.error.code === '42P01' || result.error.code === '42501') {
+        return {
+          isConnected: true,
+          isConfigured: true,
+          latencyMs,
+          url: config.url,
+          lastChecked: now,
+        };
+      }
+      return {
+        isConnected: false,
+        isConfigured: true,
+        latencyMs,
+        url: config.url,
+        error: result.error.message || 'خطأ في الاستجابة من Supabase',
+        lastChecked: now,
+      };
+    }
+
+    return {
+      isConnected: true,
+      isConfigured: true,
+      latencyMs,
+      url: config.url,
+      lastChecked: now,
+    };
+  } catch (err: any) {
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    return {
+      isConnected: false,
+      isConfigured: true,
+      latencyMs,
+      url: config.url,
+      error: err?.message || 'تعذر الوصول لخادم قاعدة البيانات',
+      lastChecked: now,
+    };
+  }
+}
+
+export function notifySupabaseSuccess(detail?: { table: string; entityId?: string; timestamp?: string }): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ardaw_supabase_sync_success', { detail }));
+  }
+}
+
 // ============================================================================
 // DATA MAPPERS (CamelCase <-> snake_case)
 // ============================================================================
@@ -754,6 +851,7 @@ export async function dbUpsertProperty(prop: Property): Promise<boolean> {
       `%c[Supabase Success] ✅ تم إرسال وحفظ العقار (${prop.code}) في Supabase بنجاح!`,
       'background: #059669; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px;'
     );
+    notifySupabaseSuccess({ table: 'properties', entityId: prop.id, timestamp });
     return true;
   } catch (err: any) {
     const errorMsg = err?.message || String(err);
@@ -963,6 +1061,7 @@ export async function dbUpsertTenantRequest(req: TenantRequest): Promise<boolean
       `%c[Supabase Success] ✅ تم إرسال وحفظ طلب العقار (${req.requestCode || req.id}) في Supabase بنجاح!`,
       'background: #059669; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px;'
     );
+    notifySupabaseSuccess({ table: 'tenant_requests', entityId: req.id, timestamp });
     return true;
   } catch (err: any) {
     const errorMsg = err?.message || String(err);

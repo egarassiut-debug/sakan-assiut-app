@@ -62,24 +62,24 @@ export const SmartMatchingResultsModal: React.FC<SmartMatchingResultsModalProps>
       <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-hidden shadow-2xl border border-slate-200 flex flex-col my-auto animate-in zoom-in-95 duration-150">
         
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-[#002B49] via-[#023e68] to-[#001D33] text-white p-5 border-b border-[#001D33] flex items-start justify-between gap-3">
+        <div className="bg-[#124C46] text-white p-5 border-b border-[#0D3D38] flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#FFB300] text-slate-950 flex items-center justify-center shrink-0 shadow-md">
-              <Sparkles className="w-6 h-6 text-slate-950" />
+            <div className="w-11 h-11 rounded-xl bg-white/15 text-white flex items-center justify-center shrink-0">
+              <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                <span className="text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold px-2.5 py-0.5 rounded-full">
+                <span className="text-[11px] bg-[#E4F4EC] text-[#16856B] border border-[#16856B]/20 font-bold px-2.5 py-0.5 rounded-full">
                   ✓ تم حفظ الإعلان بنجاح
                 </span>
-                <span className="text-[11px] bg-[#FFB300]/20 text-[#FFB300] border border-[#FFB300]/30 font-bold px-2.5 py-0.5 rounded-full">
-                  المطابقة الذكية (Smart Matching)
+                <span className="text-[11px] bg-white/15 text-white border border-white/20 font-bold px-2.5 py-0.5 rounded-full">
+                  المطابقة الذكية
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-black text-white">
+              <h2 className="text-base sm:text-lg font-bold text-white font-['Tajawal','Cairo',sans-serif]">
                 نتائج المطابقة الفورية بين العروض والطلبات
               </h2>
-              <p className="text-xs text-white/70 mt-0.5">
+              <p className="text-xs text-[#DCECE7] mt-0.5">
                 فحص فوري في قاعدة بيانات أسيوط لربط إعلانك بالفرص المتطابقة لحظياً
               </p>
             </div>
@@ -87,10 +87,10 @@ export const SmartMatchingResultsModal: React.FC<SmartMatchingResultsModalProps>
 
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
             aria-label="إغلاق"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -309,7 +309,7 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
 
           {/* Title & Image row */}
           <div className="flex items-start gap-2.5">
-            <div className="w-14 h-14 rounded-xl bg-[#002B49] overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-xl bg-[#E8EDF1] overflow-hidden shrink-0 border border-[#D6DEE5] flex items-center justify-center">
               <img
                 src={thumbnail}
                 alt={prop.title}
@@ -322,16 +322,16 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
               />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-black text-xs text-slate-900 truncate">
+              <h4 className="font-bold text-xs text-[#24313D] truncate">
                 {prop.title}
               </h4>
-              <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold mt-0.5">
-                <MapPin className="w-3 h-3 text-teal-600 shrink-0" />
+              <div className="flex items-center gap-1 text-[11px] text-[#5D6B78] font-semibold mt-0.5">
+                <MapPin className="w-3 h-3 text-[#124C46] shrink-0" />
                 <span className="truncate">{prop.district}</span>
               </div>
-              <div className="font-mono font-black text-xs text-teal-900 mt-1">
+              <div className="font-mono font-black text-xs text-[#8B641C] mt-1">
                 {prop.price.toLocaleString('ar-EG')} ج.م
-                <span className="text-[10px] text-slate-400 font-normal mr-1">
+                <span className="text-[10px] text-[#5D6B78] font-normal mr-1">
                   {prop.purpose === 'rent' ? '/ شهر' : ''}
                 </span>
               </div>
@@ -340,8 +340,8 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
         </div>
 
         {/* Navigation Button */}
-        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-          <span className="text-[10px] text-slate-400 font-semibold">
+        <div className="pt-2 border-t border-[#D6DEE5] flex items-center justify-between gap-2">
+          <span className="text-[10px] text-[#788593] font-semibold">
             {prop.area ? `${prop.area} م²` : 'عقار معتمد'}
           </span>
 
@@ -351,7 +351,7 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
               onCloseModal();
               onViewProperty(prop);
             }}
-            className="py-1.5 px-3.5 rounded-xl bg-[#002B49] hover:bg-[#001D33] text-[#FFB300] font-black text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+            className="py-1.5 px-3.5 rounded-lg bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
             title="معاينة العقار"
           >
             <Eye className="w-3.5 h-3.5" />
@@ -367,25 +367,25 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
   const isRent = req.purpose === 'rent';
 
   return (
-    <div className={`bg-white rounded-2xl border p-3.5 flex flex-col justify-between space-y-3 transition-all hover:shadow-md ${
-      isExact ? 'border-emerald-200 shadow-2xs ring-1 ring-emerald-100' : 'border-slate-200'
+    <div className={`bg-white rounded-2xl border p-3.5 flex flex-col justify-between space-y-3 transition-all hover:shadow-xs ${
+      isExact ? 'border-[#16856B]/40 shadow-xs ring-1 ring-[#16856B]/20' : 'border-[#D6DEE5]'
     }`}>
       <div className="space-y-2">
         {/* Header row */}
         <div className="flex items-center justify-between gap-1.5 flex-wrap">
           <div className="flex items-center gap-1.5">
-            <span className="font-mono font-black text-xs bg-slate-900 text-amber-300 px-2 py-0.5 rounded-md">
+            <span className="font-mono font-bold text-xs bg-[#D6A84F] text-[#24313D] px-2 py-0.5 rounded-md">
               {req.requestCode || req.id}
             </span>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-              isExact ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+              isExact ? 'bg-[#E4F4EC] text-[#16856B]' : 'bg-[#EAF3EF] text-[#124C46]'
             }`}>
               {isExact ? '✓ تطابق تام' : 'شبيه (نفس النوع)'}
             </span>
           </div>
 
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-            isRent ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700'
+            isRent ? 'bg-[#EAF3EF] text-[#124C46]' : 'bg-[#FFF2D6] text-[#A96F0B]'
           }`}>
             {isRent ? 'مطلوب للإيجار' : 'مطلوب للشراء'}
           </span>
@@ -393,7 +393,7 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
 
         {/* Requirements info */}
         <div className="flex items-start gap-2.5">
-          <div className="w-14 h-14 rounded-xl bg-[#002B49] overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center">
+          <div className="w-14 h-14 rounded-xl bg-[#E8EDF1] overflow-hidden shrink-0 border border-[#D6DEE5] flex items-center justify-center">
             <img
               src={DEFAULT_SAKAN_PLACEHOLDER}
               alt={req.propertyType}
@@ -401,16 +401,16 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
             />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="font-black text-xs text-slate-900 truncate">
+            <h4 className="font-bold text-xs text-[#24313D] truncate">
               طلب: {req.propertyType}
             </h4>
-            <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold mt-0.5">
-              <MapPin className="w-3 h-3 text-teal-600 shrink-0" />
+            <div className="flex items-center gap-1 text-[11px] text-[#5D6B78] font-semibold mt-0.5">
+              <MapPin className="w-3 h-3 text-[#124C46] shrink-0" />
               <span className="truncate">الحي: {req.preferredDistrict}</span>
             </div>
-            <div className="font-mono font-black text-xs text-teal-900 mt-1">
+            <div className="font-mono font-black text-xs text-[#8B641C] mt-1">
               ميزانية: {req.maxPrice.toLocaleString('ar-EG')} ج.م
-              <span className="text-[10px] text-slate-400 font-normal mr-1">
+              <span className="text-[10px] text-[#5D6B78] font-normal mr-1">
                 {isRent ? '/ شهر' : ''}
               </span>
             </div>
@@ -419,8 +419,8 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
       </div>
 
       {/* Navigation Button */}
-      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-        <span className="text-[10px] text-slate-400 font-semibold">
+      <div className="pt-2 border-t border-[#D6DEE5] flex items-center justify-between gap-2">
+        <span className="text-[10px] text-[#788593] font-semibold">
           {req.urgency === 'immediate' ? 'عاجل وفوري' : req.urgency === 'within_month' ? 'خلال شهر' : 'طلب مسجل'}
         </span>
 
@@ -430,7 +430,7 @@ const MatchCardItem: React.FC<MatchCardItemProps> = ({
             onCloseModal();
             onViewRequest(req);
           }}
-          className="py-1.5 px-3.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white font-black text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+          className="py-1.5 px-3.5 rounded-lg bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
           title="عرض التفاصيل"
         >
           <Eye className="w-3.5 h-3.5" />
