@@ -268,6 +268,68 @@ CREATE INDEX IF NOT EXISTS idx_ratings_property_id ON public.property_ratings(pr
 CREATE INDEX IF NOT EXISTS idx_ratings_user_phone ON public.property_ratings(user_phone);
 
 -- ============================================================================
+-- 7. جدول سجلات نشاط الإدارة والرقابة (admin_activity_logs)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.admin_activity_logs (
+    id TEXT PRIMARY KEY,
+    admin_name TEXT NOT NULL,
+    admin_phone TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    action_title TEXT NOT NULL,
+    title TEXT,
+    details TEXT,
+    timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP::text
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_logs_phone ON public.admin_activity_logs(admin_phone);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_action ON public.admin_activity_logs(action_type);
+
+-- ============================================================================
+-- دالة التحقق البرمجية الآمنة من رتبة مدير المنظومة (is_admin)
+-- ============================================================================
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+DECLARE
+  caller_phone TEXT;
+  caller_role TEXT;
+BEGIN
+  -- 1. التحقق من صلاحيات جلسة JWT (PostgREST JWT claims)
+  BEGIN
+    caller_role := coalesce(
+      current_setting('request.jwt.claim.role', true),
+      (current_setting('request.jwt.claims', true)::jsonb -> 'app_metadata' ->> 'role'),
+      (current_setting('request.jwt.claims', true)::jsonb -> 'user_metadata' ->> 'role')
+    );
+    IF caller_role = 'admin' OR caller_role = 'مسؤول' THEN
+      RETURN TRUE;
+    END IF;
+
+    caller_phone := (current_setting('request.jwt.claims', true)::jsonb ->> 'phone');
+    IF caller_phone IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.app_users 
+      WHERE phone = caller_phone AND role = 'admin' AND is_blocked = FALSE
+    ) THEN
+      RETURN TRUE;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    -- استمرار الفحص في حال عدم توفر JWT claims
+  END;
+
+  -- 2. التحقق المباشر من معرف المستخدم auth.uid
+  IF auth.uid() IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.app_users 
+    WHERE (id = auth.uid()::text OR phone = auth.jwt() ->> 'phone') 
+      AND role = 'admin' 
+      AND is_blocked = FALSE
+  ) THEN
+    RETURN TRUE;
+  END IF;
+
+  RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- ============================================================================
 -- تفعيل سياسات الأمان على مستوى الصفوف (Row Level Security - RLS)
 -- ============================================================================
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -276,73 +338,218 @@ ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tenant_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scheduled_inspections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.property_ratings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_activity_logs ENABLE ROW LEVEL SECURITY;
 
--- تنظيف وتحديث سياسات الأمان لتفادي التكرار
+-- تنظيف وتحديث سياسات الأمان السابقة
 DROP POLICY IF EXISTS "Public select on profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Public insert on profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Public update on profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Public delete on profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Enterprise select on profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Enterprise insert on profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Enterprise update on profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Enterprise delete on profiles" ON public.profiles;
 
 DROP POLICY IF EXISTS "Public select on app_users" ON public.app_users;
 DROP POLICY IF EXISTS "Public insert on app_users" ON public.app_users;
 DROP POLICY IF EXISTS "Public update on app_users" ON public.app_users;
 DROP POLICY IF EXISTS "Public delete on app_users" ON public.app_users;
+DROP POLICY IF EXISTS "Enterprise select on app_users" ON public.app_users;
+DROP POLICY IF EXISTS "Enterprise insert on app_users" ON public.app_users;
+DROP POLICY IF EXISTS "Enterprise update on app_users" ON public.app_users;
+DROP POLICY IF EXISTS "Enterprise delete on app_users" ON public.app_users;
 
 DROP POLICY IF EXISTS "Public select on properties" ON public.properties;
 DROP POLICY IF EXISTS "Public insert on properties" ON public.properties;
 DROP POLICY IF EXISTS "Public update on properties" ON public.properties;
 DROP POLICY IF EXISTS "Public delete on properties" ON public.properties;
+DROP POLICY IF EXISTS "Enterprise select on properties" ON public.properties;
+DROP POLICY IF EXISTS "Enterprise insert on properties" ON public.properties;
+DROP POLICY IF EXISTS "Enterprise update on properties" ON public.properties;
+DROP POLICY IF EXISTS "Enterprise delete on properties" ON public.properties;
 
 DROP POLICY IF EXISTS "Public select on tenant_requests" ON public.tenant_requests;
 DROP POLICY IF EXISTS "Public insert on tenant_requests" ON public.tenant_requests;
 DROP POLICY IF EXISTS "Public update on tenant_requests" ON public.tenant_requests;
 DROP POLICY IF EXISTS "Public delete on tenant_requests" ON public.tenant_requests;
+DROP POLICY IF EXISTS "Enterprise select on tenant_requests" ON public.tenant_requests;
+DROP POLICY IF EXISTS "Enterprise insert on tenant_requests" ON public.tenant_requests;
+DROP POLICY IF EXISTS "Enterprise update on tenant_requests" ON public.tenant_requests;
+DROP POLICY IF EXISTS "Enterprise delete on tenant_requests" ON public.tenant_requests;
 
 DROP POLICY IF EXISTS "Public select on scheduled_inspections" ON public.scheduled_inspections;
 DROP POLICY IF EXISTS "Public insert on scheduled_inspections" ON public.scheduled_inspections;
 DROP POLICY IF EXISTS "Public update on scheduled_inspections" ON public.scheduled_inspections;
 DROP POLICY IF EXISTS "Public delete on scheduled_inspections" ON public.scheduled_inspections;
+DROP POLICY IF EXISTS "Enterprise select on scheduled_inspections" ON public.scheduled_inspections;
+DROP POLICY IF EXISTS "Enterprise insert on scheduled_inspections" ON public.scheduled_inspections;
+DROP POLICY IF EXISTS "Enterprise update on scheduled_inspections" ON public.scheduled_inspections;
+DROP POLICY IF EXISTS "Enterprise delete on scheduled_inspections" ON public.scheduled_inspections;
 
 DROP POLICY IF EXISTS "Public select on property_ratings" ON public.property_ratings;
 DROP POLICY IF EXISTS "Public insert on property_ratings" ON public.property_ratings;
 DROP POLICY IF EXISTS "Public update on property_ratings" ON public.property_ratings;
 DROP POLICY IF EXISTS "Public delete on property_ratings" ON public.property_ratings;
+DROP POLICY IF EXISTS "Enterprise select on property_ratings" ON public.property_ratings;
+DROP POLICY IF EXISTS "Enterprise insert on property_ratings" ON public.property_ratings;
+DROP POLICY IF EXISTS "Enterprise update on property_ratings" ON public.property_ratings;
+DROP POLICY IF EXISTS "Enterprise delete on property_ratings" ON public.property_ratings;
 
--- سياسات profiles
-CREATE POLICY "Public select on profiles" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Public insert on profiles" ON public.profiles FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public update on profiles" ON public.profiles FOR UPDATE USING (true);
-CREATE POLICY "Public delete on profiles" ON public.profiles FOR DELETE USING (true);
+DROP POLICY IF EXISTS "Admin only on logs" ON public.admin_activity_logs;
 
--- سياسات app_users
-CREATE POLICY "Public select on app_users" ON public.app_users FOR SELECT USING (true);
-CREATE POLICY "Public insert on app_users" ON public.app_users FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public update on app_users" ON public.app_users FOR UPDATE USING (true);
-CREATE POLICY "Public delete on app_users" ON public.app_users FOR DELETE USING (true);
+-- ============================================================================
+-- 1. سياسات جدول المستخدمين الإداري (app_users): مشددة على الأدوار الحساسة
+-- ============================================================================
+-- القراءة: للأدمن لرؤية كافة المستخدمين وحالات الحظر، أو للمستخدم لقراءة حسابه الشخصي فقط
+CREATE POLICY "Enterprise select on app_users" ON public.app_users
+    FOR SELECT USING (
+        public.is_admin() = true
+        OR phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+        OR id = auth.uid()::text
+    );
 
--- سياسات properties
-CREATE POLICY "Public select on properties" ON public.properties FOR SELECT USING (true);
-CREATE POLICY "Public insert on properties" ON public.properties FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public update on properties" ON public.properties FOR UPDATE USING (true);
-CREATE POLICY "Public delete on properties" ON public.properties FOR DELETE USING (true);
+-- التسجيل: مسموح إنشاء حساب جديد مبدئي برتبة 'user' فقط
+CREATE POLICY "Enterprise insert on app_users" ON public.app_users
+    FOR INSERT WITH CHECK (
+        role = 'user' OR public.is_admin() = true
+    );
 
--- سياسات tenant_requests
-CREATE POLICY "Public select on tenant_requests" ON public.tenant_requests FOR SELECT USING (true);
-CREATE POLICY "Public insert on tenant_requests" ON public.tenant_requests FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public update on tenant_requests" ON public.tenant_requests FOR UPDATE USING (true);
-CREATE POLICY "Public delete on tenant_requests" ON public.tenant_requests FOR DELETE USING (true);
+-- التعديل: محصور بالأدمن فقط، أو للمستخدم لتعديل اسمه مع منعه من ترقية رتبته أو فك الحظر عن نفسه
+CREATE POLICY "Enterprise update on app_users" ON public.app_users
+    FOR UPDATE USING (
+        public.is_admin() = true
+        OR (
+            phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+            AND role = 'user'
+        )
+    );
 
--- سياسات scheduled_inspections
-CREATE POLICY "Public select on scheduled_inspections" ON public.scheduled_inspections FOR SELECT USING (true);
-CREATE POLICY "Public insert on scheduled_inspections" ON public.scheduled_inspections FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public update on scheduled_inspections" ON public.scheduled_inspections FOR UPDATE USING (true);
-CREATE POLICY "Public delete on scheduled_inspections" ON public.scheduled_inspections FOR DELETE USING (true);
+-- الحذف: مقتصر تماماً على مدراء المنظومة (role = 'admin')
+CREATE POLICY "Enterprise delete on app_users" ON public.app_users
+    FOR DELETE USING (public.is_admin() = true);
 
--- سياسات property_ratings
-CREATE POLICY "Public select on property_ratings" ON public.property_ratings FOR SELECT USING (true);
-CREATE POLICY "Public insert on property_ratings" ON public.property_ratings FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public update on property_ratings" ON public.property_ratings FOR UPDATE USING (true);
-CREATE POLICY "Public delete on property_ratings" ON public.property_ratings FOR DELETE USING (true);
+-- ============================================================================
+-- 2. سياسات جدول الملفات الشخصية (profiles)
+-- ============================================================================
+CREATE POLICY "Enterprise select on profiles" ON public.profiles
+    FOR SELECT USING (true); -- متاح للعامة للتحقق من أسماء المعلنين وأرقام التواصل المعتمدة
+
+CREATE POLICY "Enterprise insert on profiles" ON public.profiles
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Enterprise update on profiles" ON public.profiles
+    FOR UPDATE USING (
+        public.is_admin() = true 
+        OR phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+    );
+
+CREATE POLICY "Enterprise delete on profiles" ON public.profiles
+    FOR DELETE USING (public.is_admin() = true);
+
+-- ============================================================================
+-- 3. سياسات جدول إعلانات العقارات (properties)
+-- ============================================================================
+-- القراءة: العامة يقرؤون العقارات المعتمدة فقط؛ العقارات غير المعتمدة يراها مالكها أو الأدمن حصراً
+CREATE POLICY "Enterprise select on properties" ON public.properties
+    FOR SELECT USING (
+        status = 'approved'
+        OR is_approved = true
+        OR public.is_admin() = true
+        OR owner_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+    );
+
+CREATE POLICY "Enterprise insert on properties" ON public.properties
+    FOR INSERT WITH CHECK (
+        -- المستخدم العادي يضيف عقاراً بحالة 'pending' أو 'pending_approval'؛ فقط الأدمن ينشر كـ 'approved'
+        public.is_admin() = true 
+        OR (status IN ('pending', 'pending_approval', 'under_review') AND is_approved = false)
+    );
+
+CREATE POLICY "Enterprise update on properties" ON public.properties
+    FOR UPDATE USING (
+        public.is_admin() = true
+        OR owner_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+    );
+
+CREATE POLICY "Enterprise delete on properties" ON public.properties
+    FOR DELETE USING (
+        public.is_admin() = true
+        OR owner_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+    );
+
+-- ============================================================================
+-- 4. سياسات جدول طلبات المستأجرين (tenant_requests)
+-- ============================================================================
+CREATE POLICY "Enterprise select on tenant_requests" ON public.tenant_requests
+    FOR SELECT USING (
+        status = 'approved'
+        OR is_approved = true
+        OR public.is_admin() = true
+        OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+    );
+
+CREATE POLICY "Enterprise insert on tenant_requests" ON public.tenant_requests
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Enterprise update on tenant_requests" ON public.tenant_requests
+    FOR UPDATE USING (
+        public.is_admin() = true
+        OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+    );
+
+CREATE POLICY "Enterprise delete on tenant_requests" ON public.tenant_requests
+    FOR DELETE USING (
+        public.is_admin() = true
+        OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+    );
+
+-- ============================================================================
+-- 5. سياسات جدول المعاينات الميدانية (scheduled_inspections): بيانات حساسة
+-- ============================================================================
+CREATE POLICY "Enterprise select on scheduled_inspections" ON public.scheduled_inspections
+    FOR SELECT USING (
+        public.is_admin() = true
+        OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+    );
+
+CREATE POLICY "Enterprise insert on scheduled_inspections" ON public.scheduled_inspections
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Enterprise update on scheduled_inspections" ON public.scheduled_inspections
+    FOR UPDATE USING (public.is_admin() = true);
+
+CREATE POLICY "Enterprise delete on scheduled_inspections" ON public.scheduled_inspections
+    FOR DELETE USING (public.is_admin() = true);
+
+-- ============================================================================
+-- 6. سياسات جدول تقييمات العقارات (property_ratings)
+-- ============================================================================
+CREATE POLICY "Enterprise select on property_ratings" ON public.property_ratings
+    FOR SELECT USING (true);
+
+CREATE POLICY "Enterprise insert on property_ratings" ON public.property_ratings
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Enterprise update on property_ratings" ON public.property_ratings
+    FOR UPDATE USING (public.is_admin() = true);
+
+CREATE POLICY "Enterprise delete on property_ratings" ON public.property_ratings
+    FOR DELETE USING (public.is_admin() = true);
+
+-- ============================================================================
+-- 7. سياسات جدول سجلات الرقابة (admin_activity_logs): مقتصر على الأدمن فقط 100%
+-- ============================================================================
+CREATE POLICY "Admin only on logs select" ON public.admin_activity_logs
+    FOR SELECT USING (public.is_admin() = true);
+
+CREATE POLICY "Admin only on logs insert" ON public.admin_activity_logs
+    FOR INSERT WITH CHECK (public.is_admin() = true);
+
+CREATE POLICY "Admin only on logs update" ON public.admin_activity_logs
+    FOR UPDATE USING (public.is_admin() = true);
+
+CREATE POLICY "Admin only on logs delete" ON public.admin_activity_logs
+    FOR DELETE USING (public.is_admin() = true);
 
 -- ============================================================================
 -- تفعيل ميزة الاستماع اللحظي (Realtime) لجميع الجداول

@@ -1,34 +1,19 @@
 import React, { useEffect } from 'react';
 import { AppUser } from '../types/property';
 import { 
-  Building2, 
-  Home, 
-  FileText, 
   Layers, 
   Heart, 
   Bell, 
   ShieldCheck, 
   X, 
-  Lock, 
   User, 
   LogOut,
-  ChevronLeft,
-  Sparkles,
-  SlidersHorizontal,
-  Calendar,
-  BarChart3,
-  UserCheck,
-  Ban,
-  Activity,
-  Download,
-  Smartphone,
-  ExternalLink,
-  CheckCircle2
+  ChevronLeft
 } from 'lucide-react';
-import { RealEstateAgent, Assignment, AdminPanelSettings, VerifiedUserIcon } from './FlutterIcons';
+import { RealEstateAgent, Assignment, AdminPanelSettings } from './FlutterIcons';
 import { SupabaseConnectionStatus } from './SupabaseConnectionStatus';
 import { PWAInstallButton } from './PWAInstallButton';
-import { AdminSectionId, ADMIN_NAVIGATION_ITEMS } from './AdminDrawer';
+import type { AdminSectionId } from '../types/adminNav';
 
 export interface AppSideDrawerProps {
   isOpen: boolean;
@@ -40,13 +25,12 @@ export interface AppSideDrawerProps {
   onOpenFavorites?: () => void;
   unreadNotificationCount?: number;
   onOpenNotifications?: () => void;
-  // Admin specific
+  // Admin specific props
   adminActiveSection?: AdminSectionId;
   onSelectAdminSection?: (section: AdminSectionId) => void;
   pendingModerationCount?: number;
   pendingInspectionsCount?: number;
   blockedUsersCount?: number;
-  onQuickSwitchRole?: (role: 'admin' | 'user') => void;
   onLogout?: () => void;
 }
 
@@ -58,6 +42,7 @@ export interface AppSideDrawerProps {
  * - Gold Accent: #D6A84F, Light Accent: #FDF8ED
  * - Card/Surface: #FFFFFF, Background: #E8EDF1, Borders: #D6DEE5
  * - Text: Primary #24313D, Secondary #5D6B78
+ * Completely free of mock roles, demo switchers, or insecure overrides.
  */
 export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
   isOpen,
@@ -69,12 +54,6 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
   onOpenFavorites,
   unreadNotificationCount = 0,
   onOpenNotifications,
-  adminActiveSection = 'moderation',
-  onSelectAdminSection,
-  pendingModerationCount = 0,
-  pendingInspectionsCount = 0,
-  blockedUsersCount = 0,
-  onQuickSwitchRole,
   onLogout,
 }) => {
   const isAdmin = currentUser?.role === 'admin';
@@ -142,7 +121,7 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
                   {isAdmin ? 'إدارة' : 'عقارات'}
                 </span>
               </div>
-              <p className="text-[11px] text-[#5D6B78] truncate font-medium">القائمة الرئيسية والجانبية</p>
+              <p className="text-[11px] text-[#5D6B78] truncate font-medium">القائمة الجانبية</p>
             </div>
           </div>
 
@@ -158,7 +137,7 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
 
         {/* User Profile Card */}
         <div className="p-3.5 border-b border-[#D6DEE5] bg-[#F5F7F9]/70 shrink-0">
-          <div className="p-3 rounded-2xl bg-white border border-[#D6DEE5] shadow-2xs space-y-2.5">
+          <div className="p-3 rounded-2xl bg-white border border-[#D6DEE5] shadow-2xs">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold ${
@@ -185,24 +164,6 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
                 {isAdmin ? 'مدير المنظومة' : 'مستخدم'}
               </span>
             </div>
-
-            {/* Quick Role Switcher Button (Allows easy previewing of both roles) */}
-            {onQuickSwitchRole && (
-              <div className="pt-1 border-t border-[#E8EDF1] flex items-center justify-between text-[11px]">
-                <span className="text-[#5D6B78]">تبديل وضع العرض:</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onQuickSwitchRole(isAdmin ? 'user' : 'admin');
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-[#EAF3EF] hover:bg-[#DCECE7] text-[#124C46] font-bold transition-all cursor-pointer border border-[#DCECE7] flex items-center gap-1"
-                  title="تبديل فوري لتجربة واجهة الأدمن أو المستخدم العادي"
-                >
-                  <Sparkles className="w-3 h-3 text-[#D6A84F]" />
-                  <span>{isAdmin ? 'التحويل لمستخدم عادي' : 'التحويل لحساب الإدارة'}</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -212,7 +173,7 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
           {/* Group 1: Main App Navigation */}
           <div>
             <div className="text-[11px] font-bold text-[#5D6B78] uppercase tracking-wider mb-2 px-1">
-              الواجهات والتصفح
+              التصفح والواجهات
             </div>
             <div className="space-y-1.5">
               
@@ -265,31 +226,33 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
               </button>
 
               {/* 3. إعلاناتي (للمستخدم العادي) */}
-              <button
-                type="button"
-                onClick={() => {
-                  onSelectNavIndex(2);
-                  onClose();
-                }}
-                className={`w-full py-2.5 px-3 rounded-xl flex items-center justify-between transition-all cursor-pointer border ${
-                  currentNavIndex === 2
-                    ? 'bg-[#EAF3EF] border-[#124C46]/40 text-[#124C46] font-bold shadow-2xs'
-                    : 'bg-white border-[#D6DEE5] text-[#24313D] hover:bg-[#F5F9F8] hover:border-[#124C46]/30'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    currentNavIndex === 2 ? 'bg-[#124C46] text-white' : 'bg-[#F5F7F9] text-[#5D6B78]'
-                  }`}>
-                    <Layers className="w-4 h-4" />
+              {!isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectNavIndex(2);
+                    onClose();
+                  }}
+                  className={`w-full py-2.5 px-3 rounded-xl flex items-center justify-between transition-all cursor-pointer border ${
+                    currentNavIndex === 2
+                      ? 'bg-[#EAF3EF] border-[#124C46]/40 text-[#124C46] font-bold shadow-2xs'
+                      : 'bg-white border-[#D6DEE5] text-[#24313D] hover:bg-[#F5F9F8] hover:border-[#124C46]/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                      currentNavIndex === 2 ? 'bg-[#124C46] text-white' : 'bg-[#F5F7F9] text-[#5D6B78]'
+                    }`}>
+                      <Layers className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold">إعلاناتي المسجلة</span>
                   </div>
-                  <span className="text-xs sm:text-sm font-bold">إعلاناتي المسجلة</span>
-                </div>
-                <ChevronLeft className="w-4 h-4 text-[#788593]" />
-              </button>
+                  <ChevronLeft className="w-4 h-4 text-[#788593]" />
+                </button>
+              )}
 
               {/* 4. العقارات المفضلة */}
-              {onOpenFavorites && (
+              {onOpenFavorites && !isAdmin && (
                 <button
                   type="button"
                   onClick={() => {
@@ -343,107 +306,42 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
             </div>
           </div>
 
-          {/* Group 2: Admin Dashboard & Section Management */}
-          <div>
-            <div className="flex items-center justify-between mb-2 px-1">
-              <span className="text-[11px] font-bold text-[#5D6B78] uppercase tracking-wider">
-                لوحة التحكم الإدارية
-              </span>
-              {isAdmin && (
+          {/* Group 2: Admin Dashboard (RENDERED ONLY FOR AUTHENTICATED ADMINS) */}
+          {isAdmin && (
+            <div>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-[11px] font-bold text-[#5D6B78] uppercase tracking-wider">
+                  لوحة التحكم الإدارية
+                </span>
                 <span className="text-[10px] font-bold bg-[#FDF8ED] text-[#9A7328] border border-[#D6A84F]/40 px-2 py-0.5 rounded-full">
                   صلاحية مدير
                 </span>
-              )}
-            </div>
+              </div>
 
-            {isAdmin ? (
-              <div className="space-y-1.5">
-                {/* Switch to Admin Main View */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSelectNavIndex(3);
-                    onClose();
-                  }}
-                  className={`w-full py-2.5 px-3 rounded-xl flex items-center justify-between transition-all cursor-pointer border ${
-                    currentNavIndex === 3
-                      ? 'bg-[#124C46] text-white font-bold shadow-xs'
-                      : 'bg-[#EAF3EF] border-[#124C46]/30 text-[#124C46] hover:bg-[#DCECE7]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                      currentNavIndex === 3 ? 'bg-white/20 text-white' : 'bg-[#124C46] text-white'
-                    }`}>
-                      <AdminPanelSettings className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs sm:text-sm font-bold">لوحة الإدارة الرئيسية</span>
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectNavIndex(3);
+                  onClose();
+                }}
+                className={`w-full py-2.5 px-3 rounded-xl flex items-center justify-between transition-all cursor-pointer border ${
+                  currentNavIndex === 3
+                    ? 'bg-[#124C46] text-white font-bold shadow-xs'
+                    : 'bg-[#EAF3EF] border-[#124C46]/30 text-[#124C46] hover:bg-[#DCECE7]'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    currentNavIndex === 3 ? 'bg-white/20 text-white' : 'bg-[#124C46] text-white'
+                  }`}>
+                    <AdminPanelSettings className="w-4 h-4" />
                   </div>
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-
-                {/* Direct Links to Admin Management Sections */}
-                <div className="grid grid-cols-1 gap-1 pt-1">
-                  {ADMIN_NAVIGATION_ITEMS.map((item) => {
-                    const isActive = currentNavIndex === 3 && adminActiveSection === item.id;
-                    const IconComp = item.icon;
-                    let badgeVal: number | null = null;
-                    if (item.id === 'moderation' && pendingModerationCount > 0) badgeVal = pendingModerationCount;
-                    if (item.id === 'inspections' && pendingInspectionsCount > 0) badgeVal = pendingInspectionsCount;
-                    if (item.id === 'blocks' && blockedUsersCount > 0) badgeVal = blockedUsersCount;
-
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          onSelectNavIndex(3);
-                          if (onSelectAdminSection) onSelectAdminSection(item.id);
-                          onClose();
-                        }}
-                        className={`w-full py-2 px-3 rounded-lg flex items-center justify-between text-right transition-colors cursor-pointer text-xs ${
-                          isActive
-                            ? 'bg-[#EAF3EF] text-[#124C46] font-bold border border-[#124C46]/30'
-                            : 'bg-white hover:bg-[#F5F9F8] text-[#24313D] border border-transparent'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <IconComp className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#124C46]' : 'text-[#5D6B78]'}`} />
-                          <span className="truncate">{item.title}</span>
-                        </div>
-                        {badgeVal && (
-                          <span className="bg-[#C9364F] text-white text-[9px] font-black px-1.5 py-0.2 rounded-full">
-                            {badgeVal}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
+                  <span className="text-xs sm:text-sm font-bold">لوحة الإدارة المركزية</span>
                 </div>
-              </div>
-            ) : (
-              /* Non-admin preview */
-              <div className="p-3 bg-[#F5F7F9] rounded-xl border border-[#D6DEE5] text-center space-y-2">
-                <p className="text-[11px] text-[#5D6B78] leading-relaxed">
-                  لوحة التحكم مخصصة لمدراء المنظومة لمراجعة الإعلانات وجداول المعاينات.
-                </p>
-                {onQuickSwitchRole && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onQuickSwitchRole('admin');
-                      onSelectNavIndex(3);
-                      onClose();
-                    }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#124C46] hover:bg-[#0D3D38] text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#D6A84F]" />
-                    <span>الدخول كمسؤول منظومة للمعاينة</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
         </div>
 
@@ -452,14 +350,8 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
           
           {/* Supabase Connection Widget */}
           <div className="bg-white p-2.5 rounded-xl border border-[#D6DEE5] flex items-center justify-between">
-            <SupabaseConnectionStatus
-              onOpenSettings={() => {
-                if (onSelectAdminSection) onSelectAdminSection('export_settings');
-                onSelectNavIndex(3);
-                onClose();
-              }}
-            />
-            <span className="text-[10px] text-[#788593] font-mono">سكن أسيوط v2.5</span>
+            <SupabaseConnectionStatus />
+            <span className="text-[10px] text-[#788593] font-mono">سكن أسيوط v2.6</span>
           </div>
 
           <div className="flex items-center gap-2">

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -13,17 +14,128 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+// Authorized administrators registry for server-side verification
+const AUTHORIZED_ADMIN_PHONES = new Set([
+  '01002345678', // مسؤول المنظومة
+  '01000000000', // المشرف العام
+  '01011112222', // مسؤول العمليات
+  '01122334455', // مسؤول المعاينات
+  '01223344556', // مسؤول التدقيق والرقابة
+]);
+
+/**
+ * Enterprise Security Middleware:
+ * Validates Auth Bearer Token & Admin Role on every administrative endpoint.
+ * Returns HTTP 401 if token is absent, and HTTP 403 Forbidden if invalid or non-admin.
+ */
+function verifyAdminToken(token: string, phone?: string): boolean {
+  if (!token) return false;
+
+  // 1. Verify against authorized phone hash
+  if (phone && AUTHORIZED_ADMIN_PHONES.has(phone.trim())) {
+    const cleanPhone = phone.trim();
+    // Test known admin IDs or general hash
+    const possibleIds = [
+      'admin-sec-1', 'admin-sec-2', 'admin-sec-3', 'admin-sec-4', 'admin-sec-5',
+      `admin-${cleanPhone}`, `admin`
+    ];
+    for (const adminId of possibleIds) {
+      const secret = `${adminId}:${cleanPhone}:admin:ASUIT_SECURE_ADMIN_HASH_SALT`;
+      const expectedHash = crypto.createHash('sha256').update(secret).digest('hex');
+      if (token === expectedHash) return true;
+    }
+  }
+
+  // 2. Verify all known admins if phone is omitted from headers
+  for (const adminPhone of AUTHORIZED_ADMIN_PHONES) {
+    const possibleIds = ['admin-sec-1', 'admin-sec-2', 'admin-sec-3', 'admin-sec-4', 'admin-sec-5'];
+    for (const id of possibleIds) {
+      const secret = `${id}:${adminPhone}:admin:ASUIT_SECURE_ADMIN_HASH_SALT`;
+      const expectedHash = crypto.createHash('sha256').update(secret).digest('hex');
+      if (token === expectedHash) return true;
+    }
+  }
+
+  // 3. Accept secure master admin token if defined in environment
+  const masterKey = process.env.ADMIN_MASTER_KEY;
+  if (masterKey && token === masterKey) {
+    return true;
+  }
+
+  return false;
+}
+
+const requireAdminAuth: express.RequestHandler = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const adminPhone = (req.headers['x-admin-phone'] as string) || '';
+  const adminToken = (req.headers['x-admin-token'] as string) || '';
+
+  let token = '';
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  } else if (adminToken) {
+    token = adminToken.trim();
+  }
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized: رمز التوثيق مفقود (Authentication Token Missing).',
+      code: 'AUTH_TOKEN_REQUIRED',
+    });
+  }
+
+  const isValidAdmin = verifyAdminToken(token, adminPhone);
+  if (!isValidAdmin) {
+    return res.status(403).json({
+      success: false,
+      error: 'Forbidden: غير مصرح لك بالوصول. يتطلب هذا المسار صلاحيات مدير المنظومة (Admin Role Required).',
+      code: 'ADMIN_ACCESS_FORBIDDEN',
+    });
+  }
+
+  next();
+};
+
 // Support large image payloads (screenshots can be high resolution)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Health check
+// Health check (Public)
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Gemini Vision / OCR API route for converting Facebook screenshots to Real Estate Cards
-app.post('/api/convert-screenshot', async (req, res) => {
+// Admin Route: Verify Active Session Token
+app.get('/api/admin/verify-session', requireAdminAuth, (req, res) => {
+  const adminPhone = (req.headers['x-admin-phone'] as string) || '';
+  res.json({
+    success: true,
+    role: 'admin',
+    verifiedPhone: adminPhone,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Admin Route: System Health & Security Metrics
+app.get('/api/admin/system-stats', requireAdminAuth, (_req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    success: true,
+    uptimeSeconds: Math.round(process.uptime()),
+    memoryUsageMB: {
+      rss: Math.round(mem.rss / 1024 / 1024),
+      heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+      heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+    },
+    authorizedAdminsCount: AUTHORIZED_ADMIN_PHONES.size,
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Gemini Vision / OCR API route for converting Facebook screenshots to Real Estate Cards (ADMIN PROTECTED)
+app.post('/api/convert-screenshot', requireAdminAuth, async (req, res) => {
   try {
     const { imageBase64, mimeType } = req.body;
 

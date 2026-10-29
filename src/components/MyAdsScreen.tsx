@@ -62,31 +62,23 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
   const userPhone = currentUser.phone.trim();
   const userName = currentUser.name.trim();
 
-  // Filter properties belonging to this user
-  // Also include demo listings for demo user '01012345678' or matches by phone/name
+  // Filter properties belonging to this user strictly
   const userProperties = useMemo(() => {
     return properties.filter((p) => {
       const matchPhone = p.ownerPhone && (p.ownerPhone === userPhone || p.ownerPhone.replace(/\D/g, '') === userPhone.replace(/\D/g, ''));
-      const matchName = p.ownerName && p.ownerName.toLowerCase().includes(userName.toLowerCase());
-      
-      // If user is the default demo regular user ('01012345678'), allow matching demo listings
-      const isDemoRegular = userPhone === '01012345678' || currentUser.id === 'user-regular-default';
-      const isDemoProperty = isDemoRegular && (p.code === 'AS-101' || p.id === 'prop-1' || p.ownerPhone === '01002345678' || p.ownerPhone === '01012345678');
-
-      return matchPhone || matchName || isDemoProperty;
+      const matchName = p.ownerName && p.ownerName.toLowerCase().trim() === userName.toLowerCase().trim();
+      return Boolean(matchPhone || matchName);
     });
-  }, [properties, userPhone, userName, currentUser.id]);
+  }, [properties, userPhone, userName]);
 
-  // Filter tenant requests belonging to this user
+  // Filter tenant requests belonging to this user strictly
   const userRequests = useMemo(() => {
     return tenantRequests.filter((r) => {
       const matchPhone = r.tenantPhone && (r.tenantPhone === userPhone || r.tenantPhone.replace(/\D/g, '') === userPhone.replace(/\D/g, ''));
-      const matchName = r.tenantName && r.tenantName.toLowerCase().includes(userName.toLowerCase());
-      const isDemoRegular = userPhone === '01012345678' || currentUser.id === 'user-regular-default';
-      const isDemoRequest = isDemoRegular && (r.id === 'req-1' || r.tenantPhone === '01012345678' || r.tenantPhone === '01002345678');
-      return matchPhone || matchName || isDemoRequest;
+      const matchName = r.tenantName && r.tenantName.toLowerCase().trim() === userName.toLowerCase().trim();
+      return Boolean(matchPhone || matchName);
     });
-  }, [tenantRequests, userPhone, userName, currentUser.id]);
+  }, [tenantRequests, userPhone, userName]);
 
   // Counts by status for property listings
   const stats = useMemo(() => {

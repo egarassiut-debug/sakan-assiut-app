@@ -9,6 +9,7 @@ import {
   ExternalLink, Layers, Eye, Info, UserCheck, ShieldCheck, Flame, Zap
 } from 'lucide-react';
 import { logAdminActivity } from '../utils/adminManager';
+import { safeStorageGetItem } from '../utils/storageManager';
 
 export interface ExtractedCardData {
   postType: 'offer' | 'request';
@@ -254,9 +255,18 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
       // Step 1: Call Gemini Vision route
       setProcessingStep('2. جاري استخراج السعر والمساحة ورقم الهاتف عبر Gemini Vision...');
       
+      const storedSession = safeStorageGetItem<any>('ardaw_admin_session_token', null);
+      const token = storedSession?.hash || '';
+      const phone = adminPhone || storedSession?.phone || '';
+
       const response = await fetch('/api/convert-screenshot', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'x-admin-token': token,
+          'x-admin-phone': phone,
+        },
         body: JSON.stringify({
           imageBase64: base64Img,
           mimeType: 'image/jpeg',

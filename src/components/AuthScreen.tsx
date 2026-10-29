@@ -307,13 +307,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleQuickDemoLogin = (role: 'admin' | 'user') => {
-    const demoUser: AppUser = role === 'admin' ? DEFAULT_USERS[1] : DEFAULT_USERS[0];
-    saveSecureSession(demoUser);
-    safeStorageSetItem('ardaw_saved_credentials', { phone: demoUser.phone, pin: demoUser.pin });
-    onLoginSuccess(demoUser);
-  };
-
   return (
     <div 
       className="min-h-screen bg-[#E8EDF1] flex flex-col justify-center items-center px-4 py-8 text-[#24313D] font-['Tajawal','Cairo',sans-serif] select-none"
@@ -352,30 +345,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
           <div className="absolute top-4 left-4">
             <PWAInstallButton />
-          </div>
-        </div>
-
-        {/* Quick Demo Access Bar */}
-        <div className="bg-[#F5F9F8] p-3 border-b border-[#D6DEE5] flex items-center justify-between gap-2">
-          <span className="text-[11px] text-[#5D6B78] font-bold">دخول تجريبي سريع:</span>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleQuickDemoLogin('admin')}
-              className="px-2.5 py-1 rounded-lg bg-[#124C46] hover:bg-[#0D3D38] text-white text-[11px] font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
-              title="دخول مباشر بصلاحية مدير المنظومة"
-            >
-              <Sparkles className="w-3 h-3 text-[#D6A84F]" />
-              <span>مدير (Admin)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickDemoLogin('user')}
-              className="px-2.5 py-1 rounded-lg bg-white hover:bg-[#F5F9F8] text-[#124C46] border border-[#D6DEE5] text-[11px] font-bold transition-all cursor-pointer"
-              title="دخول مباشر كمستخدم عادي"
-            >
-              <span>مستخدم عادي</span>
-            </button>
           </div>
         </div>
 

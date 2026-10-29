@@ -393,6 +393,63 @@ export function App() {
   const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
   const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState(false);
   const [isAdminDrawerOpen, setIsAdminDrawerOpen] = useState(false);
+
+  // App-level Swipe Gesture Listener:
+  // Automatically opens the side drawer (AdminDrawer / AppSideDrawer) when swiping from the right edge to the left,
+  // and smoothly closes it when swiping from left to right while open.
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+    let isEligibleOpen = false;
+    let isEligibleClose = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      const screenWidth = window.innerWidth;
+
+      // When drawer is closed: eligible if touch started near the right edge (within 80px or 20% of right edge)
+      if (!isAdminDrawerOpen) {
+        const rightEdgeThreshold = Math.max(screenWidth - 80, screenWidth * 0.82);
+        isEligibleOpen = startX >= rightEdgeThreshold;
+        isEligibleClose = false;
+      } else {
+        // When drawer is open: eligible to swipe-close
+        isEligibleOpen = false;
+        isEligibleClose = true;
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.changedTouches.length !== 1) return;
+      const touch = e.changedTouches[0];
+      const endX = touch.clientX;
+      const endY = touch.clientY;
+
+      const deltaX = startX - endX; // Positive = swipe left (open in RTL), Negative = swipe right (close in RTL)
+      const deltaY = Math.abs(startY - endY);
+
+      // Swiping from right edge to the left by at least 50px with dominant horizontal gesture
+      if (isEligibleOpen && deltaX >= 50 && deltaY < deltaX * 1.5) {
+        setIsAdminDrawerOpen(true);
+      } else if (isEligibleClose && deltaX <= -50 && deltaY < Math.abs(deltaX) * 1.5) {
+        setIsAdminDrawerOpen(false);
+      }
+
+      isEligibleOpen = false;
+      isEligibleClose = false;
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isAdminDrawerOpen]);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [selectedTenantRequest, setSelectedTenantRequest] = useState<TenantRequest | null>(null);
   const [selectedPropertyForInspection, setSelectedPropertyForInspection] = useState<Property | null>(null);
@@ -444,13 +501,18 @@ export function App() {
     const handleSbSyncError = (e: Event) => {
       const customEvent = e as CustomEvent<SupabaseSyncErrorEventDetail>;
       if (customEvent.detail) {
-        setSupabaseSyncError(customEvent.detail);
-        addToast({
-          type: 'error',
-          title: customEvent.detail.title,
-          message: customEvent.detail.message,
-          duration: 8000,
-        });
+        if (customEvent.detail.code === 'CONFIG_MISSING') {
+          return;
+        }
+        if (currentUser?.role === 'admin') {
+          setSupabaseSyncError(customEvent.detail);
+          addToast({
+            type: 'error',
+            title: customEvent.detail.title,
+            message: customEvent.detail.message,
+            duration: 8000,
+          });
+        }
       }
     };
 
@@ -458,7 +520,7 @@ export function App() {
     return () => {
       window.removeEventListener('ardaw_supabase_sync_error', handleSbSyncError);
     };
-  }, []);
+  }, [currentUser]);
 
   // Fast O(1) lookup set for favorites
   const favoriteIdsSet = useMemo(() => new Set(favoritePropertyIds), [favoritePropertyIds]);
@@ -740,17 +802,12 @@ export function App() {
   const userNotifications = useMemo(() => {
     if (!currentUser) return inAppNotifications;
     const phone = currentUser.phone.trim().replace(/\D/g, '');
-    const isDemoRegular = phone === '01012345678' || currentUser.id === 'user-regular-default';
 
     return inAppNotifications.filter((n) => {
       if (currentUser.role === 'admin') return true;
       if (n.recipientPhone === 'all') return true;
       const recPhone = n.recipientPhone.replace(/\D/g, '');
-      if (recPhone === phone) return true;
-      if (isDemoRegular && (n.itemCode === 'AS-101' || n.recipientPhone.includes('01012345678') || n.recipientPhone.includes('01002345678'))) {
-        return true;
-      }
-      return false;
+      return recPhone === phone;
     });
   }, [inAppNotifications, currentUser]);
 
@@ -986,20 +1043,17 @@ export function App() {
     if (!currentUser) return 0;
     const phone = currentUser.phone.trim();
     const name = currentUser.name.trim();
-    const isDemoRegular = phone === '01012345678' || currentUser.id === 'user-regular-default';
     
     const userProps = properties.filter((p) => {
       const matchPhone = p.ownerPhone && (p.ownerPhone === phone || p.ownerPhone.replace(/\D/g, '') === phone.replace(/\D/g, ''));
-      const matchName = p.ownerName && p.ownerName.toLowerCase().includes(name.toLowerCase());
-      const isDemo = isDemoRegular && (p.code === 'AS-101' || p.id === 'prop-1' || p.ownerPhone === '01002345678' || p.ownerPhone === '01012345678');
-      return matchPhone || matchName || isDemo;
+      const matchName = p.ownerName && p.ownerName.toLowerCase().trim() === name.toLowerCase().trim();
+      return Boolean(matchPhone || matchName);
     });
 
     const userReqs = tenantRequests.filter((r) => {
       const matchPhone = r.tenantPhone && (r.tenantPhone === phone || r.tenantPhone.replace(/\D/g, '') === phone.replace(/\D/g, ''));
-      const matchName = r.tenantName && r.tenantName.toLowerCase().includes(name.toLowerCase());
-      const isDemo = isDemoRegular && (r.id === 'req-1' || r.tenantPhone === '01012345678' || r.tenantPhone === '01002345678');
-      return matchPhone || matchName || isDemo;
+      const matchName = r.tenantName && r.tenantName.toLowerCase().trim() === name.toLowerCase().trim();
+      return Boolean(matchPhone || matchName);
     });
 
     return userProps.length + userReqs.length;
@@ -1775,51 +1829,6 @@ export function App() {
     return 'عروض الايجار والبيع';
   };
 
-  // Quick role switcher handler for previewing both regular user and admin perspectives
-  const handleQuickSwitchRole = async (targetRole: 'admin' | 'user') => {
-    if (targetRole === 'admin') {
-      const adminUser: AppUser = {
-        id: 'admin-sec-1',
-        name: 'مسؤول المنظومة',
-        phone: '01002345678',
-        pin: '1234',
-        role: 'admin',
-        createdAt: '2026-10-10',
-      };
-      await saveSecureSession(adminUser);
-      safeStorageSetItem('ardaw_current_user', adminUser);
-      setCurrentUser(adminUser);
-      setNavIndex(3);
-      window.history.pushState(null, '', '/admin');
-      addToast({
-        type: 'success',
-        title: 'تم التحويل إلى وضع مدير المنظومة',
-        message: 'تم تفعيل صلاحيات الإدارة الكاملة والقائمة الجانبية الإدارية.',
-        duration: 3000,
-      });
-    } else {
-      const regularUser: AppUser = {
-        id: 'user-regular-default',
-        name: 'م. أحمد عبد الرحيم',
-        phone: '01012345678',
-        pin: '1234',
-        role: 'user',
-        createdAt: '2026-10-10',
-      };
-      await saveSecureSession(regularUser);
-      safeStorageSetItem('ardaw_current_user', regularUser);
-      setCurrentUser(regularUser);
-      setNavIndex(0);
-      window.history.replaceState(null, '', '/');
-      addToast({
-        type: 'info',
-        title: 'تم التحويل إلى وضع المستخدم العادي',
-        message: 'أنت تتصفح التطبيق الآن بهوية مستخدم عادي.',
-        duration: 3000,
-      });
-    }
-  };
-
   return (
     <div className={`min-h-screen bg-[#E8EDF1] flex flex-col justify-between text-[#24313D] font-['Tajawal','Cairo',sans-serif] ${isFormEntry ? 'pb-0' : 'pb-24'}`}>
       
@@ -1843,7 +1852,6 @@ export function App() {
         }
         pendingInspectionsCount={scheduledInspections.filter((i) => i.status === 'pending').length}
         blockedUsersCount={blockedUsers.length}
-        onQuickSwitchRole={handleQuickSwitchRole}
         onLogout={handleLogout}
       />
 
