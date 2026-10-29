@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { 
   Property, 
   ScheduledInspection, 
@@ -58,7 +58,7 @@ import {
   safeStorageRemoveItem, 
   runStorageMaintenance 
 } from './utils/storageManager';
-import { logAdminActivity } from './utils/adminManager';
+import { logAdminActivity, isStaffRole } from './utils/adminManager';
 
 // Resilient dynamic chunk loader with automatic retry for transient network hiccups
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -134,15 +134,15 @@ export function App() {
     return safeStorageGetItem<AppUser | null>('ardaw_current_user', null);
   });
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = Boolean(currentUser && isStaffRole(currentUser.role));
 
   // Navigation Tab Index initialized with secure route check
   // For Regular User: 0 = عروض الإيجار, 1 = طلبات الإيجار, 2 = إعلاناتي
-  // For Admin: 0 = عروض الإيجار, 1 = طلبات الإيجار, 3 = لوحة التحكم
+  // For Staff/Admin: 0 = عروض الإيجار, 1 = طلبات الإيجار, 3 = لوحة التحكم
   const [navIndex, setNavIndex] = useState<NavTabIndex>(() => {
     if (typeof window !== 'undefined' && window.location.pathname === '/admin') {
       const savedUser = safeStorageGetItem<AppUser | null>('ardaw_current_user', null);
-      if (savedUser?.role === 'admin') return 3;
+      if (isStaffRole(savedUser?.role)) return 3;
       // Silently rewrite unauthorized URL to '/'
       window.history.replaceState(null, '', '/');
     }
@@ -170,7 +170,7 @@ export function App() {
     const handlePopState = () => {
       const path = window.location.pathname;
       if (path === '/admin') {
-        if (currentUser?.role === 'admin') {
+        if (isStaffRole(currentUser?.role)) {
           setNavIndex(3);
         } else {
           window.history.replaceState(null, '', '/');
@@ -189,7 +189,7 @@ export function App() {
 
   // Strict session and cryptographic integrity check for Admin
   useEffect(() => {
-    if (currentUser?.role === 'admin') {
+    if (isStaffRole(currentUser?.role)) {
       isSecureAdminSession(currentUser).then((valid) => {
         if (!valid) {
           console.warn('Unauthorized or tampered admin session detected. Reverting to guest state.');

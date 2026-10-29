@@ -285,47 +285,112 @@ CREATE INDEX IF NOT EXISTS idx_admin_logs_phone ON public.admin_activity_logs(ad
 CREATE INDEX IF NOT EXISTS idx_admin_logs_action ON public.admin_activity_logs(action_type);
 
 -- ============================================================================
--- دالة التحقق البرمجية الآمنة من رتبة مدير المنظومة (is_admin)
+-- 8. جدول تصنيفات الأدوار المخصصة والصلاحيات (custom_roles)
 -- ============================================================================
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS BOOLEAN AS $$
+CREATE TABLE IF NOT EXISTS public.custom_roles (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    badge TEXT,
+    color TEXT NOT NULL DEFAULT 'bg-blue-100 text-blue-800 border-blue-300',
+    icon_name TEXT DEFAULT 'ShieldCheck',
+    permissions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    is_system BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_DATE::text,
+    created_by TEXT,
+    updated_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_custom_roles_is_system ON public.custom_roles(is_system);
+
+-- ============================================================================
+-- دوال التحقق البرمجية الآمنة للأدوار والصلاحيات (Granular RBAC Functions)
+-- ============================================================================
+
+-- 1. دالة استخراج رتبة المتصل الحالية (get_caller_role)
+CREATE OR REPLACE FUNCTION public.get_caller_role()
+RETURNS TEXT AS $$
 DECLARE
   caller_phone TEXT;
   caller_role TEXT;
 BEGIN
-  -- 1. التحقق من صلاحيات جلسة JWT (PostgREST JWT claims)
-  BEGIN
-    caller_role := coalesce(
-      current_setting('request.jwt.claim.role', true),
-      (current_setting('request.jwt.claims', true)::jsonb -> 'app_metadata' ->> 'role'),
-      (current_setting('request.jwt.claims', true)::jsonb -> 'user_metadata' ->> 'role')
-    );
-    IF caller_role = 'admin' OR caller_role = 'مسؤول' THEN
-      RETURN TRUE;
-    END IF;
+  -- أ) التحقق من الـ JWT Claims المباشرة
+  caller_role := coalesce(
+    current_setting('request.jwt.claim.role', true),
+    (current_setting('request.jwt.claims', true)::jsonb -> 'app_metadata' ->> 'role'),
+    (current_setting('request.jwt.claims', true)::jsonb -> 'user_metadata' ->> 'role')
+  );
 
-    caller_phone := (current_setting('request.jwt.claims', true)::jsonb ->> 'phone');
-    IF caller_phone IS NOT NULL AND EXISTS (
-      SELECT 1 FROM public.app_users 
-      WHERE phone = caller_phone AND role = 'admin' AND is_blocked = FALSE
-    ) THEN
-      RETURN TRUE;
-    END IF;
-  EXCEPTION WHEN OTHERS THEN
-    -- استمرار الفحص في حال عدم توفر JWT claims
-  END;
-
-  -- 2. التحقق المباشر من معرف المستخدم auth.uid
-  IF auth.uid() IS NOT NULL AND EXISTS (
-    SELECT 1 FROM public.app_users 
-    WHERE (id = auth.uid()::text OR phone = auth.jwt() ->> 'phone') 
-      AND role = 'admin' 
-      AND is_blocked = FALSE
-  ) THEN
-    RETURN TRUE;
+  IF caller_role IS NOT NULL AND caller_role <> '' THEN
+    RETURN caller_role;
   END IF;
 
-  RETURN FALSE;
+  -- ب) التحقق من جدول app_users برقم الهاتف أو auth.uid
+  caller_phone := (current_setting('request.jwt.claims', true)::jsonb ->> 'phone');
+  IF caller_phone IS NOT NULL AND caller_phone <> '' THEN
+    SELECT role INTO caller_role FROM public.app_users 
+    WHERE phone = caller_phone AND is_blocked = FALSE LIMIT 1;
+    IF caller_role IS NOT NULL THEN
+      RETURN caller_role;
+    END IF;
+  END IF;
+
+  IF auth.uid() IS NOT NULL THEN
+    SELECT role INTO caller_role FROM public.app_users 
+    WHERE id = auth.uid()::text AND is_blocked = FALSE LIMIT 1;
+    IF caller_role IS NOT NULL THEN
+      RETURN caller_role;
+    END IF;
+  END IF;
+
+  RETURN 'user';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- 2. التحقق من رتبة المالك / مدير المنظومة (super_admin)
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN public.get_caller_role() = 'super_admin';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- 3. التحقق من المشرف العام أو المالك (admin OR super_admin)
+CREATE OR REPLACE FUNCTION public.is_admin_or_super()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN public.get_caller_role() IN ('super_admin', 'admin');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- 4. التحقق من صلاحيات مراجعة العقارات والطلبات (reviewer, admin, super_admin)
+CREATE OR REPLACE FUNCTION public.is_reviewer()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN public.get_caller_role() IN ('super_admin', 'admin', 'reviewer');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- 5. التحقق من صلاحيات الدعم الفني وخدمة العملاء (support, admin, super_admin)
+CREATE OR REPLACE FUNCTION public.is_support()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN public.get_caller_role() IN ('super_admin', 'admin', 'support');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- 6. دالة التحقق الشاملة من الطاقم الإداري (is_staff / is_admin)
+CREATE OR REPLACE FUNCTION public.is_staff()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN public.get_caller_role() IN ('super_admin', 'admin', 'reviewer', 'support', 'مسؤول');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN public.is_staff();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 
@@ -339,6 +404,7 @@ ALTER TABLE public.tenant_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scheduled_inspections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.property_ratings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.custom_roles ENABLE ROW LEVEL SECURITY;
 
 -- تنظيف وتحديث سياسات الأمان السابقة
 DROP POLICY IF EXISTS "Public select on profiles" ON public.profiles;
@@ -398,35 +464,39 @@ DROP POLICY IF EXISTS "Enterprise delete on property_ratings" ON public.property
 DROP POLICY IF EXISTS "Admin only on logs" ON public.admin_activity_logs;
 
 -- ============================================================================
--- 1. سياسات جدول المستخدمين الإداري (app_users): مشددة على الأدوار الحساسة
+-- 1. سياسات جدول المستخدمين الإداري (app_users): حماية مشددة وفقاً للأدوار RBAC
 -- ============================================================================
--- القراءة: للأدمن لرؤية كافة المستخدمين وحالات الحظر، أو للمستخدم لقراءة حسابه الشخصي فقط
+-- القراءة: لطاقم الإدارة لرؤية سجلات المستخدمين، أو للمستخدم لقراءة حسابه الخاص فقط
 CREATE POLICY "Enterprise select on app_users" ON public.app_users
     FOR SELECT USING (
-        public.is_admin() = true
+        public.is_staff() = true
         OR phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
         OR id = auth.uid()::text
     );
 
--- التسجيل: مسموح إنشاء حساب جديد مبدئي برتبة 'user' فقط
+-- التسجيل: مسموح إنشاء حساب جديد مبدئي برتبة 'user' فقط، أو المشرف العام والمالك
 CREATE POLICY "Enterprise insert on app_users" ON public.app_users
     FOR INSERT WITH CHECK (
-        role = 'user' OR public.is_admin() = true
+        role = 'user' OR public.is_admin_or_super() = true
     );
 
--- التعديل: محصور بالأدمن فقط، أو للمستخدم لتعديل اسمه مع منعه من ترقية رتبته أو فك الحظر عن نفسه
+-- التعديل: المالك يعدل كافة الرتب، المشرف العام يعدل الرتب ما عدا المالك، والمستخدم العادي يعدل بياناته بدون تغيير الرتبة أو فك الحظر
 CREATE POLICY "Enterprise update on app_users" ON public.app_users
     FOR UPDATE USING (
-        public.is_admin() = true
+        public.is_super_admin() = true
+        OR (public.is_admin_or_super() = true AND role <> 'super_admin')
         OR (
             phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
             AND role = 'user'
         )
     );
 
--- الحذف: مقتصر تماماً على مدراء المنظومة (role = 'admin')
+-- الحذف: مقتصر تماماً على المالك (super_admin) أو المشرف العام (admin) للمستخدمين العاديين
 CREATE POLICY "Enterprise delete on app_users" ON public.app_users
-    FOR DELETE USING (public.is_admin() = true);
+    FOR DELETE USING (
+        public.is_super_admin() = true 
+        OR (public.is_admin_or_super() = true AND role = 'user')
+    );
 
 -- ============================================================================
 -- 2. سياسات جدول الملفات الشخصية (profiles)
@@ -439,41 +509,43 @@ CREATE POLICY "Enterprise insert on profiles" ON public.profiles
 
 CREATE POLICY "Enterprise update on profiles" ON public.profiles
     FOR UPDATE USING (
-        public.is_admin() = true 
+        public.is_staff() = true 
         OR phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
     );
 
 CREATE POLICY "Enterprise delete on profiles" ON public.profiles
-    FOR DELETE USING (public.is_admin() = true);
+    FOR DELETE USING (public.is_admin_or_super() = true);
 
 -- ============================================================================
 -- 3. سياسات جدول إعلانات العقارات (properties)
 -- ============================================================================
--- القراءة: العامة يقرؤون العقارات المعتمدة فقط؛ العقارات غير المعتمدة يراها مالكها أو الأدمن حصراً
+-- القراءة: العامة يقرؤون العقارات المعتمدة؛ غير المعتمدة يراها مراجعو العقارات أو مالكها
 CREATE POLICY "Enterprise select on properties" ON public.properties
     FOR SELECT USING (
         status = 'approved'
         OR is_approved = true
-        OR public.is_admin() = true
+        OR public.is_reviewer() = true
         OR owner_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
     );
 
 CREATE POLICY "Enterprise insert on properties" ON public.properties
     FOR INSERT WITH CHECK (
-        -- المستخدم العادي يضيف عقاراً بحالة 'pending' أو 'pending_approval'؛ فقط الأدمن ينشر كـ 'approved'
-        public.is_admin() = true 
+        -- المستخدم العادي يضيف عقاراً بحالة انتظار؛ المراجع أو المشرف يمكنه النشر المباشر
+        public.is_reviewer() = true 
         OR (status IN ('pending', 'pending_approval', 'under_review') AND is_approved = false)
     );
 
+-- التعديل والموافقة: مسموح للمراجعين والمشرفين والمالك، أو لصاحب العقار
 CREATE POLICY "Enterprise update on properties" ON public.properties
     FOR UPDATE USING (
-        public.is_admin() = true
+        public.is_reviewer() = true
         OR owner_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
     );
 
+-- الحذف: محصور بالمشرفين أو المالك أو صاحب العقار
 CREATE POLICY "Enterprise delete on properties" ON public.properties
     FOR DELETE USING (
-        public.is_admin() = true
+        public.is_admin_or_super() = true
         OR owner_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
     );
 
@@ -484,7 +556,7 @@ CREATE POLICY "Enterprise select on tenant_requests" ON public.tenant_requests
     FOR SELECT USING (
         status = 'approved'
         OR is_approved = true
-        OR public.is_admin() = true
+        OR public.is_reviewer() = true
         OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
     );
 
@@ -493,22 +565,22 @@ CREATE POLICY "Enterprise insert on tenant_requests" ON public.tenant_requests
 
 CREATE POLICY "Enterprise update on tenant_requests" ON public.tenant_requests
     FOR UPDATE USING (
-        public.is_admin() = true
+        public.is_reviewer() = true
         OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
     );
 
 CREATE POLICY "Enterprise delete on tenant_requests" ON public.tenant_requests
     FOR DELETE USING (
-        public.is_admin() = true
+        public.is_admin_or_super() = true
         OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
     );
 
 -- ============================================================================
--- 5. سياسات جدول المعاينات الميدانية (scheduled_inspections): بيانات حساسة
+-- 5. سياسات جدول المعاينات الميدانية (scheduled_inspections): فحص ومتابعة
 -- ============================================================================
 CREATE POLICY "Enterprise select on scheduled_inspections" ON public.scheduled_inspections
     FOR SELECT USING (
-        public.is_admin() = true
+        public.is_staff() = true
         OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
     );
 
@@ -516,10 +588,10 @@ CREATE POLICY "Enterprise insert on scheduled_inspections" ON public.scheduled_i
     FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Enterprise update on scheduled_inspections" ON public.scheduled_inspections
-    FOR UPDATE USING (public.is_admin() = true);
+    FOR UPDATE USING (public.is_staff() = true);
 
 CREATE POLICY "Enterprise delete on scheduled_inspections" ON public.scheduled_inspections
-    FOR DELETE USING (public.is_admin() = true);
+    FOR DELETE USING (public.is_admin_or_super() = true);
 
 -- ============================================================================
 -- 6. سياسات جدول تقييمات العقارات (property_ratings)
@@ -531,25 +603,40 @@ CREATE POLICY "Enterprise insert on property_ratings" ON public.property_ratings
     FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Enterprise update on property_ratings" ON public.property_ratings
-    FOR UPDATE USING (public.is_admin() = true);
+    FOR UPDATE USING (public.is_staff() = true);
 
 CREATE POLICY "Enterprise delete on property_ratings" ON public.property_ratings
-    FOR DELETE USING (public.is_admin() = true);
+    FOR DELETE USING (public.is_admin_or_super() = true);
 
 -- ============================================================================
--- 7. سياسات جدول سجلات الرقابة (admin_activity_logs): مقتصر على الأدمن فقط 100%
+-- 7. سياسات جدول سجلات الرقابة (admin_activity_logs): مقتصر على الإدارة العليا
 -- ============================================================================
 CREATE POLICY "Admin only on logs select" ON public.admin_activity_logs
-    FOR SELECT USING (public.is_admin() = true);
+    FOR SELECT USING (public.is_admin_or_super() = true);
 
 CREATE POLICY "Admin only on logs insert" ON public.admin_activity_logs
-    FOR INSERT WITH CHECK (public.is_admin() = true);
+    FOR INSERT WITH CHECK (public.is_staff() = true);
 
 CREATE POLICY "Admin only on logs update" ON public.admin_activity_logs
-    FOR UPDATE USING (public.is_admin() = true);
+    FOR UPDATE USING (public.is_super_admin() = true);
 
 CREATE POLICY "Admin only on logs delete" ON public.admin_activity_logs
-    FOR DELETE USING (public.is_admin() = true);
+    FOR DELETE USING (public.is_super_admin() = true);
+
+-- ============================================================================
+-- 8. سياسات جدول تصنيفات الأدوار المخصصة (custom_roles)
+-- ============================================================================
+CREATE POLICY "Staff select on custom_roles" ON public.custom_roles
+    FOR SELECT USING (public.is_staff() = true);
+
+CREATE POLICY "Admin insert on custom_roles" ON public.custom_roles
+    FOR INSERT WITH CHECK (public.is_admin_or_super() = true);
+
+CREATE POLICY "Admin update on custom_roles" ON public.custom_roles
+    FOR UPDATE USING (public.is_admin_or_super() = true);
+
+CREATE POLICY "Super admin delete on custom_roles" ON public.custom_roles
+    FOR DELETE USING (public.is_super_admin() = true AND is_system = false);
 
 -- ============================================================================
 -- تفعيل ميزة الاستماع اللحظي (Realtime) لجميع الجداول
@@ -574,16 +661,43 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'property_ratings') THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.property_ratings;
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'custom_roles') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.custom_roles;
+  END IF;
 END $$;
 
 -- ============================================================================
--- حسابات المسؤولين الافتراضية
+-- بذر تصنيفات الأدوار المخصصة الافتراضية
+-- ============================================================================
+INSERT INTO public.custom_roles (id, name, description, badge, color, icon_name, permissions, is_system, created_at, created_by)
+VALUES
+    ('super_admin', 'المالك / مدير المنظومة', 'صلاحيات مطلقة وشاملة لكافة أقسام وإعدادات المنظومة والمشرفين', 'مالك المنظومة', 'bg-purple-100 text-purple-800 border-purple-300', 'Crown', '["moderation", "screenshot_converter", "inspections", "dropdowns", "analytics", "users", "roles_management", "admins", "blocks", "logs", "export_settings"]'::jsonb, true, CURRENT_DATE::text, 'النظام'),
+    ('admin', 'مشرف عام / مدير العمليات', 'إدارة العمليات التشغيلية، مراجعة العقارات والطلبات، القوائم الديناميكية، والمستخدمين', 'مشرف عام', 'bg-emerald-100 text-emerald-800 border-emerald-300', 'ShieldCheck', '["moderation", "screenshot_converter", "inspections", "dropdowns", "analytics", "users", "roles_management", "blocks", "logs"]'::jsonb, true, CURRENT_DATE::text, 'النظام'),
+    ('reviewer', 'مراجع العقارات والطلبات', 'مراجعة وتدقيق عروض الإيجار وطلبات المستأجرين والمعاينات الميدانية', 'مراجع معتمد', 'bg-blue-100 text-blue-800 border-blue-300', 'CheckCircle2', '["moderation", "screenshot_converter", "inspections"]'::jsonb, true, CURRENT_DATE::text, 'النظام'),
+    ('support', 'الدعم الفني وخدمة العملاء', 'متابعة سجلات البلوكات، المعاينات الميدانية، وحل مشكلات حسابات المستخدمين', 'خدمة عملاء', 'bg-amber-100 text-amber-800 border-amber-300', 'Headset', '["blocks", "inspections"]'::jsonb, true, CURRENT_DATE::text, 'النظام'),
+    ('marketing_officer', 'مسؤول التسويق والإعلانات', 'متابعة مؤشرات وأسعار العقارات، التدقيق، وتحليل بيانات السوق وتصدير التقارير', 'تسويق وإعلانات', 'bg-cyan-100 text-cyan-800 border-cyan-300', 'Megaphone', '["analytics", "moderation", "screenshot_converter", "export_settings"]'::jsonb, false, CURRENT_DATE::text, 'مسؤول المنظومة'),
+    ('field_coordinator', 'منسق المعاينات والميدان', 'إدارة وتأكيد مواعيد المعاينات الميدانية للوحدات ومتابعة أحياء أسيوط والخدمات', 'منسق ميداني', 'bg-teal-100 text-teal-800 border-teal-300', 'Calendar', '["inspections", "dropdowns"]'::jsonb, false, CURRENT_DATE::text, 'المشرف العام')
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    permissions = EXCLUDED.permissions;
+
+-- ============================================================================
+-- حسابات المسؤولين والطاقم الإداري الافتراضية مع رتب الـ RBAC التفصيلية
 -- ============================================================================
 INSERT INTO public.app_users (id, name, phone, pin, role, created_at)
 VALUES 
+    ('owner-mostfa', 'MOSTFA', '01501799110', '1234', 'super_admin', CURRENT_DATE::text),
+    ('owner-sakan-assiut', 'SAKAN ASSIUT', '01001717780', '1234', 'super_admin', CURRENT_DATE::text),
     ('admin-sec-1', 'مسؤول المنظومة', '01002345678', '1234', 'admin', CURRENT_DATE::text),
-    ('admin-sec-2', 'المشرف العام', '01000000000', '1234', 'admin', CURRENT_DATE::text)
-ON CONFLICT (phone) DO NOTHING;
+    ('admin-sec-2', 'المشرف العام', '01000000000', '1234', 'admin', CURRENT_DATE::text),
+    ('admin-sec-3', 'مدير العمليات', '01011112222', '1234', 'admin', CURRENT_DATE::text),
+    ('admin-sec-4', 'مسؤول المعاينات', '01122334455', '1234', 'reviewer', CURRENT_DATE::text),
+    ('admin-sec-5', 'مراجع الإعلانات', '01223344556', '1234', 'reviewer', CURRENT_DATE::text),
+    ('admin-sec-6', 'الدعم الفني', '01555667788', '1234', 'support', CURRENT_DATE::text)
+ON CONFLICT (phone) DO UPDATE SET
+    role = EXCLUDED.role,
+    name = EXCLUDED.name;
 
 -- ============================================================================
 -- إعادة تحميل كاش مخطط PostgREST فورياً لمنع أي أخطاء schema cache

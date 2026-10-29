@@ -7,13 +7,15 @@ import {
   getAuthorizedAdmins, 
   saveAuthorizedAdmins, 
   getAdminActivityLogs, 
-  logAdminActivity 
+  logAdminActivity,
+  isFoundingOwnerPhone
 } from '../utils/adminManager';
 import { validateEgyptianPhone, normalizeEgyptianPhone } from '../utils/phoneValidator';
 import { 
   ShieldCheck, UserPlus, Trash2, Edit3, Search, 
   CheckCircle2, AlertCircle, Eye, EyeOff, Clock, 
-  Activity, Phone, KeyRound, Users, X, Ban, Download, Filter, RotateCcw, FileSpreadsheet
+  Activity, Phone, KeyRound, Users, X, Ban, Download, Filter, RotateCcw, FileSpreadsheet,
+  Crown, Sparkles, Lock
 } from 'lucide-react';
 import { exportToCSV } from '../utils/exportUtils';
 
@@ -206,6 +208,12 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
   // Handle Delete / Revoke Admin
   const handleConfirmDelete = () => {
     if (!deletingAdmin) return;
+
+    if (isFoundingOwnerPhone(deletingAdmin.phone)) {
+      alert('الحسابات التأسيسية للملاك (MOSTFA و SAKAN ASSIUT) محصنة ولا يمكن إلغاؤها.');
+      setDeletingAdmin(null);
+      return;
+    }
 
     if (admins.length <= 1) {
       alert('لا يمكن حذف أو إلغاء صلاحية الأدمن الأخير! يجب أن يتبقى مشرف واحد على الأقل.');
@@ -480,6 +488,8 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
               </div>
             ) : (
               filteredAdmins.map((admin) => {
+                const isFounding = isFoundingOwnerPhone(admin.phone);
+                const isPartner = Boolean(admin.isPartner || (!isFounding && admin.role === 'super_admin'));
                 const isCurrentActiveUser = 
                   currentUser?.phone === admin.phone || 
                   normalizeEgyptianPhone(currentUser?.phone || '') === normalizeEgyptianPhone(admin.phone);
@@ -487,17 +497,38 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                 return (
                   <div 
                     key={admin.id} 
-                    className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs hover:border-slate-300 transition-all space-y-3 relative overflow-hidden"
+                    className={`bg-white rounded-2xl p-4 border shadow-xs hover:border-slate-300 transition-all space-y-3 relative overflow-hidden ${
+                      isFounding
+                        ? 'border-amber-300 bg-amber-50/15 ring-1 ring-amber-300/40'
+                        : isPartner
+                        ? 'border-purple-200 bg-purple-50/15'
+                        : 'border-slate-200'
+                    }`}
                   >
                     {/* Top Identity Row */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold shadow-xs shrink-0">
-                          <ShieldCheck className="w-6 h-6" />
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold shadow-xs shrink-0 ${
+                          isFounding
+                            ? 'bg-gradient-to-br from-amber-100 to-amber-200 text-amber-900 border border-amber-300 ring-2 ring-amber-400/30'
+                            : isPartner
+                            ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                            : 'bg-amber-50 text-amber-600 border border-amber-200'
+                        }`}>
+                          {isFounding ? (
+                            <Crown className="w-6 h-6 text-amber-700 fill-amber-400" />
+                          ) : isPartner ? (
+                            <Crown className="w-6 h-6 text-purple-700 fill-purple-300" />
+                          ) : (
+                            <ShieldCheck className="w-6 h-6" />
+                          )}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-black text-slate-900">{admin.name}</h4>
+                            <h4 className="text-sm font-black text-slate-900 flex items-center gap-1">
+                              <span>{admin.name}</span>
+                              {isFounding && <span title="مالك مؤسس محصن">👑</span>}
+                            </h4>
                             {isCurrentActiveUser && (
                               <span className="text-[10px] bg-emerald-50 text-emerald-700 font-black px-2 py-0.5 rounded-full border border-emerald-200">
                                 أنت (نشط)
@@ -511,9 +542,21 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                         </div>
                       </div>
 
-                      <span className="text-[10px] bg-amber-50 text-amber-700 font-black px-2.5 py-1 rounded-lg border border-amber-200 shrink-0">
-                        مشرف معتمد
-                      </span>
+                      {isFounding ? (
+                        <span className="text-[10px] bg-gradient-to-r from-amber-100 to-amber-200 text-amber-950 font-black px-2.5 py-1 rounded-lg border border-amber-400 shrink-0 shadow-2xs flex items-center gap-1">
+                          <Crown className="w-3 h-3 text-amber-700 fill-amber-500" />
+                          <span>مالك مؤسس</span>
+                        </span>
+                      ) : isPartner ? (
+                        <span className="text-[10px] bg-purple-100 text-purple-800 font-black px-2.5 py-1 rounded-lg border border-purple-200 shrink-0 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-purple-600" />
+                          <span>شريك في الملكية</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-amber-50 text-amber-700 font-black px-2.5 py-1 rounded-lg border border-amber-200 shrink-0">
+                          مشرف معتمد
+                        </span>
+                      )}
                     </div>
 
                     {/* Meta info & PIN */}
@@ -546,16 +589,22 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                       <button
                         type="button"
                         onClick={() => setDeletingAdmin(admin)}
-                        disabled={isCurrentActiveUser}
-                        title={isCurrentActiveUser ? 'لا يمكنك حذف حسابك الحالي أثناء تسجيل الدخول' : 'إلغاء صلاحية الأدمن'}
+                        disabled={isCurrentActiveUser || isFounding}
+                        title={
+                          isFounding
+                            ? 'حساب المالك المؤسس محصن ضد الإلغاء'
+                            : isCurrentActiveUser
+                            ? 'لا يمكنك حذف حسابك الحالي أثناء تسجيل الدخول'
+                            : 'إلغاء صلاحية الأدمن'
+                        }
                         className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                          isCurrentActiveUser
+                          isCurrentActiveUser || isFounding
                             ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-60 border border-slate-200'
                             : 'bg-rose-50 hover:bg-rose-100 text-rose-700 cursor-pointer border border-rose-200'
                         }`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>إلغاء الصلاحية</span>
+                        <span>{isFounding ? 'محصن' : 'إلغاء الصلاحية'}</span>
                       </button>
                     </div>
 

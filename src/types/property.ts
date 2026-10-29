@@ -1,15 +1,167 @@
-export type UserRole = 'user' | 'admin' | 'tenant' | 'owner' | 'broker';
+import { AdminSectionId } from './adminNav';
+
+export type SystemRole = 'super_admin' | 'admin' | 'reviewer' | 'support' | 'user';
+export type GranularRole = SystemRole | string;
+
+export type UserRole = GranularRole | 'tenant' | 'owner' | 'broker';
+
+export interface RoleDefinition {
+  id: GranularRole;
+  name: string;
+  badge: string;
+  description: string;
+  color: string;
+  iconName: string;
+}
+
+export interface CustomRoleDefinition {
+  id: string; // unique programmatic key, e.g. 'marketing_lead', 'financial_auditor'
+  name: string; // Arabic display name
+  description: string;
+  badge?: string;
+  color: string; // Tailwind color classes
+  iconName?: string;
+  permissions: AdminSectionId[]; // specific sections this role can access
+  isSystem?: boolean; // system built-in roles cannot be deleted
+  userCount?: number;
+  createdAt?: string;
+  createdBy?: string;
+  updatedAt?: string;
+}
+
+export interface SectionPermissionMeta {
+  id: AdminSectionId;
+  label: string;
+  description: string;
+  category: 'moderation' | 'operations' | 'users' | 'system';
+}
+
+export const ADMIN_SECTION_PERMISSIONS: SectionPermissionMeta[] = [
+  {
+    id: 'moderation',
+    label: 'مراجعة وتدقيق الإعلانات',
+    description: 'الموافقة أو الرفض على عروض الإيجار وطلبات المستأجرين الجديدة وإضافة الملاحظات',
+    category: 'moderation',
+  },
+  {
+    id: 'screenshot_converter',
+    label: 'المحول الذكي بالذكاء الاصطناعي (OCR)',
+    description: 'تحويل لقطات شاشة منشورات فيسبوك إلى بطاقات عقارية جاهزة للنشر تلقائياً',
+    category: 'moderation',
+  },
+  {
+    id: 'inspections',
+    label: 'جدول المعاينات الميدانية',
+    description: 'متابعة مواعيد معاينة العقارات وتأكيدها وتحديث حالة الرسوم وحجز المستأجرين',
+    category: 'operations',
+  },
+  {
+    id: 'dropdowns',
+    label: 'إدارة القوائم الديناميكية والمناطق',
+    description: 'إضافة وتعديل وحذف أحياء أسيوط، أنواع العقارات، المرافق والخدمات، وطرق الدفع',
+    category: 'operations',
+  },
+  {
+    id: 'analytics',
+    label: 'إحصائيات العقارات والتحليلات',
+    description: 'متابعة مؤشرات الأسعار والطلب حسب الأحياء ونسب الإشغال مع رسوم بيانية تفاعلية',
+    category: 'operations',
+  },
+  {
+    id: 'users',
+    label: 'إدارة المستخدمين والصلاحيات',
+    description: 'عرض قائمة المستخدمين المسجلين وتعيين أدوارهم بشكل فردي أو جماعي وإعادة تعيين PIN',
+    category: 'users',
+  },
+  {
+    id: 'roles_management',
+    label: 'تصنيف الأدوار المخصص (RBAC)',
+    description: 'إنشاء وتعديل أدوار جديدة ذات صلاحيات مخصصة وحفظها في قاعدة البيانات',
+    category: 'system',
+  },
+  {
+    id: 'admins',
+    label: 'إدارة المسؤولين والمالكين',
+    description: 'إدارة وتعيين المشرفين والمالكين ذوي الصلاحيات الحساسة في المنظومة',
+    category: 'system',
+  },
+  {
+    id: 'blocks',
+    label: 'حظر وفك حظر الحسابات',
+    description: 'إدارة القائمة السوداء، حظر المستخدمين المخالفين مع ذكر الأسباب، وفك الحظر',
+    category: 'users',
+  },
+  {
+    id: 'logs',
+    label: 'سجلات النشاط والرقابة الإدارية',
+    description: 'متابعة كافة الإجراءات الحساسة والتعديلات والموافقات مع تاريخ وهوية المسؤول',
+    category: 'system',
+  },
+  {
+    id: 'export_settings',
+    label: 'الإعدادات وتصدير البيانات',
+    description: 'تصدير التقارير إلى Excel/CSV وطباعة الجداول وضبط إعدادات الخادم والاتصال',
+    category: 'system',
+  },
+];
+
+export const GRANULAR_ROLES: RoleDefinition[] = [
+  {
+    id: 'super_admin',
+    name: 'المالك / مدير المنظومة',
+    badge: 'مالك المنظومة',
+    description: 'صلاحيات مطلقة وكاملة على كافة إعدادات النظام، المشرفين، والبيانات الحساسة',
+    color: 'bg-purple-100 text-purple-800 border-purple-300',
+    iconName: 'Crown',
+  },
+  {
+    id: 'admin',
+    name: 'مشرف عام / مدير العمليات',
+    badge: 'مشرف عام',
+    description: 'إدارة العمليات اليومية، مراجعة العقارات والطلبات، القوائم الديناميكية، وحظر المستخدمين',
+    color: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    iconName: 'ShieldCheck',
+  },
+  {
+    id: 'reviewer',
+    name: 'مراجع العقارات والطلبات',
+    badge: 'مراجع معتمد',
+    description: 'مراجعة وقبول أو رفض عروض الإيجار وطلبات المستأجرين والمعاينات الميدانية فقط',
+    color: 'bg-blue-100 text-blue-800 border-blue-300',
+    iconName: 'CheckCircle2',
+  },
+  {
+    id: 'support',
+    name: 'الدعم الفني وخدمة العملاء',
+    badge: 'خدمة عملاء',
+    description: 'متابعة سجلات البلوكات، المعاينات، وحل مشكلات حسابات المستخدمين فقط',
+    color: 'bg-amber-100 text-amber-800 border-amber-300',
+    iconName: 'Headset',
+  },
+  {
+    id: 'user',
+    name: 'مستخدم عادي / مواطن',
+    badge: 'مستخدم عادي',
+    description: 'تصفح العروض، إضافة ونشر العقارات، إرسال طلبات الإيجار، وحجز المعاينات',
+    color: 'bg-slate-100 text-slate-700 border-slate-300',
+    iconName: 'User',
+  },
+];
 
 export interface AppUser {
   id: string;
   name: string;
   phone: string; // Used as the username
   pin: string; // 4-digit PIN (e.g. '1234')
-  role: 'user' | 'admin';
+  role: GranularRole | string;
   createdAt: string;
   isBlocked?: boolean;
   blockedReason?: string;
   blockedAt?: string;
+  isFoundingOwner?: boolean;
+  isPartner?: boolean;
+  partnerAppointedBy?: string;
+  partnerAppointedAt?: string;
 }
 
 export interface UserProfile {
@@ -167,7 +319,17 @@ export interface BlockedUser {
   blockedAt: string;
 }
 
-export type PushNotificationType = 'welcome' | 'approved' | 'rejected' | 'needs_completion' | 'info' | 'smart_match' | 'match' | 'archive_warning' | 'archive_extended';
+export type PushNotificationType = 
+  | 'welcome' 
+  | 'approved' 
+  | 'rejected' 
+  | 'needs_completion' 
+  | 'info' 
+  | 'smart_match' 
+  | 'match' 
+  | 'archive_warning' 
+  | 'archive_extended'
+  | 'partner_promotion';
 
 export interface InAppPushNotification {
   id: string;

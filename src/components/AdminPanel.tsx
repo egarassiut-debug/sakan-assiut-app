@@ -3,6 +3,8 @@ import { Property, PropertyStatus, ScheduledInspection, BlockedUser, TenantReque
 import { DropdownCategory, UtilityOptionDefinition } from '../data/dropdownOptions';
 import { DropdownManager } from './DropdownManager';
 import { AdminRoleManagement } from './AdminRoleManagement';
+import { hasSectionAccess, getDefaultSectionForRole } from '../utils/adminManager';
+import { GRANULAR_ROLES } from '../types/property';
 import { SettingsIcon, VerifiedUserIcon } from './FlutterIcons';
 import { validateEgyptianPhone, normalizeEgyptianPhone } from '../utils/phoneValidator';
 import { 
@@ -16,6 +18,7 @@ import {
   Phone, MessageCircle, User, Database, RefreshCw, Sparkles
 } from 'lucide-react';
 import { UserManagement } from './UserManagement';
+import { RoleClassificationManagement } from './RoleClassificationManagement';
 import { ScreenshotConverter } from './ScreenshotConverter';
 import { AdminDrawer, AdminSectionId, ADMIN_NAVIGATION_ITEMS } from './AdminDrawer';
 import { SupabaseConnectionStatus } from './SupabaseConnectionStatus';
@@ -99,9 +102,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onToggleDrawer,
   onCloseDrawer,
 }) => {
-  // Active Section & Slide-over Drawer State (Defaults to #1 priority: moderation)
-  const [activeSection, setActiveSection] = useState<AdminSectionId>('moderation');
+  // Active Section & Slide-over Drawer State (Defaults based on user's granular role permissions)
+  const [activeSection, setActiveSection] = useState<AdminSectionId>(() => {
+    return getDefaultSectionForRole(currentUser?.role);
+  });
   const [internalDrawerOpen, setInternalDrawerOpen] = useState(false);
+
+  // Enforce section permissions if user role changes or unauthorized section is requested
+  useEffect(() => {
+    if (!hasSectionAccess(currentUser?.role, activeSection)) {
+      setActiveSection(getDefaultSectionForRole(currentUser?.role));
+    }
+  }, [currentUser?.role, activeSection]);
 
   const isDrawerOpen = propIsDrawerOpen !== undefined ? propIsDrawerOpen : internalDrawerOpen;
   const setIsDrawerOpen = (open: boolean) => {
@@ -507,9 +519,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
-            {/* Center: Scrollable Horizontal Flat Tabs (شريط مسطح منظم لكافة أقسام الإدارة) */}
+            {/* Center: Scrollable Horizontal Flat Tabs (شريط مسطح منظم لكافة أقسام الإدارة المسموحة) */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1 min-w-0">
-              {ADMIN_NAVIGATION_ITEMS.map((item) => {
+              {ADMIN_NAVIGATION_ITEMS
+                .filter((item) => hasSectionAccess(currentUser?.role, item.id))
+                .map((item) => {
                 const isActive = activeSection === item.id;
                 const Icon = item.icon;
                 const badge =
@@ -556,7 +570,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 onOpenSettings={() => setActiveSection('export_settings')}
               />
 
-              {pendingModerationCount > 0 && (
+              {pendingModerationCount > 0 && hasSectionAccess(currentUser?.role, 'moderation') && (
                 <button
                   type="button"
                   onClick={() => setActiveSection('moderation')}
@@ -581,6 +595,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               )}
             </div>
           </div>
+
+          {/* RBAC Section Guard: Check if current role has permission to access activeSection */}
+          {!hasSectionAccess(currentUser?.role, activeSection) ? (
+            <div className="bg-white rounded-3xl border border-rose-200 p-8 text-center max-w-md mx-auto shadow-sm my-10 animate-in fade-in duration-200">
+              <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4 border border-rose-200">
+                <Lock className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-black text-slate-900 mb-1">
+                غير مصرح لك بالوصول إلى هذا القسم
+              </h3>
+              <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+                صلاحية حسابك الحالية هي (<span className="font-bold text-[#124C46]">{GRANULAR_ROLES.find(r => r.id === currentUser?.role)?.name || currentUser?.role || 'مستخدم'}</span>). تم تقييد هذا القسم وفق نظام الصلاحيات المتقدم (RBAC).
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveSection(getDefaultSectionForRole(currentUser?.role))}
+                className="px-5 py-2.5 bg-[#124C46] hover:bg-[#0D3D38] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                العودة للقسم المخصص لك
+              </button>
+            </div>
+          ) : (
+            <>
           {/* القسم 1: أدوات الواجهة والفلاتر */}
           {activeSection === 'dropdowns' && (
             <div className="space-y-4 animate-in fade-in duration-150">
@@ -1631,6 +1668,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
+          {/* تصنيف وإدارة الأدوار المخصصة (Custom RBAC) */}
+          {activeSection === 'roles_management' && (
+            <div className="animate-in fade-in duration-150">
+              <RoleClassificationManagement 
+                currentUser={currentUser} 
+                onNavigateToUsers={() => setActiveSection('users')}
+              />
+            </div>
+          )}
+
           {/* القسم 8: الإعدادات وتصدير البيانات والتقارير */}
           {activeSection === 'export_settings' && (
             <div className="space-y-4 animate-in fade-in duration-150">
@@ -1825,6 +1872,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 )}
               </div>
             </div>
+          )}
+          </>
           )}
         </div>
       </div>

@@ -3,6 +3,7 @@ export type AdminSectionId =
   | 'screenshot_converter'
   | 'dropdowns' 
   | 'users' 
+  | 'roles_management'
   | 'admins' 
   | 'logs' 
   | 'inspections' 

@@ -1,6 +1,8 @@
 import React from 'react';
 import { RealEstateAgent, Assignment, AdminPanelSettings, Add } from './FlutterIcons';
 import { Layers } from 'lucide-react';
+import { isStaffRole } from '../utils/adminManager';
+import { GranularRole } from '../types/property';
 
 export type NavTabIndex = 0 | 1 | 2 | 3;
 
@@ -8,7 +10,7 @@ interface BottomNavBarProps {
   currentIndex: number;
   onSelectIndex: (index: number) => void;
   onOpenAddModal: () => void;
-  userRole: 'user' | 'admin';
+  userRole: GranularRole | 'admin' | 'user' | string;
   pendingInspectionsCount?: number;
   tenantRequestsCount?: number;
   myAdsCount?: number;
@@ -27,7 +29,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   tenantRequestsCount = 0,
   myAdsCount = 0,
 }) => {
-  const isAdmin = userRole === 'admin';
+  const isAdmin = isStaffRole(userRole);
 
   if (!isAdmin) {
     return (

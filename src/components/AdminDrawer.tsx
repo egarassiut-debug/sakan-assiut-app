@@ -16,12 +16,15 @@ import {
   Database,
   CheckCircle2,
   ChevronLeft,
-  Sparkles
+  Sparkles,
+  Sliders
 } from 'lucide-react';
 import { VerifiedUserIcon } from './FlutterIcons';
 import { SupabaseConnectionStatus } from './SupabaseConnectionStatus';
 
 import { AdminSectionId } from '../types/adminNav';
+import { hasSectionAccess } from '../utils/adminManager';
+import { GRANULAR_ROLES } from '../types/property';
 export type { AdminSectionId };
 
 export interface AdminDrawerProps {
@@ -84,10 +87,16 @@ export const ADMIN_NAVIGATION_ITEMS: AdminNavigationItem[] = [
     title: 'إدارة المستخدمين',
     icon: UserCheck,
   },
-  // 6. إدارة الأدوار والصلاحيات
+  // تصنيف وإدارة الأدوار المخصصة (RBAC)
+  {
+    id: 'roles_management',
+    title: 'تصنيف الأدوار المخصص',
+    icon: Sliders,
+  },
+  // 6. إدارة طاقم المسؤولين
   {
     id: 'admins',
-    title: 'إدارة الأدوار والصلاحيات',
+    title: 'إدارة طاقم المسؤولين',
     icon: ShieldCheck,
   },
   // 7. حظر المستخدمين (البلوكات)
@@ -257,12 +266,19 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
               <User className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-bold text-[#24313D] truncate">
-                {currentUser?.name || 'مدير النظام'}
+              <div className="text-xs font-bold text-[#24313D] truncate flex items-center gap-1.5">
+                <span>{currentUser?.name || 'مدير النظام'}</span>
               </div>
-              <div className="text-[10px] text-[#5D6B78] flex items-center gap-1 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#16856B] animate-pulse" />
-                <span className="truncate">جلسة إدارية نشطة</span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
+                  GRANULAR_ROLES.find((r) => r.id === currentUser?.role)?.color || 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                }`}>
+                  {GRANULAR_ROLES.find((r) => r.id === currentUser?.role)?.badge || 'مشرف معتمد'}
+                </span>
+                <span className="text-[10px] text-[#5D6B78] flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#16856B] animate-pulse" />
+                  <span className="truncate">جلسة نشطة</span>
+                </span>
               </div>
             </div>
           </div>
@@ -280,10 +296,12 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
         </div>
       </div>
 
-      {/* 3. Navigation Links List (Ordered 1 to 9 by usage priority) */}
+      {/* 3. Navigation Links List (Filtered by Granular RBAC Permissions) */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 bg-slate-50/30">
         <nav className="space-y-2">
-          {itemsWithBadges.map(renderItemButton)}
+          {itemsWithBadges
+            .filter((item) => hasSectionAccess(currentUser?.role, item.id))
+            .map(renderItemButton)}
         </nav>
       </div>
 

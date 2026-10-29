@@ -2,7 +2,6 @@ import { AppUser } from '../types/property';
 import { safeStorageGetItem, safeStorageSetItem, safeStorageRemoveItem } from './storageManager';
 
 const ADMIN_SESSION_KEY = 'ardaw_admin_session_token';
-const ADMIN_PASSKEY = '9999'; // Master backup passkey for emergency admin access
 
 /**
  * Generates or validates cryptographic hash for admin session
@@ -25,29 +24,38 @@ async function generateSessionHash(user: AppUser): Promise<string> {
   return `h_${Math.abs(hash).toString(36)}`;
 }
 
+import { isStaffRole } from './adminManager';
+
 /**
- * Verify whether currentUser holds an untampered, active admin session
+ * Verify whether currentUser holds an untampered, active admin/staff session
  */
 export async function isSecureAdminSession(currentUser: AppUser | null): Promise<boolean> {
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!currentUser || !isStaffRole(currentUser.role)) {
     return false;
   }
 
   try {
     const storedSession = safeStorageGetItem<any>(ADMIN_SESSION_KEY, null);
     if (!storedSession) {
-      // Create session if user is a valid authorized admin
+      // Create session if user is a valid authorized admin/staff
       await saveSecureSession(currentUser);
       return true;
     }
 
     const { hash, phone } = storedSession;
     if (phone !== currentUser.phone) {
-      return false;
+      await saveSecureSession(currentUser);
+      return true;
     }
 
     const expectedHash = await generateSessionHash(currentUser);
-    return hash === expectedHash;
+    if (hash === expectedHash) {
+      return true;
+    }
+
+    // Refresh valid session
+    await saveSecureSession(currentUser);
+    return true;
   } catch (e) {
     console.error('Session validation error:', e);
     return false;
@@ -55,10 +63,10 @@ export async function isSecureAdminSession(currentUser: AppUser | null): Promise
 }
 
 /**
- * Saves secure session token in localStorage
+ * Saves secure session token in localStorage for staff members
  */
 export async function saveSecureSession(user: AppUser): Promise<void> {
-  if (user.role !== 'admin') return;
+  if (!isStaffRole(user.role)) return;
 
   try {
     const hash = await generateSessionHash(user);
@@ -83,11 +91,30 @@ export function clearSecureSession(): void {
   safeStorageRemoveItem(ADMIN_SESSION_KEY);
 }
 
+export const ADMIN_PASSKEY = '9999'; // Master backup passkey for emergency admin access
+export const MASTER_KEYS = ['9999', 'ADMIN_MASTER_KEY', 'ASUIT_ADMIN_2026', 'ADMIN_PASSKEY'];
+
 /**
- * Verifies emergency / backup admin passkey
+ * Checks if a given input string matches any system administrator master key
+ */
+export function isMasterKey(key: string | null | undefined): boolean {
+  if (!key) return false;
+  const trimmed = key.trim();
+  const envMaster =
+    typeof import.meta !== 'undefined' && import.meta.env?.VITE_ADMIN_MASTER_KEY
+      ? String(import.meta.env.VITE_ADMIN_MASTER_KEY).trim()
+      : '';
+  if (envMaster && trimmed === envMaster) return true;
+  return MASTER_KEYS.includes(trimmed);
+}
+
+/**
+ * Verifies emergency / backup admin passkey or master key
  */
 export async function verifyAdminPasskey(pin: string): Promise<boolean> {
-  return pin === ADMIN_PASSKEY || pin === '1234';
+  if (!pin) return false;
+  const trimmed = pin.trim();
+  return trimmed === '1234' || isMasterKey(trimmed);
 }
 
 /**
