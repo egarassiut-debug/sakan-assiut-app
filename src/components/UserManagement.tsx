@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { AppUser, GranularRole, GRANULAR_ROLES, CustomRoleDefinition } from '../types/property';
+import { AppUser } from '../types/property';
 import { 
   getAllRegisteredUsers, 
   resetUserPinCode, 
@@ -8,24 +8,15 @@ import {
   createWhatsAppLink,
   syncUsersWithDatabase,
   updateUserRole,
-  bulkUpdateUserRoles
+  isMasterOwner
 } from '../utils/userManager';
-import { 
-  getAllRoles, 
-  getRoleDefinition,
-  isFoundingOwnerPhone,
-  appointPartner,
-  revokePartner,
-  FOUNDING_OWNERS
-} from '../utils/adminManager';
-import { validateEgyptianPhone } from '../utils/phoneValidator';
 import { isSupabaseActive } from '../lib/supabase';
 import { 
   Users, Search, ShieldCheck, UserX, UserCheck, KeyRound, 
   Trash2, MessageCircle, AlertCircle, CheckCircle2, Lock, 
   Unlock, Eye, EyeOff, RefreshCw, Phone, User, Calendar,
   Copy, Check, Sparkles, Filter, Download, FileSpreadsheet, Printer, Database,
-  Crown, Headset, CheckSquare, Square, ChevronDown, Layers, UserPlus, ShieldAlert, X
+  ChevronDown
 } from 'lucide-react';
 import { exportToCSV, exportToPrintablePDF } from '../utils/exportUtils';
 
@@ -38,14 +29,18 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   const [isSyncing, setIsSyncing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
-  const [roleFilter, setRoleFilter] = useState<'all' | GranularRole>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'admin'>('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Bulk Selection State
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [availableRoles, setAvailableRoles] = useState<CustomRoleDefinition[]>(() => getAllRoles());
-  const [bulkRole, setBulkRole] = useState<GranularRole>('reviewer');
-  const [isBulkApplying, setIsBulkApplying] = useState(false);
+  // Role dropdown & confirmation modal states
+  const [openRoleDropdownUserId, setOpenRoleDropdownUserId] = useState<string | null>(null);
+  const [confirmRoleChangeData, setConfirmRoleChangeData] = useState<{
+    user: AppUser;
+    targetRole: 'admin' | 'user';
+    targetRoleLabel: string;
+  } | null>(null);
+
+  const isOwner = isMasterOwner(currentUser);
 
   // Reset PIN Modal
   const [pinModalUser, setPinModalUser] = useState<AppUser | null>(null);
@@ -68,21 +63,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   const [isExportOpen, setIsExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
-  const isCurrentSuperAdmin = currentUser?.role === 'super_admin';
-
-  // Partners & Co-Owners Modal State
-  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
-  const [partnerMode, setPartnerMode] = useState<'select' | 'new'>('select');
-  const [selectedUserIdForPartner, setSelectedUserIdForPartner] = useState('');
-  const [newPartnerName, setNewPartnerName] = useState('');
-  const [newPartnerPhone, setNewPartnerPhone] = useState('');
-  const [newPartnerPin, setNewPartnerPin] = useState('1234');
-  const [partnerError, setPartnerError] = useState<string | null>(null);
-  const [isAppointingPartner, setIsAppointingPartner] = useState(false);
-  const [revokingPartnerUser, setRevokingPartnerUser] = useState<AppUser | null>(null);
-
   const loadUsers = async (showFeedback = false) => {
     setIsSyncing(true);
+    // Instant local view
     setUsers(getAllRegisteredUsers());
     try {
       const synced = await syncUsersWithDatabase();
@@ -112,15 +95,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     const handleUpdate = () => {
       setUsers(getAllRegisteredUsers());
     };
-    const handleRolesUpdate = () => {
-      setAvailableRoles(getAllRoles());
-    };
     window.addEventListener('ardaw_users_updated', handleUpdate);
-    window.addEventListener('ardaw_custom_roles_updated', handleRolesUpdate);
     window.addEventListener('storage', handleUpdate);
     return () => {
       window.removeEventListener('ardaw_users_updated', handleUpdate);
-      window.removeEventListener('ardaw_custom_roles_updated', handleRolesUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
   }, []);
@@ -141,10 +119,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
       // Role match
-      if (roleFilter !== 'all') {
-        const uRole = u.role === 'admin' && roleFilter === 'admin' ? 'admin' : u.role;
-        if (uRole !== roleFilter) return false;
-      }
+      if (roleFilter !== 'all' && u.role !== roleFilter) return false;
 
       // Status match
       if (statusFilter === 'active' && u.isBlocked) return false;
@@ -163,123 +138,34 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     });
   }, [users, searchQuery, statusFilter, roleFilter]);
 
-  // Bulk Selection Handlers
-  const handleToggleSelectAll = () => {
-    if (selectedUserIds.length === filteredUsers.length) {
-      setSelectedUserIds([]);
-    } else {
-      setSelectedUserIds(filteredUsers.map((u) => u.id));
-    }
-  };
-
-  const handleToggleSelectUser = (userId: string) => {
-    setSelectedUserIds((prev) => 
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-    );
-  };
-
-  // Single Role Change
-  const handleRoleChange = async (userId: string, newRole: GranularRole) => {
-    const targetUser = users.find((u) => u.id === userId);
-    if (!targetUser) return;
-
-    if (newRole === 'super_admin' && !isCurrentSuperAdmin) {
-      showToast('❌ عذراً، فقط مالك المنظومة (Super Admin) يمتلك صلاحية تعيين دور المالك.');
-      return;
-    }
-
-    const success = await updateUserRole(userId, newRole, currentUser);
-    if (success) {
-      loadUsers();
-      showToast(`✅ تم تحديث دور (${targetUser.name}) إلى [${getRoleName(newRole)}] بنجاح.`);
-    } else {
-      showToast('❌ تعذر تحديث الدور، تحقق من صلاحيات حسابك.');
-    }
-  };
-
-  // Bulk Role Apply
-  const handleApplyBulkRole = async () => {
-    if (selectedUserIds.length === 0) return;
-    if (bulkRole === 'super_admin' && !isCurrentSuperAdmin) {
-      showToast('❌ عذراً، فقط مالك المنظومة (Super Admin) يمتلك صلاحية تعيين دور المالك.');
-      return;
-    }
-
-    setIsBulkApplying(true);
-    try {
-      const { successCount, failedCount } = await bulkUpdateUserRoles(
-        selectedUserIds, 
-        bulkRole, 
-        currentUser
-      );
-      loadUsers();
-      setSelectedUserIds([]);
-      showToast(`✅ تم تحديث صلاحيات ${successCount} حساب إلى [${getRoleName(bulkRole)}] بنجاح.${failedCount > 0 ? ` (فشل ${failedCount})` : ''}`);
-    } catch (e) {
-      showToast('حدث خطأ أثناء تطبيق الصلاحيات الجماعية.');
-    } finally {
-      setIsBulkApplying(false);
-    }
-  };
-
   // Statistics
   const totalCount = users.length;
-  const superAdminCount = users.filter((u) => u.role === 'super_admin').length;
-  const adminCount = users.filter((u) => u.role === 'admin').length;
-  const reviewerCount = users.filter((u) => u.role === 'reviewer').length;
-  const supportCount = users.filter((u) => u.role === 'support').length;
-  const regularUserCount = users.filter((u) => u.role === 'user' || !u.role).length;
+  const activeCount = users.filter((u) => !u.isBlocked).length;
   const blockedCount = users.filter((u) => u.isBlocked).length;
-
-  const getRoleName = (role?: string) => {
-    const def = getRoleDefinition(role);
-    if (def) return def.name;
-    const found = GRANULAR_ROLES.find((r) => r.id === role);
-    if (found) return found.name;
-    if (role === 'admin') return 'مشرف عام / مدير العمليات';
-    return 'مستخدم عادي';
-  };
-
-  const getRoleBadgeStyle = (role?: string) => {
-    const def = getRoleDefinition(role);
-    if (def && def.color) return def.color;
-    const found = GRANULAR_ROLES.find((r) => r.id === role);
-    if (found) return found.color;
-    if (role === 'admin') return 'bg-emerald-100 text-emerald-800 border-emerald-300';
-    return 'bg-slate-100 text-slate-700 border-slate-300';
-  };
-
-  const getRoleIcon = (role?: string) => {
-    if (role === 'super_admin') return <Crown className="w-4 h-4 text-purple-600 shrink-0" />;
-    if (role === 'admin') return <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />;
-    if (role === 'reviewer') return <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />;
-    if (role === 'support') return <Headset className="w-4 h-4 text-amber-600 shrink-0" />;
-    const def = getRoleDefinition(role);
-    if (def && !def.isSystem) return <Sparkles className="w-4 h-4 text-cyan-600 shrink-0" />;
-    return <User className="w-4 h-4 text-slate-500 shrink-0" />;
-  };
+  const adminCount = users.filter((u) => u.role === 'admin').length;
 
   // Export Columns Configuration
   const userExportColumns = [
     { header: 'اسم المستخدم', accessor: (u: AppUser) => u.name },
     { header: 'رقم الهاتف', accessor: (u: AppUser) => u.phone },
-    { header: 'الدور والصلاحية', accessor: (u: AppUser) => getRoleName(u.role) },
+    { header: 'الدور / الصلاحية', accessor: (u: AppUser) => (u.role === 'admin' ? 'مدير نظام' : 'مستخدم عادي') },
     { header: 'حالة الحساب', accessor: (u: AppUser) => (u.isBlocked ? 'محظور' : 'نشط') },
+    { header: 'رمز PIN', accessor: (u: AppUser) => u.pin || 'غير محدد' },
     { header: 'تاريخ التسجيل', accessor: (u: AppUser) => (u.createdAt ? new Date(u.createdAt).toLocaleDateString('ar-EG') : '-') },
   ];
 
   const handleExportCSV = () => {
-    exportToCSV(filteredUsers, userExportColumns, 'قائمة_المستخدمين_والصلاحيات_سكن_أسيوط');
+    exportToCSV(filteredUsers, userExportColumns, 'قائمة_المستخدمين_عقارات_أسيوط');
     showToast(`تم تصدير ${filteredUsers.length} مستخدم كملف CSV بنجاح.`);
     setIsExportOpen(false);
   };
 
   const handleExportPDF = () => {
     exportToPrintablePDF(
-      'سجل حسابات المستخدمين وإدارة الصلاحيات (RBAC) - سكن أسيوط',
+      'سجل حسابات المستخدمين المسجلين - أسيوط',
       filteredUsers,
       userExportColumns,
-      'تقرير رسمي بحسابات المستخدمين وتوزيع الصلاحيات'
+      'تقرير تفصيلي لحسابات المستخدمين وصلاحياتهم'
     );
     showToast(`جاري فتح معاينة الطباعة / PDF لـ ${filteredUsers.length} مستخدم.`);
     setIsExportOpen(false);
@@ -315,12 +201,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     }
   };
 
+  // Generate random 4-digit PIN
   const handleGenerateRandomPin = () => {
     const random = Math.floor(1000 + Math.random() * 9000).toString();
     setNewPin(random);
     setPinError(null);
   };
 
+  // Handle Block / Unblock Submission
   const handleConfirmBlockToggle = () => {
     if (!blockModalUser) return;
     const shouldBlock = !blockModalUser.isBlocked;
@@ -342,300 +230,226 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     }
   };
 
+  // Handle Delete Confirmation
   const handleConfirmDelete = () => {
     if (!deleteModalUser) return;
     const success = deleteRegisteredUser(deleteModalUser.id, currentUser);
     if (success) {
       loadUsers();
-      showToast(`تم حذف حساب (${deleteModalUser.name}) نهائياً من النظام.`);
+      showToast(`تم حذف حساب (${deleteModalUser.name}) نهائياً من المنظومة.`);
       setDeleteModalUser(null);
     } else {
-      showToast('تعذر حذف هذا الحساب (حساب محمي أو خطأ في النظام).');
+      showToast('لا يمكن حذف هذا الحساب (حساب أدمن رئيسي ومحمي).');
     }
   };
 
-  // Founding Owners & Appointed Partners
-  const foundingOwnersList = useMemo(() => {
-    return users.filter((u) => isFoundingOwnerPhone(u.phone));
-  }, [users]);
-
-  const appointedPartnersList = useMemo(() => {
-    return users.filter((u) => !isFoundingOwnerPhone(u.phone) && (u.isPartner || u.role === 'super_admin'));
-  }, [users]);
-
-  // Handle Appointing a Partner
-  const handleAppointPartnerSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPartnerError(null);
-
-    let targetName = '';
-    let targetPhone = '';
-    let targetPin = '1234';
-
-    if (partnerMode === 'select') {
-      if (!selectedUserIdForPartner) {
-        setPartnerError('يرجى اختيار مستخدم من القائمة.');
-        return;
+  // Close role dropdown when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.role-dropdown-container')) {
+        setOpenRoleDropdownUserId(null);
       }
-      const target = users.find((u) => u.id === selectedUserIdForPartner);
-      if (!target) {
-        setPartnerError('المستخدم المحدد غير موجود.');
-        return;
-      }
-      targetName = target.name;
-      targetPhone = target.phone;
-      targetPin = target.pin || '1234';
-    } else {
-      if (!newPartnerName.trim()) {
-        setPartnerError('يرجى كتابة اسم الشريك بالكامل.');
-        return;
-      }
-      const phoneErr = validateEgyptianPhone(newPartnerPhone, 'رقم موبايل الشريك');
-      if (phoneErr) {
-        setPartnerError(phoneErr);
-        return;
-      }
-      targetName = newPartnerName.trim();
-      targetPhone = newPartnerPhone.trim();
-      targetPin = newPartnerPin.replace(/\D/g, '') || '1234';
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  // Execute Role Update by Owner
+  const handleExecuteRoleChange = () => {
+    if (!confirmRoleChangeData) return;
+    if (!isOwner) {
+      showToast('عذراً، تعيين وتحديث الأدوار الوظيفية مقتصر على مالك المنظومة فقط 🔒');
+      setConfirmRoleChangeData(null);
+      return;
     }
 
-    setIsAppointingPartner(true);
-    try {
-      const result = appointPartner(
-        { phone: targetPhone, name: targetName, pin: targetPin },
-        currentUser ? { name: currentUser.name, phone: currentUser.phone, role: currentUser.role } : null
-      );
-
-      if (result.success) {
-        await loadUsers();
-        showToast(`👑 تم تعيين (${targetName}) شريكاً في الملكية بنجاح!`);
-        setSelectedUserIdForPartner('');
-        setNewPartnerName('');
-        setNewPartnerPhone('');
-        setNewPartnerPin('1234');
-        setPartnerError(null);
-      } else {
-        setPartnerError(result.error || 'حدث خطأ أثناء تعيين الشريك.');
-      }
-    } catch (err: any) {
-      setPartnerError(err.message || 'حدث خطأ غير متوقع.');
-    } finally {
-      setIsAppointingPartner(false);
-    }
-  };
-
-  // Handle Revoking Partner
-  const handleConfirmRevokePartner = () => {
-    if (!revokingPartnerUser) return;
-    const result = revokePartner(
-      revokingPartnerUser.phone,
-      'admin',
-      currentUser ? { name: currentUser.name, phone: currentUser.phone, role: currentUser.role } : null
+    const result = updateUserRole(
+      confirmRoleChangeData.user.id,
+      confirmRoleChangeData.targetRole,
+      currentUser
     );
 
     if (result.success) {
       loadUsers();
-      showToast(`تم إلغاء شراكة الملكية لـ (${revokingPartnerUser.name}) بنجاح.`);
-      setRevokingPartnerUser(null);
+      showToast(`تم تعيين دور (${confirmRoleChangeData.user.name}) إلى (${confirmRoleChangeData.targetRoleLabel}) بنجاح.`);
     } else {
-      showToast(result.error || 'فشل في إلغاء الشراكة.');
+      showToast(result.error || 'حدث خطأ أثناء تعديل الدور.');
     }
+
+    setConfirmRoleChangeData(null);
+    setOpenRoleDropdownUserId(null);
   };
 
   return (
     <div className="space-y-4">
-      {/* Toast Notification */}
+      {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#124C46] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2 border border-[#D6A84F] text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200">
-          <Sparkles className="w-4 h-4 text-[#D6A84F] shrink-0" />
-          <span>{toastMessage}</span>
+        <div className="p-3.5 bg-emerald-600 text-white rounded-2xl flex items-center justify-between text-xs font-bold shadow-lg animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-200" />
+            <span>{toastMessage}</span>
+          </div>
+          <button 
+            onClick={() => setToastMessage(null)}
+            className="text-white/80 hover:text-white cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      {/* Top Banner & Header */}
-      <div className="bg-white rounded-3xl border border-[#D6DEE5] p-5 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-[#EAF3EF] text-[#124C46] flex items-center justify-center border border-[#124C46]/20">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-[#24313D] flex items-center gap-2">
-                  <span>إدارة المستخدمين والصلاحيات المتقدمة (RBAC)</span>
-                  <span className="text-[10px] bg-purple-100 text-purple-800 border border-purple-200 font-bold px-2 py-0.5 rounded-full">
-                    Granular Access Control
-                  </span>
-                </h3>
-                <p className="text-xs text-[#5D6B78] mt-0.5">
-                  عرض وتحديد أدوار فريق العمل (مالك المنظومة، مشرف عام، مراجع عقارات، دعم فني، ومواطن)
-                </p>
-              </div>
-            </div>
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-[#002B49] via-[#00385F] to-[#002B49] text-white p-5 rounded-3xl shadow-md border border-[#001D33] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-[#FFB300]/20 border border-[#FFB300]/30 flex items-center justify-center text-[#FFB300]">
+            <Users className="w-6 h-6" />
           </div>
-
-          {/* Quick Actions & Sync */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Partners & Co-Owners Management Button (For Super Admins) */}
-            {isCurrentSuperAdmin && (
-              <button
-                onClick={() => setIsPartnerModalOpen(true)}
-                className="px-3.5 py-2 text-xs bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl border border-amber-400 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-98"
-                title="إدارة واختيار الشركاء في الملكية"
-              >
-                <Crown className="w-3.5 h-3.5 text-slate-950 fill-amber-300" />
-                <span>إدارة الشركاء والملاك ({foundingOwnersList.length + appointedPartnersList.length})</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => loadUsers(true)}
-              disabled={isSyncing}
-              className="px-3.5 py-2 text-xs bg-[#F5F7F9] hover:bg-[#EAF3EF] text-[#124C46] font-bold rounded-xl border border-[#D6DEE5] flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-              title="تحديث ومزامنة البيانات مع السيرفر"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-[#124C46]' : ''}`} />
-              <span>{isSyncing ? 'جاري التحديث...' : 'تحديث القائمة'}</span>
-            </button>
-
-            {/* Export Menu */}
-            <div className="relative" ref={exportRef}>
-              <button
-                onClick={() => setIsExportOpen(!isExportOpen)}
-                className="px-3.5 py-2 text-xs bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl border border-slate-300 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-              >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                <span>تصدير</span>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
-              </button>
-
-              {isExportOpen && (
-                <div className="absolute left-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150">
-                  <button
-                    onClick={handleExportCSV}
-                    className="w-full px-3 py-2 text-right text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                    <span>تصدير كملف Excel / CSV</span>
-                  </button>
-                  <button
-                    onClick={handleExportPDF}
-                    className="w-full px-3 py-2 text-right text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <Printer className="w-4 h-4 text-blue-600" />
-                    <span>طباعة التقرير / PDF</span>
-                  </button>
-                </div>
-              )}
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base sm:text-lg font-black">إدارة المستخدمين والحسابات المسجلة</h3>
+              <span className="text-xs bg-[#FFB300] text-[#002B49] font-black px-2.5 py-0.5 rounded-full shadow-xs">
+                {totalCount} حساب
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1">
+              التحكم في بيانات الحسابات، وإعادة تعيين رمز PIN، وجلب الحسابات المسجلة حديثاً فوراً
+            </p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                isSupabaseActive() 
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' 
+                  : 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isSupabaseActive() ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400'}`} />
+                {isSupabaseActive() ? 'متصل بقاعدة البيانات الحية (Supabase)' : 'تخزين متزامن (جاهز للربط بـ Supabase)'}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Roles Stat Metric Badges */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mt-4 pt-4 border-t border-[#D6DEE5]">
-          <div className="bg-[#F5F7F9] rounded-2xl p-2.5 border border-[#D6DEE5] text-center">
-            <span className="text-[10px] font-bold text-[#5D6B78] block">إجمالي المسجلين</span>
-            <span className="text-base font-black text-[#24313D]">{totalCount}</span>
+        <div className="flex items-center gap-2 flex-wrap" ref={exportRef}>
+          {/* زر التحديث اللحظي من قاعدة البيانات */}
+          <button
+            onClick={() => loadUsers(true)}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+            title="تحديث فوري من قاعدة البيانات"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing ? 'جاري الجلب...' : 'تحديث حي'}</span>
+          </button>
+
+          {/* تصدير البيانات */}
+          <div className="relative">
+            <button
+              onClick={() => setIsExportOpen(!isExportOpen)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FFB300] hover:bg-[#FFA000] text-slate-950 text-xs font-black transition-all shadow-xs cursor-pointer active:scale-95"
+              title="تصدير بيانات المستخدمين (CSV أو PDF)"
+            >
+              <Download className="w-4 h-4 text-slate-950" />
+              <span>تصدير البيانات</span>
+            </button>
+
+            {isExportOpen && (
+              <div 
+                className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-right"
+              >
+                <div className="px-3.5 py-2 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                  <span>خيارات التصدير</span>
+                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono">{filteredUsers.length} مستخدم</span>
+                </div>
+                <button
+                  onClick={handleExportCSV}
+                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <span>ملف Excel (CSV)</span>
+                  </span>
+                  <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded font-mono font-bold">.csv</span>
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Printer className="w-4 h-4 text-rose-600" />
+                    <span>طباعة / حفظ PDF</span>
+                  </span>
+                  <span className="text-[10px] bg-rose-50 border border-rose-200 text-rose-700 px-1.5 py-0.5 rounded font-mono font-bold">.pdf</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="bg-purple-50 rounded-2xl p-2.5 border border-purple-200 text-center">
-            <span className="text-[10px] font-bold text-purple-700 flex items-center justify-center gap-1">
-              <Crown className="w-3 h-3" /> المالك / Super
-            </span>
-            <span className="text-base font-black text-purple-900">{superAdminCount}</span>
-          </div>
+          <button
+            onClick={() => loadUsers(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
+            title="تحديث قائمة الحسابات"
+          >
+            <RefreshCw className="w-4 h-4 text-[#FFB300]" />
+            <span>تحديث القائمة</span>
+          </button>
+        </div>
+      </div>
 
-          <div className="bg-emerald-50 rounded-2xl p-2.5 border border-emerald-200 text-center">
-            <span className="text-[10px] font-bold text-emerald-700 flex items-center justify-center gap-1">
-              <ShieldCheck className="w-3 h-3" /> المشرف العام
-            </span>
-            <span className="text-base font-black text-emerald-900">{adminCount}</span>
+      {/* Summary Stat Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold text-slate-500 block">إجمالي الحسابات</span>
+            <span className="text-xl font-black text-slate-900 mt-0.5 block">{totalCount}</span>
           </div>
-
-          <div className="bg-blue-50 rounded-2xl p-2.5 border border-blue-200 text-center">
-            <span className="text-[10px] font-bold text-blue-700 flex items-center justify-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> المراجعون
-            </span>
-            <span className="text-base font-black text-blue-900">{reviewerCount}</span>
+          <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600">
+            <Users className="w-5 h-5" />
           </div>
+        </div>
 
-          <div className="bg-amber-50 rounded-2xl p-2.5 border border-amber-200 text-center">
-            <span className="text-[10px] font-bold text-amber-700 flex items-center justify-center gap-1">
-              <Headset className="w-3 h-3" /> الدعم الفني
-            </span>
-            <span className="text-base font-black text-amber-900">{supportCount}</span>
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold text-slate-500 block">المستخدمين النشطين</span>
+            <span className="text-xl font-black text-emerald-600 mt-0.5 block">{activeCount}</span>
           </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+            <UserCheck className="w-5 h-5" />
+          </div>
+        </div>
 
-          <div className="bg-rose-50 rounded-2xl p-2.5 border border-rose-200 text-center">
-            <span className="text-[10px] font-bold text-rose-700 flex items-center justify-center gap-1">
-              <Lock className="w-3 h-3" /> المحظورون
-            </span>
-            <span className="text-base font-black text-rose-900">{blockedCount}</span>
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold text-slate-500 block">الحسابات المحظورة</span>
+            <span className="text-xl font-black text-rose-600 mt-0.5 block">{blockedCount}</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+            <UserX className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold text-slate-500 block">المشرفين والمدراء</span>
+            <span className="text-xl font-black text-amber-600 mt-0.5 block">{adminCount}</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+            <ShieldCheck className="w-5 h-5" />
           </div>
         </div>
       </div>
 
-      {/* Bulk Action Bar (Visible when 1+ users are selected) */}
-      {selectedUserIds.length > 0 && (
-        <div className="bg-gradient-to-r from-[#124C46] to-[#0D3D38] text-white rounded-2xl p-3.5 shadow-lg border border-[#D6A84F]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-150">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-[#D6A84F] font-bold">
-              {selectedUserIds.length}
-            </div>
-            <div>
-              <span className="text-xs font-black block">تم تحديد {selectedUserIds.length} مستخدم</span>
-              <span className="text-[10px] text-white/80">تطبيق الصلاحية المختارة على كافة الحسابات المحددة دفعة واحدة</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 bg-white/10 rounded-xl px-2 py-1 border border-white/20">
-              <span className="text-[11px] font-bold text-white/90">تعيين دور:</span>
-              <select
-                value={bulkRole}
-                onChange={(e) => setBulkRole(e.target.value as GranularRole)}
-                className="bg-white text-[#24313D] text-xs font-bold rounded-lg px-2 py-1 outline-hidden cursor-pointer"
-              >
-                {availableRoles.map((r) => (
-                  <option key={r.id} value={r.id} disabled={r.id === 'super_admin' && !isCurrentSuperAdmin}>
-                    {r.isSystem ? r.name : `✨ ${r.name} (دور مخصص)`}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              onClick={handleApplyBulkRole}
-              disabled={isBulkApplying}
-              className="px-3.5 py-1.5 bg-[#D6A84F] hover:bg-[#c7983f] text-[#124C46] font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>{isBulkApplying ? 'جاري التطبيق...' : 'تطبيق الصلاحية للمحددين'}</span>
-            </button>
-
-            <button
-              onClick={() => setSelectedUserIds([])}
-              className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
-            >
-              إلغاء التحديد
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Search & Filters */}
-      <div className="bg-white rounded-3xl border border-[#D6DEE5] p-4 shadow-xs space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {/* Search and Filters Bar */}
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+          
           {/* Search Box */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ابحث بالاسم، رقم الموبايل أو كود المستخدم..."
-              className="w-full pr-10 pl-3 py-2.5 text-xs bg-[#F5F7F9] border border-[#D6DEE5] text-[#24313D] placeholder-slate-400 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#124C46] font-medium"
+              placeholder="ابحث بالاسم، رقم الموبايل أو المعرف..."
+              className="w-full pr-10 pl-3 py-2 text-xs bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
             />
             {searchQuery && (
               <button
@@ -647,97 +461,68 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
             )}
           </div>
 
-          {/* Quick Select All Toggle */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleToggleSelectAll}
-              className="px-3 py-2 rounded-xl border border-[#D6DEE5] bg-[#F5F7F9] hover:bg-[#EAF3EF] text-xs font-bold text-[#124C46] flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              {selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0 ? (
-                <>
-                  <CheckSquare className="w-4 h-4 text-[#124C46]" />
-                  <span>إلغاء تحديد الكل ({filteredUsers.length})</span>
-                </>
-              ) : (
-                <>
-                  <Square className="w-4 h-4 text-slate-400" />
-                  <span>تحديد كل المعروضين ({filteredUsers.length})</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Filter Pills */}
-        <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-1 text-xs font-bold text-slate-500 ml-1">
-            <Filter className="w-3.5 h-3.5" />
-            <span>فلترة بالأدوار:</span>
-          </div>
-
-          <button
-            onClick={() => setRoleFilter('all')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              roleFilter === 'all'
-                ? 'bg-[#124C46] text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            الكل ({totalCount})
-          </button>
-
-          {availableRoles.map((r) => {
-            const count = users.filter((u) => u.role === r.id).length;
-            const isSelected = roleFilter === r.id;
-            return (
+          {/* Filter Pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Status Filter */}
+            <div className="flex bg-slate-100 border border-slate-200 p-1 rounded-xl text-xs font-bold">
               <button
-                key={r.id}
-                onClick={() => setRoleFilter(r.id)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border ${
-                  isSelected
-                    ? `${r.color} shadow-xs font-black ring-1 ring-current`
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                onClick={() => setStatusFilter('all')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  statusFilter === 'all' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span>{r.badge || r.name}</span>
-                <span className="opacity-75 text-[10px]">({count})</span>
+                الكل
               </button>
-            );
-          })}
+              <button
+                onClick={() => setStatusFilter('active')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  statusFilter === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                النشطون
+              </button>
+              <button
+                onClick={() => setStatusFilter('blocked')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  statusFilter === 'blocked' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                المحظورون
+              </button>
+            </div>
 
-          <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
-
-          {/* Status Filter */}
-          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
-            <button
-              onClick={() => setStatusFilter('all')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                statusFilter === 'all' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              النشطون والمحظورون
-            </button>
-            <button
-              onClick={() => setStatusFilter('active')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                statusFilter === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              النشطون
-            </button>
-            <button
-              onClick={() => setStatusFilter('blocked')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                statusFilter === 'blocked' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              المحظورون ({blockedCount})
-            </button>
+            {/* Role Filter */}
+            <div className="flex bg-slate-100 border border-slate-200 p-1 rounded-xl text-xs font-bold">
+              <button
+                onClick={() => setRoleFilter('all')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  roleFilter === 'all' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                كل الأدوار
+              </button>
+              <button
+                onClick={() => setRoleFilter('user')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  roleFilter === 'user' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                مستخدمين
+              </button>
+              <button
+                onClick={() => setRoleFilter('admin')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  roleFilter === 'admin' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                مدراء
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Users Grid */}
+      {/* Users List / Grid */}
       {filteredUsers.length === 0 ? (
         <div className="bg-white p-12 text-center rounded-3xl border border-slate-200">
           <UserX className="w-12 h-12 text-slate-400 mx-auto mb-3" />
@@ -749,106 +534,61 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredUsers.map((u) => {
-            const isFounding = isFoundingOwnerPhone(u.phone);
-            const isPartner = Boolean(u.isPartner || (!isFounding && u.role === 'super_admin'));
-            const isProtectedSuperAdmin = isFounding;
+            const isProtectedAdmin = u.phone === '01002345678' || u.phone === '01000000000';
             const isSelf = currentUser?.phone === u.phone;
-            const isSelected = selectedUserIds.includes(u.id);
 
             return (
               <div
                 key={u.id}
-                className={`bg-white rounded-2xl border p-4 shadow-xs transition-all hover:border-[#124C46]/30 flex flex-col justify-between ${
-                  isSelected
-                    ? 'border-[#124C46] bg-[#EAF3EF]/30 ring-2 ring-[#124C46]/20'
-                    : isFounding
-                    ? 'border-amber-400 bg-amber-50/15 ring-1 ring-amber-300/60 shadow-sm'
-                    : isPartner
-                    ? 'border-purple-300 bg-purple-50/20 shadow-xs'
-                    : u.isBlocked 
-                    ? 'border-rose-300 bg-rose-50/30' 
+                className={`bg-white rounded-2xl border p-4 shadow-xs transition-all hover:border-slate-300 flex flex-col justify-between ${
+                  u.isBlocked 
+                    ? 'border-rose-300 bg-rose-50/40' 
                     : u.role === 'admin' 
-                    ? 'border-emerald-200 bg-emerald-50/15' 
-                    : 'border-[#D6DEE5]'
+                    ? 'border-amber-300 bg-amber-50/20' 
+                    : 'border-slate-200'
                 }`}
               >
                 {/* User Card Header */}
                 <div>
-                  <div className="flex items-start justify-between gap-2 mb-2.5">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {/* Checkbox for bulk action */}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleSelectUser(u.id)}
-                        disabled={isFounding}
-                        className="text-slate-400 hover:text-[#124C46] cursor-pointer p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={isFounding ? 'الحسابات التأسيسية للملاك محصنة ضد التعديل الجماعي' : 'تحديد'}
-                      >
-                        {isSelected ? (
-                          <CheckSquare className="w-5 h-5 text-[#124C46]" />
-                        ) : (
-                          <Square className="w-5 h-5 text-slate-300" />
-                        )}
-                      </button>
-
-                      {/* Avatar Icon */}
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border ${
-                        isFounding
-                          ? 'bg-gradient-to-br from-amber-100 to-amber-200 text-amber-900 border-amber-300 shadow-xs ring-2 ring-amber-400/40'
-                          : isPartner
-                          ? 'bg-purple-100 text-purple-900 border-purple-300'
-                          : getRoleBadgeStyle(u.role)
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                        u.isBlocked
+                          ? 'bg-rose-100 text-rose-600 border border-rose-200'
+                          : u.role === 'admin'
+                          ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}>
-                        {isFounding ? (
-                          <Crown className="w-5 h-5 text-amber-700 fill-amber-400" />
-                        ) : isPartner ? (
-                          <Crown className="w-5 h-5 text-purple-700 fill-purple-300" />
-                        ) : (
-                          getRoleIcon(u.role)
-                        )}
+                        {u.role === 'admin' ? <ShieldCheck className="w-5 h-5 text-amber-600" /> : <User className="w-5 h-5 text-slate-600" />}
                       </div>
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h4 className="text-xs font-black text-[#24313D] truncate flex items-center gap-1">
-                            <span>{u.name}</span>
-                            {isFounding && (
-                              <span title="مالك مؤسس محصن" className="text-amber-500">
-                                👑
-                              </span>
-                            )}
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="text-xs font-black text-slate-900 leading-tight">
+                            {u.name}
                           </h4>
                           {isSelf && (
-                            <span className="text-[9px] bg-slate-100 text-slate-600 border border-slate-200 font-bold px-1 rounded">
+                            <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200 font-bold px-1.5 py-0.2 rounded">
                               حسابك
                             </span>
                           )}
                         </div>
-
-                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                          {isFounding ? (
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full border bg-gradient-to-r from-amber-100 to-amber-200 text-amber-900 border-amber-400 shadow-2xs flex items-center gap-1">
-                              <Crown className="w-2.5 h-2.5 text-amber-700 fill-amber-500" />
-                              <span>مالك المنظومة (شريك مؤسس)</span>
-                            </span>
-                          ) : isPartner ? (
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full border bg-purple-100 text-purple-900 border-purple-300 shadow-2xs flex items-center gap-1">
-                              <Sparkles className="w-2.5 h-2.5 text-purple-600" />
-                              <span>شريك في الملكية</span>
-                            </span>
-                          ) : (
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getRoleBadgeStyle(u.role)}`}>
-                              {getRoleName(u.role)}
-                            </span>
-                          )}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                            u.role === 'admin'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}>
+                            {u.role === 'admin' ? 'مشرف عام / مدير العمليات' : 'مستخدم عادي / مواطن'}
+                          </span>
 
                           {u.isBlocked ? (
-                            <span className="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200 flex items-center gap-0.5">
+                            <span className="text-[10px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200 flex items-center gap-1">
                               <Lock className="w-2.5 h-2.5" />
                               محظور
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-0.5">
+                            <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
                               <CheckCircle2 className="w-2.5 h-2.5" />
                               نشط
                             </span>
@@ -857,139 +597,229 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                       </div>
                     </div>
 
-                    {/* WhatsApp Quick Link */}
+                    {/* WhatsApp Quick Action Button */}
                     <a
-                      href={createWhatsAppLink(u.phone, `مرحباً بك أستاذ ${u.name}، معك إدارة منصة وتطبيق سكن أسيوط.`)}
+                      href={createWhatsAppLink(
+                        u.phone,
+                        `السلام عليكم أستاذ ${u.name}، معك إدارة تطبيق سكن أسيوط.`
+                      )}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white flex items-center justify-center border border-emerald-200 transition-colors cursor-pointer shrink-0"
-                      title="مراسلة عبر الواتساب"
+                      className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      title="مراسلة العميل عبر الواتساب"
                     >
                       <MessageCircle className="w-4 h-4" />
                     </a>
                   </div>
 
-                  {/* Phone & ID Row */}
-                  <div className="bg-[#F5F7F9] rounded-xl p-2.5 border border-[#D6DEE5] space-y-1.5 text-xs text-slate-600">
+                  {/* Phone & PIN Details */}
+                  <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs my-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-medium text-slate-500">رقم الهاتف:</span>
-                      <button
-                        onClick={() => handleCopyPhone(u.phone)}
-                        className="font-mono font-bold text-[#24313D] hover:text-[#124C46] flex items-center gap-1 cursor-pointer"
-                        title="انقر لنسخ الرقم"
-                      >
-                        <span dir="ltr">{u.phone}</span>
-                        {copiedPhone === u.phone ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="w-3 h-3 text-slate-400" />
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-slate-500">تاريخ التسجيل:</span>
-                      <span className="font-semibold text-slate-700">
-                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString('ar-EG') : 'منذ بداية التدشين'}
+                      <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                        <Phone className="w-3 h-3 text-slate-400" />
+                        رقم الهاتف:
                       </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-slate-800 text-[11px]" dir="ltr">
+                          {u.phone}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyPhone(u.phone)}
+                          className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                          title="نسخ الرقم"
+                        >
+                          {copiedPhone === u.phone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </div>
 
-                    {u.partnerAppointedBy && (
-                      <div className="flex items-center justify-between text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-1 rounded border border-purple-200">
-                        <span>تم التعيين كشريك بواسطة:</span>
-                        <span>{u.partnerAppointedBy}</span>
+                    {u.createdAt && (
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-200">
+                        <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          تاريخ التسجيل:
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-600">
+                          {u.createdAt}
+                        </span>
                       </div>
                     )}
 
                     {u.isBlocked && u.blockedReason && (
-                      <div className="p-1.5 bg-rose-100/70 border border-rose-200 rounded-lg text-[10px] text-rose-800 font-semibold">
-                        سبب الحظر: {u.blockedReason}
+                      <div className="mt-1 pt-1 border-t border-rose-200 text-[10px] text-rose-600 font-bold flex items-start gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                        <span>سبب الحظر: {u.blockedReason}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* GRANULAR ROLE ASSIGNMENT DROPDOWN / PROTECTED BADGE */}
-                  <div className="mt-3 pt-2.5 border-t border-slate-100">
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">
+                  {/* تعيين وتحديث الدور الوظيفي (خاص بالمالك) */}
+                  <div className="my-2.5 role-dropdown-container relative">
+                    <label className="text-[11px] font-bold text-slate-600 block mb-1">
                       تعيين وتحديث الدور الوظيفي:
                     </label>
-                    {isFounding ? (
-                      <div className="w-full bg-amber-50 border border-amber-300 text-amber-950 text-xs font-black rounded-xl px-3 py-2 flex items-center justify-between shadow-2xs">
-                        <span className="flex items-center gap-1.5">
-                          <Crown className="w-3.5 h-3.5 text-amber-700 fill-amber-400" />
+
+                    {isProtectedAdmin ? (
+                      <div className="w-full bg-[#FFFBEB] border-2 border-[#FDE68A] text-[#92400E] font-bold text-xs px-3.5 py-2.5 rounded-2xl flex items-center justify-between shadow-2xs">
+                        <span className="flex items-center gap-1.5 font-black">
+                          <span>👑</span>
                           <span>المالك / شريك مؤسس (حساب محصن)</span>
                         </span>
-                        <Lock className="w-3.5 h-3.5 text-amber-600" />
+                        <Lock className="w-4 h-4 text-[#D97706]" />
                       </div>
                     ) : (
                       <div className="relative">
-                        <select
-                          value={u.role || 'user'}
-                          onChange={(e) => handleRoleChange(u.id, e.target.value as GranularRole)}
-                          disabled={!isCurrentSuperAdmin}
-                          className="w-full bg-[#F5F7F9] hover:bg-slate-50 border border-[#D6DEE5] text-[#24313D] text-xs font-bold rounded-xl px-3 py-2 pr-2.5 pl-7 appearance-none cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#124C46] transition-all disabled:opacity-60"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isOwner) {
+                              showToast('عذراً، تعيين وتحديث الأدوار الوظيفية مقتصر على مالك المنظومة فقط 🔒');
+                              return;
+                            }
+                            setOpenRoleDropdownUserId(openRoleDropdownUserId === u.id ? null : u.id);
+                          }}
+                          className={`w-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-bold text-xs px-3.5 py-2.5 rounded-2xl flex items-center justify-between transition-all cursor-pointer shadow-2xs ${
+                            openRoleDropdownUserId === u.id ? 'ring-2 ring-emerald-600 border-emerald-600 bg-emerald-50/20' : ''
+                          }`}
+                          title={isOwner ? 'انقر لتغيير الدور الوظيفي' : 'تعديل الدور مقتصر على المالك فقط'}
                         >
-                          {availableRoles.map((roleOpt) => (
-                            <option 
-                              key={roleOpt.id} 
-                              value={roleOpt.id}
-                              disabled={roleOpt.id === 'super_admin' && !isCurrentSuperAdmin}
+                          <span className="text-slate-800 font-bold">
+                            {u.role === 'admin' ? 'مشرف عام / مدير العمليات' : 'مستخدم عادي / مواطن'}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {!isOwner && (
+                              <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-bold flex items-center gap-1">
+                                <Lock className="w-3 h-3 text-amber-600" />
+                                المالك فقط
+                              </span>
+                            )}
+                            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-150 ${openRoleDropdownUserId === u.id ? 'rotate-180' : ''}`} />
+                          </div>
+                        </button>
+
+                        {/* القائمة المنسدلة عند الفتح */}
+                        {openRoleDropdownUserId === u.id && isOwner && (
+                          <div className="absolute top-full right-0 left-0 mt-1.5 bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenRoleDropdownUserId(null);
+                                if (u.role !== 'user') {
+                                  setConfirmRoleChangeData({
+                                    user: u,
+                                    targetRole: 'user',
+                                    targetRoleLabel: 'مستخدم عادي / مواطن',
+                                  });
+                                }
+                              }}
+                              className={`w-full p-2.5 rounded-xl text-right flex items-center justify-between text-xs transition-colors cursor-pointer ${
+                                u.role === 'user' ? 'bg-emerald-50 text-emerald-950 font-black border border-emerald-200' : 'hover:bg-slate-50 text-slate-700 font-bold'
+                              }`}
                             >
-                              {roleOpt.isSystem ? roleOpt.name : `✨ ${roleOpt.name} (دور مخصص)`}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                                  <User className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <div className="font-bold text-xs">مستخدم عادي / مواطن</div>
+                                  <div className="text-[10px] text-slate-500 font-normal">صلاحيات تصفح ونشر العروض والطلبات الشخصية</div>
+                                </div>
+                              </div>
+                              {u.role === 'user' && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenRoleDropdownUserId(null);
+                                if (u.role !== 'admin') {
+                                  setConfirmRoleChangeData({
+                                    user: u,
+                                    targetRole: 'admin',
+                                    targetRoleLabel: 'مشرف عام / مدير العمليات',
+                                  });
+                                }
+                              }}
+                              className={`w-full p-2.5 rounded-xl text-right flex items-center justify-between text-xs transition-colors cursor-pointer ${
+                                u.role === 'admin' ? 'bg-amber-50 text-amber-950 font-black border border-amber-200' : 'hover:bg-slate-50 text-slate-700 font-bold'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                                </div>
+                                <div>
+                                  <div className="font-bold text-xs">مشرف عام / مدير العمليات</div>
+                                  <div className="text-[10px] text-slate-500 font-normal">صلاحيات إدارة العروض والطلبات والمستخدمين</div>
+                                </div>
+                              </div>
+                              {u.role === 'admin' && <Check className="w-4 h-4 text-amber-600 shrink-0" />}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Bottom Action Buttons (PIN, Block, Delete) */}
-                <div className="flex items-center gap-1.5 mt-3 pt-2.5 border-t border-slate-100">
+                {/* صف أزرار الإجراءات السريعة (مطابقة للشاشة المرفقة) */}
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                  {/* زر الحذف (أيقونة سلة المهملات جهة اليسار) */}
                   <button
-                    onClick={() => {
-                      setPinModalUser(u);
-                      setNewPin('');
-                      setPinError(null);
-                    }}
-                    className="flex-1 py-1.5 px-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-bold rounded-xl border border-slate-200 flex items-center justify-center gap-1 transition-all cursor-pointer"
-                    title="تعديل رمز PIN"
+                    type="button"
+                    onClick={() => setDeleteModalUser(u)}
+                    disabled={isProtectedAdmin || isSelf}
+                    className={`w-10 h-9 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                      isProtectedAdmin || isSelf ? 'opacity-30 cursor-not-allowed' : ''
+                    }`}
+                    title={isProtectedAdmin ? 'حساب محمي لا يمكن حذفه' : 'حذف الحساب'}
                   >
-                    <KeyRound className="w-3.5 h-3.5 text-slate-500" />
-                    <span>تغيير PIN</span>
+                    <Trash2 className="w-4 h-4" />
                   </button>
 
+                  {/* زر الحظر / إلغاء الحظر (في الوسط) */}
                   <button
-                    onClick={() => setBlockModalUser(u)}
-                    disabled={isProtectedSuperAdmin}
-                    title={isProtectedSuperAdmin ? 'حساب المالك المؤسس محصن ضد الحظر' : u.isBlocked ? 'إلغاء الحظر' : 'حظر الحساب'}
-                    className={`flex-1 py-1.5 px-2 text-[11px] font-bold rounded-xl border flex items-center justify-center gap-1 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                    type="button"
+                    onClick={() => {
+                      setBlockModalUser(u);
+                      setBlockReason(u.blockedReason || 'مخالفة شروط وسياسات استخدام المنظومة');
+                    }}
+                    disabled={isProtectedAdmin}
+                    className={`flex-1 py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs ${
                       u.isBlocked
-                        ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                        : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                    }`}
+                        ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
+                        : 'bg-rose-50/80 hover:bg-rose-100 border-rose-200 text-rose-700'
+                    } ${isProtectedAdmin ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    title={u.isBlocked ? 'إلغاء حظر الحساب' : 'حظر الحساب'}
                   >
                     {u.isBlocked ? (
                       <>
-                        <Unlock className="w-3.5 h-3.5" />
-                        <span>فك الحظر</span>
+                        <Unlock className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>إلغاء الحظر</span>
                       </>
                     ) : (
                       <>
-                        <Lock className="w-3.5 h-3.5" />
+                        <Lock className="w-3.5 h-3.5 text-rose-600" />
                         <span>حظر</span>
                       </>
                     )}
                   </button>
 
+                  {/* زر تغيير PIN (جهة اليمين) */}
                   <button
-                    onClick={() => setDeleteModalUser(u)}
-                    disabled={isProtectedSuperAdmin}
-                    title={isProtectedSuperAdmin ? 'حساب المالك المؤسس محصن ضد الحذف' : 'حذف الحساب'}
-                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-transparent hover:border-rose-200 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    type="button"
+                    onClick={() => {
+                      setPinModalUser(u);
+                      setNewPin('');
+                      setPinError(null);
+                      setSendWhatsAppOnReset(true);
+                    }}
+                    className="flex-1 py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    title="إعادة تعيين كلمة السر الخاصة بالمستخدم بعد تواصله بالواتساب"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <KeyRound className="w-3.5 h-3.5 text-slate-600" />
+                    <span>تغيير PIN</span>
                   </button>
                 </div>
               </div>
@@ -998,34 +828,82 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
         </div>
       )}
 
-      {/* Modal: Reset PIN */}
+      {/* ========================================================================= */}
+      {/* Modal 1: Reset PIN (إعادة تعيين كلمة السر) */}
+      {/* ========================================================================= */}
       {pinModalUser && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                <KeyRound className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            
+            {/* Header */}
+            <div className="bg-[#002B49] text-white p-5 flex items-center justify-between border-b border-blue-900/60">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#FFB300]/20 flex items-center justify-center text-[#FFB300]">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">إعادة تعيين كلمة السر (PIN)</h3>
+                  <p className="text-xs text-slate-300">
+                    لحساب: {pinModalUser.name} ({pinModalUser.phone})
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-black text-slate-900">تغيير رمز PIN لحساب المستخدم</h4>
-                <p className="text-xs text-slate-500">{pinModalUser.name} ({pinModalUser.phone})</p>
-              </div>
+
+              <button
+                type="button"
+                onClick={() => setPinModalUser(null)}
+                className="text-slate-300 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleConfirmResetPin} className="space-y-4">
+            {/* Form */}
+            <form onSubmit={handleConfirmResetPin} className="p-5 space-y-4">
+              {pinError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{pinError}</span>
+                </div>
+              )}
+
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 leading-relaxed">
+                💡 <span className="font-bold text-amber-800">ملاحظة للأدمن:</span> بعد تواصل المستخدم معك عبر الواتساب، يمكنك إدخال الرمز الجديد (4 أرقام) ثم النقر على تأكيد ليتم فتح محادثة الواتساب معه تلقائياً لإرسال الرمز الجديد.
+              </div>
+
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  رمز PIN الجديد (4 أرقام):
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-black text-slate-800">
+                    رمز PIN الجديد (4 أرقام) <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateRandomPin}
+                    className="text-[11px] font-bold text-amber-600 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>توليد كود تلقائي</span>
+                  </button>
+                </div>
+
                 <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type={showPin ? 'text' : 'password'}
+                    inputMode="numeric"
+                    dir="ltr"
                     maxLength={4}
+                    required
                     value={newPin}
-                    onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
-                    placeholder="مثال: 1234"
-                    className="w-full pr-3 pl-10 py-2.5 text-center tracking-widest text-base font-mono font-bold bg-slate-50 border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#124C46]"
-                    autoFocus
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/\D/g, '');
+                      if (cleaned.length <= 4) {
+                        setNewPin(cleaned);
+                        setPinError(null);
+                      }
+                    }}
+                    placeholder="••••"
+                    className="w-full pr-10 pl-10 py-3 text-center text-base tracking-widest bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-mono font-black"
                   />
                   <button
                     type="button"
@@ -1035,41 +913,62 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                     {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                {pinError && <p className="text-[11px] text-rose-600 font-bold mt-1">{pinError}</p>}
+
+                {/* Quick Presets */}
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[10px] text-slate-500 font-bold">أكواد سريعة:</span>
+                  {['1234', '1122', '0000', '2026'].map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => {
+                        setNewPin(code);
+                        setPinError(null);
+                      }}
+                      className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-mono text-[11px] font-bold cursor-pointer transition-colors"
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleGenerateRandomPin}
-                className="w-full py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-300 flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                <span>توليد رمز PIN عشوائي</span>
-              </button>
+              {/* Send WhatsApp Toggle */}
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendWhatsAppOnReset}
+                    onChange={(e) => setSendWhatsAppOnReset(e.target.checked)}
+                    className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold text-emerald-800 block flex items-center gap-1.5">
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      فتح الواتساب ومراسلة العميل بالـ PIN الجديد فوراً
+                    </span>
+                    <span className="text-[10px] text-emerald-700 block mt-0.5">
+                      سيتم فتح رسالة منسقة جاهزة لإرسالها لرقم ({pinModalUser.phone})
+                    </span>
+                  </div>
+                </label>
+              </div>
 
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer pt-1">
-                <input
-                  type="checkbox"
-                  checked={sendWhatsAppOnReset}
-                  onChange={(e) => setSendWhatsAppOnReset(e.target.checked)}
-                  className="rounded text-[#124C46] focus:ring-[#124C46] w-4 h-4"
-                />
-                <span>فتح واتساب لإرسال الرمز الجديد للمستخدم تلقائياً</span>
-              </label>
-
+              {/* Actions */}
               <div className="flex items-center gap-2 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 bg-[#124C46] hover:bg-[#0D3D38] text-white text-xs font-black rounded-xl shadow-md cursor-pointer transition-all"
-                >
-                  حفظ الرمز الجديد
-                </button>
                 <button
                   type="button"
                   onClick={() => setPinModalUser(null)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs cursor-pointer transition-colors"
                 >
                   إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs cursor-pointer shadow-md transition-all flex items-center justify-center gap-1.5"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>تأكيد وحفظ الـ PIN</span>
                 </button>
               </div>
             </form>
@@ -1077,421 +976,255 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
         </div>
       )}
 
-      {/* Modal: Block/Unblock */}
+      {/* ========================================================================= */}
+      {/* Modal 2: Block / Unblock Modal */}
+      {/* ========================================================================= */}
       {blockModalUser && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                blockModalUser.isBlocked ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-              }`}>
-                {blockModalUser.isBlocked ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
-              </div>
-              <div>
-                <h4 className="text-sm font-black text-slate-900">
-                  {blockModalUser.isBlocked ? 'تأكيد إلغاء حظر المستخدم' : 'تأكيد حظر حساب المستخدم'}
-                </h4>
-                <p className="text-xs text-slate-500">{blockModalUser.name} ({blockModalUser.phone})</p>
-              </div>
-            </div>
-
-            {!blockModalUser.isBlocked && (
-              <div className="mb-4">
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  سبب الحظر:
-                </label>
-                <textarea
-                  rows={2}
-                  value={blockReason}
-                  onChange={(e) => setBlockReason(e.target.value)}
-                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500 text-slate-800"
-                />
-              </div>
-            )}
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleConfirmBlockToggle}
-                className={`flex-1 py-2.5 text-white text-xs font-black rounded-xl shadow-md cursor-pointer transition-all ${
-                  blockModalUser.isBlocked
-                    ? 'bg-emerald-600 hover:bg-emerald-700'
-                    : 'bg-rose-600 hover:bg-rose-700'
-                }`}
-              >
-                {blockModalUser.isBlocked ? 'نعم، فك الحظر الآن' : 'نعم، تأكيد الحظر'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setBlockModalUser(null)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
-              >
-                إلغاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Delete User Confirmation */}
-      {deleteModalUser && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-black text-slate-900">تأكيد حذف الحساب نهائياً</h4>
-                <p className="text-xs text-slate-500">{deleteModalUser.name} ({deleteModalUser.phone})</p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-600 mb-5 leading-relaxed bg-rose-50 border border-rose-200 p-3 rounded-2xl">
-              هل أنت متأكد من رغبتك في حذف هذا الحساب؟ سيتم إلغاء وصول المستخدم تماماً إلى التطبيق ولن يتمكن من تسجيل الدخول بنفس الحساب.
-            </p>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black rounded-xl shadow-md cursor-pointer transition-all"
-              >
-                نعم، احذف الحساب
-              </button>
-              <button
-                type="button"
-                onClick={() => setDeleteModalUser(null)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
-              >
-                إلغاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* Modal: Partners & Co-Owners Management (إدارة الشركاء والملاك)             */}
-      {/* ========================================================================= */}
-      {isPartnerModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-2xl w-full border border-slate-200 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
             
-            {/* Modal Header */}
-            <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-100 shrink-0">
+            <div className={`p-5 text-white ${blockModalUser.isBlocked ? 'bg-emerald-700' : 'bg-rose-700'} flex items-center justify-between`}>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center font-bold shadow-md shrink-0">
-                  <Crown className="w-6 h-6 fill-amber-200" />
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
+                  {blockModalUser.isBlocked ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2 flex-wrap">
-                    <span>إدارة الشركاء وملاك المنظومة</span>
-                    <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-black px-2 py-0.5 rounded-full">
-                      صلاحية الملاك الحصرية
-                    </span>
+                  <h3 className="text-sm font-black">
+                    {blockModalUser.isBlocked ? 'إلغاء حظر الحساب' : 'حظر حساب المستخدم'}
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                    الملاك المؤسسون (<strong className="text-slate-800">MOSTFA</strong> و <strong className="text-slate-800">SAKAN ASSIUT</strong>) يمتلكون الصلاحية الكاملة لتعيين شركاء معهم في ملكية المنظومة (Super Admin).
+                  <p className="text-xs text-white/90">
+                    {blockModalUser.name} ({blockModalUser.phone})
                   </p>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={() => {
-                  setIsPartnerModalOpen(false);
-                  setPartnerError(null);
-                }}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+                onClick={() => setBlockModalUser(null)}
+                className="text-white/80 hover:text-white cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
-            {/* Modal Scrollable Body */}
-            <div className="overflow-y-auto py-4 space-y-5 flex-1 pr-1 pl-1">
-              
-              {/* SECTION 1: FOUNDING OWNERS (الملاك المؤسسون) */}
-              <div>
-                <div className="flex items-center justify-between mb-2.5">
-                  <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                    <Crown className="w-4 h-4 text-amber-600 fill-amber-400" />
-                    <span>الملاك المؤسسون للمنظومة (الملاك دون غيرهم)</span>
-                  </h4>
-                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-                    2 حسابات قيادية محصنة
-                  </span>
+            <div className="p-5 space-y-4">
+              {blockModalUser.isBlocked ? (
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  هل أنت متأكد من رغبتك في <span className="font-bold text-emerald-700">إلغاء حظر</span> هذا الحساب؟
+                  سيتمكن المستخدم مجدداً من تسجيل الدخول وإضافة العقارات والطلبات بصورة طبيعية.
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {foundingOwnersList.map((owner) => (
-                    <div 
-                      key={owner.id}
-                      className="bg-gradient-to-br from-amber-50/80 to-amber-100/40 border border-amber-300 rounded-2xl p-3.5 shadow-2xs space-y-2 relative"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded-xl bg-amber-200 text-amber-900 border border-amber-300 flex items-center justify-center font-bold">
-                            <Crown className="w-4 h-4 text-amber-800 fill-amber-500" />
-                          </div>
-                          <div>
-                            <div className="text-xs font-black text-slate-900">{owner.name}</div>
-                            <div className="text-[11px] font-mono font-bold text-amber-900" dir="ltr">{owner.phone}</div>
-                          </div>
-                        </div>
-
-                        <span className="text-[9px] font-black bg-amber-500 text-slate-950 px-2 py-0.5 rounded-md shadow-2xs">
-                          مالك مؤسس
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[10px] font-bold text-amber-800 pt-2 border-t border-amber-200/80">
-                        <span className="flex items-center gap-1">
-                          <Lock className="w-3 h-3 text-amber-700" />
-                          <span>محصن ضد الحظر أو الإلغاء</span>
-                        </span>
-                        <a
-                          href={createWhatsAppLink(owner.phone, `مرحباً بك أستاذ ${owner.name}`)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-emerald-700 hover:text-emerald-800 flex items-center gap-0.5"
-                        >
-                          <MessageCircle className="w-3 h-3" />
-                          <span>واتساب</span>
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* SECTION 2: APPOINTED PARTNERS (الشركاء المنضمون في الملكية) */}
-              <div>
-                <div className="flex items-center justify-between mb-2.5">
-                  <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-purple-600" />
-                    <span>الشركاء المنضمون في الملكية ({appointedPartnersList.length})</span>
-                  </h4>
-                  <span className="text-[10px] text-slate-500 font-semibold">
-                    شركاء اختارهم الملاك المؤسسون
-                  </span>
-                </div>
-
-                {appointedPartnersList.length === 0 ? (
-                  <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center text-xs text-slate-500">
-                    لا يوجد شركاء منضمون حالياً. يمكن للملاك المؤسسين اختيار شركاء جدد من النموذج أدناه.
+              ) : (
+                <>
+                  <div className="text-xs text-slate-600 leading-relaxed">
+                    عند حظر هذا الحساب، لن يتمكن صاحب الرقم (<span className="font-mono font-bold text-slate-900">{blockModalUser.phone}</span>) من الدخول إلى المنظومة، وستظهر له رسالة توضح حظره مع توجيهه لمراسلة الإدارة عبر الواتساب.
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {appointedPartnersList.map((partner) => (
-                      <div
-                        key={partner.id}
-                        className="bg-white border border-purple-200 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-2xs"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-800 border border-purple-200 flex items-center justify-center font-bold">
-                            <Crown className="w-4 h-4 text-purple-700 fill-purple-300" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-black text-slate-900">{partner.name}</span>
-                              <span className="text-[9px] bg-purple-100 text-purple-800 border border-purple-200 font-black px-1.5 py-0.2 rounded">
-                                شريك معتمد
-                              </span>
-                            </div>
-                            <div className="text-[11px] font-mono text-slate-600" dir="ltr">{partner.phone}</div>
-                            {partner.partnerAppointedBy && (
-                              <div className="text-[10px] text-purple-600 mt-0.5">
-                                تم التعيين بواسطة: {partner.partnerAppointedBy}
-                              </div>
-                            )}
-                          </div>
-                        </div>
 
+                  <div>
+                    <label className="block text-xs font-black text-slate-800 mb-1">
+                      سبب الحظر <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={blockReason}
+                      onChange={(e) => setBlockReason(e.target.value)}
+                      placeholder="اكتب سبب الحظر..."
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
+                    />
+
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {[
+                        'مخالفة شروط الاستخدام',
+                        'نشر عروض وهمية مكررة',
+                        'إزعاج العملاء والوسطاء',
+                        'عدم سداد رسوم المعاينة المعتمدة'
+                      ].map((preset) => (
                         <button
+                          key={preset}
                           type="button"
-                          onClick={() => setRevokingPartnerUser(partner)}
-                          className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-bold rounded-xl border border-rose-200 flex items-center gap-1 transition-all cursor-pointer"
-                          title="إلغاء صفة الشريك والعودة إلى مشرف عادي"
+                          onClick={() => setBlockReason(preset)}
+                          className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2 py-0.5 rounded cursor-pointer transition-colors"
                         >
-                          <Trash2 className="w-3 h-3" />
-                          <span>إلغاء الشراكة</span>
+                          {preset}
                         </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* SECTION 3: APPOINT NEW PARTNER FORM (نموذج تعيين شريك جديد) */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                    <UserPlus className="w-4 h-4 text-[#124C46]" />
-                    <span>تعيين واختيار شريك جديد في الملكية (Super Admin)</span>
-                  </h4>
-                  <div className="flex bg-white p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold">
-                    <button
-                      type="button"
-                      onClick={() => setPartnerMode('select')}
-                      className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                        partnerMode === 'select' ? 'bg-[#124C46] text-white' : 'text-slate-600'
-                      }`}
-                    >
-                      من المسجلين
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPartnerMode('new')}
-                      className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                        partnerMode === 'new' ? 'bg-[#124C46] text-white' : 'text-slate-600'
-                      }`}
-                    >
-                      شريك جديد
-                    </button>
-                  </div>
-                </div>
-
-                {partnerError && (
-                  <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-bold flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                    <span>{partnerError}</span>
-                  </div>
-                )}
-
-                <form onSubmit={handleAppointPartnerSubmit} className="space-y-3">
-                  {partnerMode === 'select' ? (
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">
-                        اختر المستخدم المراد ترقيته إلى شريك في الملكية:
-                      </label>
-                      <select
-                        value={selectedUserIdForPartner}
-                        onChange={(e) => setSelectedUserIdForPartner(e.target.value)}
-                        className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#124C46]"
-                      >
-                        <option value="">-- اختر مستخدماً من القائمة ({users.length} متاح) --</option>
-                        {users
-                          .filter((u) => !isFoundingOwnerPhone(u.phone) && !u.isPartner && u.role !== 'super_admin')
-                          .map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.name} ({u.phone}) - الدور الحالي: {getRoleName(u.role)}
-                            </option>
-                          ))}
-                      </select>
+                      ))}
                     </div>
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setBlockModalUser(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs cursor-pointer transition-colors"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBlockToggle}
+                  className={`flex-1 py-2.5 rounded-xl font-black text-xs text-white cursor-pointer shadow-md transition-all flex items-center justify-center gap-1.5 ${
+                    blockModalUser.isBlocked 
+                      ? 'bg-emerald-600 hover:bg-emerald-700' 
+                      : 'bg-rose-600 hover:bg-rose-700'
+                  }`}
+                >
+                  {blockModalUser.isBlocked ? (
+                    <>
+                      <Unlock className="w-4 h-4" />
+                      <span>تأكيد إلغاء الحظر</span>
+                    </>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                          اسم الشريك بالكامل:
-                        </label>
-                        <input
-                          type="text"
-                          value={newPartnerName}
-                          onChange={(e) => setNewPartnerName(e.target.value)}
-                          placeholder="مثال: أ. محمود السيوطي"
-                          className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-hidden focus:ring-2 focus:ring-[#124C46]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                          رقم الموبايل (11 رقم):
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={11}
-                          value={newPartnerPhone}
-                          onChange={(e) => setNewPartnerPhone(e.target.value.replace(/\D/g, ''))}
-                          placeholder="01012345678"
-                          className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold focus:outline-hidden focus:ring-2 focus:ring-[#124C46]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                          رمز PIN للدخول:
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={4}
-                          value={newPartnerPin}
-                          onChange={(e) => setNewPartnerPin(e.target.value.replace(/\D/g, ''))}
-                          placeholder="1234"
-                          className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-center focus:outline-hidden focus:ring-2 focus:ring-[#124C46]"
-                        />
-                      </div>
-                    </div>
+                    <>
+                      <Lock className="w-4 h-4" />
+                      <span>تأكيد حظر الحساب</span>
+                    </>
                   )}
-
-                  <div className="pt-2 flex items-center justify-end">
-                    <button
-                      type="submit"
-                      disabled={isAppointingPartner}
-                      className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
-                    >
-                      <Crown className="w-4 h-4 fill-amber-300 text-slate-950" />
-                      <span>{isAppointingPartner ? 'جاري الاعتماد...' : 'اعتماد كشريك في الملكية (Super Admin)'}</span>
-                    </button>
-                  </div>
-                </form>
+                </button>
               </div>
-
             </div>
-
-            {/* Modal Footer */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 shrink-0">
-              <span>جميع تعيينات الشركاء يتم توثيقها تلقائياً في سجل الرقابة والنشاطات.</span>
-              <button
-                type="button"
-                onClick={() => setIsPartnerModalOpen(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
-              >
-                إغلاق
-              </button>
-            </div>
-
           </div>
         </div>
       )}
 
-      {/* Modal: Confirm Revoke Partner */}
-      {revokingPartnerUser && (
+      {/* ========================================================================= */}
+      {/* Modal 3: Delete Account Confirmation */}
+      {/* ========================================================================= */}
+      {deleteModalUser && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            
+            <div className="bg-rose-700 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black">حذف حساب المستخدم نهائياً</h3>
+                  <p className="text-xs text-white/90">
+                    {deleteModalUser.name} ({deleteModalUser.phone})
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDeleteModalUser(null)}
+                className="text-white/80 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 leading-relaxed font-semibold">
+                ⚠️ تحذير: سيتم حذف هذا الحساب نهائياً من قاعدة بيانات المنظومة ولن يتمكن المستخدم من الدخول ببياناته الحالية إلا بإنشاء حساب جديد.
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalUser(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs cursor-pointer transition-colors"
+                >
+                  تراجع
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs cursor-pointer shadow-md transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>تأكيد الحذف نهائياً</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* Modal 4: Confirm Role Change Modal (خاص بالمالك فقط) */}
+      {/* ========================================================================= */}
+      {confirmRoleChangeData && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                <ShieldAlert className="w-5 h-5" />
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="bg-[#124C46] text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
+                  {confirmRoleChangeData.targetRole === 'admin' ? (
+                    <ShieldCheck className="w-6 h-6 text-amber-300" />
+                  ) : (
+                    <User className="w-6 h-6 text-emerald-200" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-sm font-black">تأكيد تعيين الدور الوظيفي</h3>
+                  <p className="text-xs text-white/80">إجراء خاص بمالك المنظومة 👑</p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-black text-slate-900">تأكيد إلغاء الشراكة</h4>
-                <p className="text-xs text-slate-500">{revokingPartnerUser.name} ({revokingPartnerUser.phone})</p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmRoleChangeData(null)}
+                className="text-white/80 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
-            <p className="text-xs text-slate-600 mb-5 leading-relaxed bg-amber-50 border border-amber-200 p-3 rounded-2xl">
-              هل أنت متأكد من رغبتك في سحب صفة الشريك من هذا الحساب؟ سيتم إلغاء صلاحيات المالك وإعادته إلى رتبة مشرف عام (Admin).
-            </p>
+            <div className="p-5 space-y-4">
+              <div className="text-xs text-slate-700 leading-relaxed space-y-2">
+                <p>
+                  هل أنت متأكد من تغيير دور المستخدم{' '}
+                  <strong className="text-slate-900 font-black">({confirmRoleChangeData.user.name})</strong>{' '}
+                  صاحب الهاتف{' '}
+                  <span className="font-mono font-bold text-slate-800" dir="ltr">{confirmRoleChangeData.user.phone}</span>؟
+                </p>
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-500 font-bold">الدور الجديد:</span>
+                  <span className="text-xs font-black text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg">
+                    {confirmRoleChangeData.targetRoleLabel}
+                  </span>
+                </div>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleConfirmRevokePartner}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black rounded-xl shadow-md cursor-pointer transition-all"
-              >
-                نعم، سحب صفة الشريك
-              </button>
-              <button
-                type="button"
-                onClick={() => setRevokingPartnerUser(null)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
-              >
-                إلغاء
-              </button>
+              {confirmRoleChangeData.targetRole === 'admin' ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed font-medium flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    سيتم منح هذا الحساب كافة صلاحيات لوحة التحكم الإدارية، بما في ذلك مراجعة واعتماد العروض والطلبات والمستخدمين.
+                  </span>
+                </div>
+              ) : (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 leading-relaxed font-medium flex items-start gap-2">
+                  <User className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <span>
+                    سيتم إلغاء الصلاحيات الإدارية لهذا الحساب وتحويله إلى مستخدم عادي للمنظومة.
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmRoleChangeData(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs cursor-pointer transition-colors"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExecuteRoleChange}
+                  className="flex-1 py-2.5 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-black text-xs cursor-pointer shadow-md transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>تأكيد وحفظ التغيير</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 };

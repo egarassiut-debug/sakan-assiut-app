@@ -1032,44 +1032,6 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           </div>
         </div>
 
-        {/* Voice Dictation Card Banner */}
-        <div className="bg-linear-to-r from-[#124C46] to-[#0D3D38] rounded-2xl p-4 text-white shadow-xs flex items-center justify-between gap-3 border border-[#124C46]/20">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-[#D6A84F] text-xs font-bold">
-              <Sparkles className="w-4 h-4 animate-spin" />
-              <span>المساعد الصوتي الذكي</span>
-            </div>
-            <p className="text-xs text-white/80">
-              تحدث بدلاً من الكتابة لتعبئة نموذج {isOffer ? 'العرض' : 'الطلب'} تلقائياً
-            </p>
-            {voiceStatus && (
-              <p className="text-[11px] text-[#FFF3D6] font-medium">{voiceStatus}</p>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={toggleRecording}
-            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-transform active:scale-95 shadow-xs shrink-0 cursor-pointer ${
-              isRecording
-                ? 'bg-rose-500 text-white animate-pulse'
-                : 'bg-[#D6A84F] hover:bg-[#8B641C] text-[#24313D] hover:text-white'
-            }`}
-          >
-            {isRecording ? (
-              <>
-                <MicOff className="w-4 h-4" />
-                <span>إيقاف ({voiceSeconds}ث)</span>
-              </>
-            ) : (
-              <>
-                <Mic className="w-4 h-4" />
-                <span>تسجيل صوتي</span>
-              </>
-            )}
-          </button>
-        </div>
-
         {/* Top Error Alert */}
         {errorMsg && (
           <div 

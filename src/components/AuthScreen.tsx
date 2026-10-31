@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppUser } from '../types/property';
 import { 
   Building2, Home, User, Lock, Phone, 
-  CheckCircle2, AlertCircle, Eye, EyeOff, UserPlus, LogIn, MessageCircle, Sparkles 
+  CheckCircle2, AlertCircle, Eye, EyeOff, UserPlus, LogIn, MessageCircle 
 } from 'lucide-react';
 import { verifyAdminPasskey, saveSecureSession, hashPassword, isMasterKey } from '../utils/security';
 import { validateEgyptianPhone, normalizeEgyptianPhone, isValidEgyptianPhone } from '../utils/phoneValidator';
@@ -10,6 +10,7 @@ import { isAuthorizedAdminPhone, findAdminByPhone, DEFAULT_AUTHORIZED_ADMINS } f
 import { registerNewUser, syncUsersWithDatabase, ensureAdminAccount, seedDefaultAdminsToDb } from '../utils/userManager';
 import { dbUpsertProfile, dbAuthenticateProfile, isSupabaseActive } from '../lib/supabase';
 import { PWAInstallButton } from './PWAInstallButton';
+import { FloatingBackgroundKeywords } from './FloatingBackgroundKeywords';
 import { safeStorageGetItem, safeStorageSetItem, safeStorageRemoveItem } from '../utils/storageManager';
 
 interface AuthScreenProps {
@@ -102,7 +103,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   useEffect(() => {
     try {
       // 1. Ensure all default authorized admins are present in local DB and Supabase
-      seedDefaultAdminsToDb().catch((e) => console.warn('Seed default admins failed:', e));
+      seedDefaultAdminsToDb().catch((e: unknown) => console.warn('Seed default admins failed:', e));
 
       // 2. Load saved credentials if available
       const savedCreds = safeStorageGetItem<{ phone: string; pin: string } | null>('ardaw_saved_credentials', null);
@@ -113,7 +114,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       }
 
       // 3. Sync with live database in background
-      syncUsersWithDatabase().catch((e) => console.warn('Sync users on auth screen mount failed:', e));
+      syncUsersWithDatabase().catch((e: unknown) => console.warn('Sync users on auth screen mount failed:', e));
     } catch (e) {
       console.error('Error reading auth cache:', e);
     }
@@ -325,10 +326,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
   return (
     <div 
-      className="min-h-screen bg-[#E8EDF1] flex flex-col justify-center items-center px-4 py-8 text-[#24313D] font-['Tajawal','Cairo',sans-serif] select-none"
+      className="min-h-screen bg-[#E8EDF1] relative overflow-hidden flex flex-col justify-center items-center px-4 py-8 text-[#24313D] font-['Tajawal','Cairo',sans-serif] select-none"
       dir="rtl"
     >
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-[#D6DEE5] animate-in fade-in zoom-in-95 duration-200">
+      {/* Aesthetic Floating Real Estate Keywords Background Overlay (Exclusive to Login & Landing Screen) */}
+      <FloatingBackgroundKeywords />
+
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-[#D6DEE5] relative z-10 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Branding */}
         <div className="bg-[#124C46] p-6 text-center text-white relative">
@@ -336,17 +340,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           {/* Subtle gold accent divider */}
           <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[#D6A84F] to-transparent" />
 
-          {/* Top Badge: تطبيق سكن أسيوط - المنظومة العقارية المعتمدة */}
-          <div className="inline-flex items-center gap-1.5 bg-[#FDF8ED]/10 text-[#D6A84F] border border-[#D6A84F]/40 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold mb-3 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-[#D6A84F] shrink-0" />
-            <span>تطبيق سكن أسيوط - المنظومة العقارية المعتمدة بأسرها</span>
-          </div>
-
           {/* Official Sakan Logo Image */}
           <div className="w-20 h-20 mx-auto rounded-3xl overflow-hidden ring-4 ring-[#D6A84F]/60 shadow-xl mb-3 bg-white flex items-center justify-center p-1.5 group hover:scale-105 transition-all">
             <img 
               src="/sakan-logo.png" 
-              alt="شعار تطبيق سكن أسيوط" 
+              alt="شعار سكن أسيوط" 
               className="w-full h-full object-contain" 
               loading="eager"
             />
@@ -355,9 +353,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           <h1 className="text-2xl font-black text-white tracking-tight">
             سكن <span className="text-[#D6A84F]">أسيوط</span>
           </h1>
-          <p className="text-xs text-[#DCECE7] mt-1.5 font-medium leading-relaxed max-w-xs mx-auto">
-            تطبيق سكن أسيوط - المنظومة العقارية المعتمدة بأسرها
-          </p>
 
           <div className="absolute top-4 left-4">
             <PWAInstallButton />
@@ -577,10 +572,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           </form>
         </div>
 
-      </div>
-
-      <div className="mt-4 text-center text-xs text-slate-400">
-        تطبيق سكن أسيوط • المنظومة العقارية المعتمدة بمحافظة أسيوط
       </div>
     </div>
   );

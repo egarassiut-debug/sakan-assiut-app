@@ -78,6 +78,7 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
 // Code-split heavy components & modals for optimal runtime performance
 const AdminPanel = lazyWithRetry(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
 import { FormEntryScreen } from './components/FormEntryScreen';
+import { VoiceAssistantModal } from './components/VoiceAssistantModal';
 const PropertyDetailsModal = lazyWithRetry(() => import('./components/PropertyDetailsModal').then(m => ({ default: m.PropertyDetailsModal })));
 const TenantRequestDetailsModal = lazyWithRetry(() => import('./components/TenantRequestDetailsModal').then(m => ({ default: m.TenantRequestDetailsModal })));
 const InspectionModal = lazyWithRetry(() => import('./components/InspectionModal').then(m => ({ default: m.InspectionModal })));
@@ -393,6 +394,7 @@ export function App() {
   const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
   const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState(false);
   const [isAdminDrawerOpen, setIsAdminDrawerOpen] = useState(false);
+  const [isVoiceAssistantOpen, setIsVoiceAssistantOpen] = useState(false);
 
   // App-level Swipe Gesture Listener:
   // Automatically opens the side drawer (AdminDrawer / AppSideDrawer) when swiping from the right edge to the left,
@@ -1446,6 +1448,8 @@ export function App() {
             ...p,
             status: newStatus,
             isApproved: newStatus === 'approved',
+            isVerified: newStatus === 'approved' ? true : p.isVerified,
+            verifiedByAdmin: newStatus === 'approved' ? true : p.verifiedByAdmin,
             adminNote: adminNote !== undefined ? adminNote : p.adminNote,
           };
           updatedPropObj = item;
@@ -1846,6 +1850,10 @@ export function App() {
         onOpenFavorites={() => setIsFavoritesModalOpen(true)}
         unreadNotificationCount={unreadNotificationCount}
         onOpenNotifications={() => setIsNotificationCenterOpen(true)}
+        onOpenVoiceAssistant={() => {
+          setIsAdminDrawerOpen(false);
+          setIsVoiceAssistantOpen(true);
+        }}
         pendingModerationCount={
           properties.filter((p) => p.status === 'pending_approval' || (p as any).isApproved === false).length +
           tenantRequests.filter((r) => r.status === 'pending' || (r as any).isApproved === false).length
@@ -1876,7 +1884,7 @@ export function App() {
       )}
 
       {/* Main Screen Body */}
-      <main className={isFormEntry ? 'w-full flex-1' : 'max-w-5xl mx-auto w-full px-4 py-5 flex-1'}>
+      <main className={isFormEntry ? 'w-full flex-1 relative z-10' : 'max-w-5xl mx-auto w-full px-4 py-5 flex-1 relative z-10'}>
         
         {/* OVERLAY 0: DEDICATED FORM ENTRY SCREEN (عرض عقار / طلب عقار) */}
         {overlayScreen === 'form_entry_offer' || overlayScreen === 'form_entry_request' ? (
@@ -2938,6 +2946,46 @@ export function App() {
         notification={activePushBanner}
         onDismiss={() => setActivePushBanner(null)}
         onOpenDetails={handleSelectNotification}
+      />
+
+      {/* 4. Voice Assistant Modal (المساعد الصوتي الذكي - متاح عبر القائمة الجانبية) */}
+      <VoiceAssistantModal
+        isOpen={isVoiceAssistantOpen}
+        onClose={() => setIsVoiceAssistantOpen(false)}
+        activeDistricts={activeDistrictOptions.map((d) => d.name)}
+        activePropertyTypes={activePropertyTypeOptions.map((p) => p.name)}
+        onApplyVoiceSearch={(criteria) => {
+          setIsVoiceAssistantOpen(false);
+          if (criteria.query) setSearchQuery(criteria.query);
+          if (criteria.district && criteria.district !== 'all') setSelectedDistrict(criteria.district);
+          if (criteria.propertyType && criteria.propertyType !== 'all') setSelectedPropertyType(criteria.propertyType);
+          if (criteria.purpose) setPurposeFilter(criteria.purpose);
+          if (criteria.maxPrice) setMaxPrice(String(criteria.maxPrice));
+          setNavIndex(0);
+          addToast({
+            type: 'success',
+            title: 'تم تطبيق البحث الصوتي 🎙️',
+            message: criteria.query || criteria.district || 'تم تحديث نتائج البحث بناءً على صوتك بنجاح',
+          });
+        }}
+        onOpenAddOfferWithData={() => {
+          setIsVoiceAssistantOpen(false);
+          setOverlayScreen('form_entry_offer');
+          addToast({
+            type: 'info',
+            title: 'إضافة عرض جديد صوتياً',
+            message: 'تم فتح نموذج إضافة العرض مع تفريغ البيانات المستخرجة للمراجعة.',
+          });
+        }}
+        onOpenAddRequestWithData={() => {
+          setIsVoiceAssistantOpen(false);
+          setOverlayScreen('form_entry_request');
+          addToast({
+            type: 'info',
+            title: 'إضافة طلب سكن صوتياً',
+            message: 'تم فتح نموذج طلب السكن مع تفريغ البيانات المستخرجة للمراجعة.',
+          });
+        }}
       />
     </div>
   );

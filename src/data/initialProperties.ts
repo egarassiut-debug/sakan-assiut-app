@@ -39,6 +39,8 @@ export const INITIAL_PROPERTIES: Property[] = [
     ],
     featured: true,
     status: 'approved',
+    isVerified: true,
+    verifiedByAdmin: true,
     createdAt: '2026-10-01',
     viewsCount: 142
   },
@@ -147,6 +149,8 @@ export const INITIAL_PROPERTIES: Property[] = [
     ],
     featured: true,
     status: 'approved',
+    isVerified: true,
+    verifiedByAdmin: true,
     createdAt: '2026-10-04',
     viewsCount: 168
   },

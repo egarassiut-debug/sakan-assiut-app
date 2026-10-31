@@ -8,7 +8,9 @@ import {
   X, 
   User, 
   LogOut,
-  ChevronLeft
+  ChevronLeft,
+  Mic,
+  Sparkles
 } from 'lucide-react';
 import { RealEstateAgent, Assignment, AdminPanelSettings } from './FlutterIcons';
 import { SupabaseConnectionStatus } from './SupabaseConnectionStatus';
@@ -25,6 +27,7 @@ export interface AppSideDrawerProps {
   onOpenFavorites?: () => void;
   unreadNotificationCount?: number;
   onOpenNotifications?: () => void;
+  onOpenVoiceAssistant?: () => void;
   // Admin specific props
   adminActiveSection?: AdminSectionId;
   onSelectAdminSection?: (section: AdminSectionId) => void;
@@ -54,6 +57,7 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
   onOpenFavorites,
   unreadNotificationCount = 0,
   onOpenNotifications,
+  onOpenVoiceAssistant,
   onLogout,
 }) => {
   const isAdmin = currentUser?.role === 'admin';
@@ -300,6 +304,30 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
                   ) : (
                     <ChevronLeft className="w-4 h-4 text-[#788593]" />
                   )}
+                </button>
+              )}
+
+              {/* 6. المساعد الصوتي الذكي (Voice Assistant) */}
+              {onOpenVoiceAssistant && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenVoiceAssistant();
+                    onClose();
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl bg-linear-to-r from-[#124C46] to-[#0D3D38] text-white hover:brightness-110 flex items-center justify-between transition-all cursor-pointer shadow-xs border border-[#124C46]/20 group"
+                  title="المساعد الصوتي الذكي للتحدث والبحث وإضافة العروض"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white/15 text-[#D6A84F] flex items-center justify-center shrink-0 border border-white/20 group-hover:scale-105 transition-transform">
+                      <Mic className="w-4 h-4" />
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs sm:text-sm font-black block">المساعد الصوتي الذكي</span>
+                      <span className="text-[10px] text-[#DCECE7] block font-medium">تحدث للبحث أو إضافة طلبك</span>
+                    </div>
+                  </div>
+                  <Sparkles className="w-4 h-4 text-[#D6A84F] shrink-0" />
                 </button>
               )}
 

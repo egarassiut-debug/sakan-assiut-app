@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import QRCode from 'qrcode';
 import { Property } from '../types/property';
 import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
   X, Copy, Check, MapPin, Zap, Droplets, Flame, ArrowUpDown, 
-  MessageSquare, Calendar, ShieldCheck, Edit3, Heart, Star, AlertTriangle, Share2 
+  MessageSquare, Calendar, ShieldCheck, Edit3, Heart, Star, AlertTriangle, Share2,
+  QrCode, Download, Smartphone
 } from 'lucide-react';
 
 interface PropertyDetailsModalProps {
@@ -33,7 +35,29 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
   const [shared, setShared] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
+  // Dynamic QR Code Share System States
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [isQrCopied, setIsQrCopied] = useState(false);
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+
   const isLand = property ? (property.propertyType === 'قطعة أرض فضاء' || property.propertyType.includes('أرض')) : false;
+
+  const isHighRated = Boolean(
+    (ratingSummary && ratingSummary.count > 0 && ratingSummary.average >= 4.0) ||
+    (property && (property as any).rating && (property as any).rating >= 4.0)
+  );
+
+  const isVerifiedProperty = Boolean(
+    property && (
+      property.isVerified ||
+      property.verifiedByAdmin ||
+      property.createdByAdmin ||
+      property.ownershipDocumentUrl ||
+      (property.status === 'approved' && property.featured) ||
+      isHighRated
+    )
+  );
 
   const handleCopyCode = () => {
     if (!property) return;
@@ -79,6 +103,61 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
     }
   };
 
+  // Generate dynamic URL for in-person QR Code sharing
+  const getPropertyUrl = () => {
+    if (!property) return '';
+    if (typeof window === 'undefined') return '';
+    return `${window.location.origin}${window.location.pathname}?property=${encodeURIComponent(property.code)}`;
+  };
+
+  // Open QR modal and generate high-resolution QR data URL
+  const handleOpenQrModal = async () => {
+    if (!property) return;
+    setIsQrModalOpen(true);
+    setIsGeneratingQr(true);
+
+    try {
+      const url = getPropertyUrl();
+      const qrData = await QRCode.toDataURL(url, {
+        width: 480,
+        margin: 2,
+        errorCorrectionLevel: 'H',
+        color: {
+          dark: '#124C46', // Deep emerald green
+          light: '#FFFFFF',
+        },
+      });
+      setQrCodeDataUrl(qrData);
+    } catch (err) {
+      console.error('Failed to generate QR code:', err);
+    } finally {
+      setIsGeneratingQr(false);
+    }
+  };
+
+  // Download QR Code as high-res PNG
+  const handleDownloadQrCode = () => {
+    if (!qrCodeDataUrl || !property) return;
+    const link = document.createElement('a');
+    link.href = qrCodeDataUrl;
+    link.download = `SakanAssiut-QR-${property.code}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Copy property deep link
+  const handleCopyPropertyLink = async () => {
+    const url = getPropertyUrl();
+    try {
+      await navigator.clipboard.writeText(url);
+      setIsQrCopied(true);
+      setTimeout(() => setIsQrCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
+
   const handleWhatsApp = () => {
     if (!property) return;
     const text = encodeURIComponent(
@@ -108,6 +187,18 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Share via QR Code Button */}
+            <button
+              type="button"
+              onClick={handleOpenQrModal}
+              className="px-2.5 py-1.5 rounded-xl border border-[#124C46]/25 bg-[#EAF3EF] hover:bg-[#DCECE7] text-[#124C46] transition-all active:scale-95 cursor-pointer shadow-xs text-xs font-bold flex items-center gap-1.5"
+              title="مشاركة العقار برمز QR للمعاينة المباشرة وجهاً لوجه"
+              aria-label="مشاركة عبر QR"
+            >
+              <QrCode className="w-3.5 h-3.5 text-[#124C46]" />
+              <span className="hidden xs:inline sm:inline">مشاركة QR</span>
+            </button>
+
             {/* Recommendation Share Button (Requirement #7) */}
             <button
               type="button"
@@ -250,14 +341,31 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                 <span>{property.city} - {property.district} ({property.address})</span>
               </p>
             </div>
-            <div className="sm:text-left bg-[#EAF3EF] p-3 rounded-2xl border border-[#124C46]/20 shrink-0">
-              <span className="text-xs text-[#124C46] block font-medium">السعر المطلوب:</span>
-              <span className="text-xl font-black text-[#124C46]">
-                {formatPrice(property.price)}
-              </span>
-              <span className="text-xs text-[#124C46] mr-1 font-semibold">
-                {property.purpose === 'rent' ? 'ج.م / شهر' : 'ج.م إجمالي'}
-              </span>
+            <div className="sm:text-left bg-[#EAF3EF] p-3.5 rounded-2xl border border-[#124C46]/20 shrink-0">
+              <div className="flex items-center justify-between sm:justify-start gap-2 mb-1">
+                <span className="text-xs text-[#124C46] font-bold">السعر المطلوب:</span>
+                {isVerifiedProperty && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-[#124C46] text-white shadow-2xs text-[10px] font-black"
+                    title={
+                      isHighRated
+                        ? `عقار موثق: حاصل على تقييمات ميدانية ممتازة (${ratingSummary?.average.toFixed(1) || '5.0'} من 5)`
+                        : 'عقار موثق: تم التدقيق والتحقق الميداني بواسطة إدارة سكن أسيوط'
+                    }
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#D6A84F] shrink-0" />
+                    <span>عقار موثق</span>
+                  </span>
+                )}
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl font-black text-[#124C46]">
+                  {formatPrice(property.price)}
+                </span>
+                <span className="text-xs text-[#124C46] mr-1 font-semibold">
+                  {property.purpose === 'rent' ? 'ج.م / شهر' : 'ج.م إجمالي'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -411,6 +519,38 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
             )}
           </div>
 
+          {/* In-Person Quick Share via QR Banner */}
+          <div 
+            onClick={handleOpenQrModal}
+            className="p-3.5 rounded-2xl bg-gradient-to-r from-[#F4FAF7] to-[#EAF3EF] border border-[#124C46]/20 flex items-center justify-between gap-3 text-xs cursor-pointer hover:border-[#124C46]/40 transition-all shadow-2xs group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white text-[#124C46] shadow-xs flex items-center justify-center border border-[#124C46]/15 group-hover:scale-105 transition-transform shrink-0">
+                <QrCode className="w-5 h-5 text-[#124C46]" />
+              </div>
+              <div className="text-right">
+                <span className="font-bold text-[#124C46] block text-xs sm:text-sm">
+                  مشاركة العقار برمز QR للمعاينة المباشرة
+                </span>
+                <span className="text-[11px] text-[#5D6B78] block">
+                  اعرض الرمز للعميل أو الشريك لفتحه فوراً على هاتفه بكاميرا الجوال
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenQrModal();
+              }}
+              className="px-3 py-1.5 rounded-xl bg-[#124C46] text-white font-bold text-xs shadow-xs group-hover:bg-[#0D3D38] transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span>عرض الرمز</span>
+            </button>
+          </div>
+
           {/* Privacy & Direct Inspection Protection Note */}
           {!isAdmin ? (
             <div className="p-3.5 rounded-2xl bg-[#EAF3EF] border border-[#124C46]/20 flex items-start gap-2.5 text-xs text-[#124C46]">
@@ -452,6 +592,118 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Dynamic In-Person QR Code Sharing Modal */}
+      {isQrModalOpen && (
+        <div 
+          className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsQrModalOpen(false);
+          }}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-[#D6DEE5] text-center space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#D6DEE5]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-[#EAF3EF] text-[#124C46] flex items-center justify-center border border-[#124C46]/20">
+                  <QrCode className="w-4 h-4 text-[#124C46]" />
+                </div>
+                <div className="text-right">
+                  <h3 className="font-bold text-sm text-[#24313D] leading-tight font-['Tajawal','Cairo',sans-serif]">
+                    رمز QR للمعاينة الفورية
+                  </h3>
+                  <p className="text-[10px] text-[#5D6B78]">
+                    للمعاينة والمشاركة المباشرة وجهاً لوجه
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsQrModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer"
+                title="إغلاق"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Property Summary Pill */}
+            <div className="bg-[#F5F9F8] rounded-2xl p-2.5 border border-[#D6DEE5] text-xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#124C46]">كود: {property.code}</span>
+                <span className="text-[11px] font-black text-[#8B641C]">
+                  {formatPrice(property.price)} {property.purpose === 'rent' ? 'ج.م/شهر' : 'ج.م'}
+                </span>
+              </div>
+              <p className="text-[11px] text-[#24313D] font-semibold truncate text-right">
+                {property.title}
+              </p>
+            </div>
+
+            {/* QR Code Container */}
+            <div className="relative bg-white p-4 rounded-2xl border-2 border-dashed border-[#124C46]/30 shadow-inner flex flex-col items-center justify-center min-h-[220px]">
+              {isGeneratingQr ? (
+                <div className="flex flex-col items-center gap-2 py-8 text-xs text-[#5D6B78]">
+                  <div className="w-8 h-8 border-2 border-[#124C46] border-t-transparent rounded-full animate-spin" />
+                  <span>جارٍ إنشاء رمز الـ QR للعقار...</span>
+                </div>
+              ) : qrCodeDataUrl ? (
+                <div className="space-y-2.5">
+                  <img
+                    src={qrCodeDataUrl}
+                    alt={`رمز QR للعقار ${property.code}`}
+                    className="w-52 h-52 sm:w-56 sm:h-56 mx-auto rounded-xl object-contain drop-shadow-xs"
+                  />
+                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#124C46] font-bold">
+                    <Smartphone className="w-3.5 h-3.5 text-[#16856B]" />
+                    <span>امسح الرمز بكاميرا أي هاتف لفتح الإعلان</span>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-xs text-rose-500">تعذر إنشاء رمز الـ QR</span>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleDownloadQrCode}
+                disabled={!qrCodeDataUrl}
+                className="py-2.5 px-3 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                title="تحميل صورة رمز الـ QR بجودة عالية"
+              >
+                <Download className="w-3.5 h-3.5 text-white" />
+                <span>تحميل الرمز (PNG)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCopyPropertyLink}
+                className="py-2.5 px-3 rounded-xl bg-white hover:bg-[#F5F9F8] text-[#24313D] border border-[#D6DEE5] text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                title="نسخ رابط صفحة العقار"
+              >
+                {isQrCopied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-[#16856B]" />
+                    <span className="text-[#16856B]">تم النسخ!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-[#5D6B78]" />
+                    <span>نسخ الرابط</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

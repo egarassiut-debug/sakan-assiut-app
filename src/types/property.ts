@@ -233,6 +233,8 @@ export interface Property {
   createdAt: string;
   ownershipDocumentUrl?: string;
   viewsCount?: number;
+  isVerified?: boolean;
+  verifiedByAdmin?: boolean;
 }
 
 export interface PropertyRating {

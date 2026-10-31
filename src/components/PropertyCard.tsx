@@ -125,6 +125,22 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   const isVerifiedAdvertiser = property.status === 'approved' || property.isApproved !== false || property.featured;
   const advertiserLabel = property.source || 'وسيط معتمد';
 
+  // Verified Property Evaluation: High ratings (>= 4.0) or confirmed admin verification
+  const hasHighRating = Boolean(
+    (ratingSummary && ratingSummary.count > 0 && ratingSummary.average >= 4.0) ||
+    ((property as any).rating && (property as any).rating >= 4.0)
+  );
+
+  const isVerifiedByAdmin = Boolean(
+    property.isVerified ||
+    property.verifiedByAdmin ||
+    property.createdByAdmin ||
+    property.ownershipDocumentUrl ||
+    (property.status === 'approved' && property.featured)
+  );
+
+  const isVerifiedProperty = hasHighRating || isVerifiedByAdmin;
+
   return (
     <div 
       onClick={handleCardClick}
@@ -419,18 +435,36 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
 
         {/* Price & Action Buttons */}
-        <div className="pt-3 border-t border-[#D6DEE5]/60 flex items-center justify-between gap-3">
-          {/* Price */}
-          <div className="min-w-0 max-w-[46%] sm:max-w-[48%]">
-            <div className="text-[#8B641C] font-black text-base sm:text-lg leading-tight truncate">
-              {formatPrice(property.price)}
-              <span className="text-[11px] sm:text-xs font-semibold text-[#5D6B78] mr-1.5">
-                {property.purpose === 'rent' ? 'ج.م / شهر' : 'ج.م إجمالي'}
-              </span>
+        <div className="pt-3 border-t border-[#D6DEE5]/60 flex items-center justify-between gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+          {/* Price & Verified Badge Container */}
+          <div className="min-w-0 flex items-center gap-2 sm:gap-2.5 flex-wrap">
+            <div>
+              <div className="text-[#8B641C] font-black text-base sm:text-lg leading-tight truncate">
+                {formatPrice(property.price)}
+                <span className="text-[11px] sm:text-xs font-semibold text-[#5D6B78] mr-1.5">
+                  {property.purpose === 'rent' ? 'ج.م / شهر' : 'ج.م إجمالي'}
+                </span>
+              </div>
+              {property.deposit && (
+                <span className="text-[10px] text-[#788593] block truncate mt-0.5">
+                  تأمين: {formatPrice(property.deposit)} ج.م
+                </span>
+              )}
             </div>
-            {property.deposit && (
-              <span className="text-[10px] text-[#788593] block truncate mt-1">
-                تأمين: {formatPrice(property.deposit)} ج.م
+
+            {/* Prominent 'عقار موثق' Badge */}
+            {isVerifiedProperty && (
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#E4F4EC] text-[#124C46] border border-[#16856B]/35 shadow-2xs text-[11px] sm:text-xs font-extrabold shrink-0 transition-transform hover:scale-105 select-none"
+                title={
+                  hasHighRating
+                    ? `عقار موثق: حاصل على تقييمات ميدانية ممتازة (${ratingSummary?.average.toFixed(1) || '5.0'} من 5)`
+                    : 'عقار موثق: تم التدقيق والتحقق الميداني بواسطة إدارة سكن أسيوط'
+                }
+              >
+                <ShieldCheck className="w-4 h-4 text-[#16856B] shrink-0" />
+                <span className="whitespace-nowrap font-bold">عقار موثق</span>
+                <Check className="w-3 h-3 text-[#16856B] stroke-[3]" />
               </span>
             )}
           </div>
