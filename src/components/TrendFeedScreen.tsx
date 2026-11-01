@@ -3,6 +3,7 @@ import { TrendPost, TrendSettings, AppUser } from '../types/property';
 import { DEFAULT_TREND_SETTINGS, INITIAL_TREND_POSTS, calculateExpiryDate } from '../data/initialTrendPosts';
 import { safeStorageGetItem, safeStorageSetItem } from '../utils/storageManager';
 import { logAuditEvent } from '../utils/auditManager';
+import { useBackLayer } from '../utils/navigationHistory';
 import { 
   Zap, 
   Send, 
@@ -160,6 +161,21 @@ export const TrendFeedScreen: React.FC<TrendFeedScreenProps> = ({
   // Admin Settings Modal
   const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
   const [selectedExpiryDays, setSelectedExpiryDays] = useState(trendSettings.expiryDays);
+
+  // Back Navigation layers for Trend sub-modals (Priority 88)
+  useBackLayer({
+    id: 'trend_preview_image',
+    isOpen: Boolean(previewImage),
+    priority: 88,
+    onClose: () => setPreviewImage(null),
+  });
+
+  useBackLayer({
+    id: 'trend_admin_settings',
+    isOpen: isAdminSettingsOpen,
+    priority: 88,
+    onClose: () => setIsAdminSettingsOpen(false),
+  });
 
   // Character limit
   const charLimit = trendSettings.maxCharacters || 220;

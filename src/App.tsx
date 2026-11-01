@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { useBackLayer } from './utils/navigationHistory';
 import { 
   Property, 
   ScheduledInspection, 
@@ -155,40 +156,45 @@ export function App() {
   // Dedicated Full-Screen Overlay (عرض عقار / طلب عقار)
   const [overlayScreen, setOverlayScreen] = useState<'none' | 'form_entry_offer' | 'form_entry_request'>('none');
 
-  // Synchronize browser URL history with active view
+  // Sequential Tab Navigation History: enables returning to previous screen on Back
+  const tabHistoryRef = useRef<number[]>([navIndex]);
+
   useEffect(() => {
-    if (navIndex === 3) {
-      if (window.location.pathname !== '/admin') {
-        window.history.pushState(null, '', '/admin');
-      }
-    } else {
-      if (window.location.pathname === '/admin') {
-        window.history.pushState(null, '', '/');
+    const history = tabHistoryRef.current;
+    const current = history[history.length - 1];
+    if (current !== navIndex) {
+      if (navIndex === 0) {
+        tabHistoryRef.current = [0];
+      } else {
+        tabHistoryRef.current.push(navIndex);
       }
     }
   }, [navIndex]);
 
-  // Handle browser back/forward buttons (popstate)
-  useEffect(() => {
-    const handlePopState = () => {
-      const path = window.location.pathname;
-      if (path === '/admin') {
-        if (isStaffRole(currentUser?.role)) {
-          setNavIndex(3);
-        } else {
-          window.history.replaceState(null, '', '/');
-          setNavIndex(0);
-        }
-      } else if (path === '/') {
-        if (navIndex === 3) {
-          setNavIndex(0);
-        }
-      }
-    };
+  const handleNavigateBackTab = useCallback(() => {
+    const history = tabHistoryRef.current;
+    if (history.length > 1) {
+      history.pop();
+      const prev = history[history.length - 1] ?? 0;
+      setNavIndex(prev as NavTabIndex);
+    } else {
+      tabHistoryRef.current = [0];
+      setNavIndex(0);
+    }
+  }, []);
 
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [currentUser, navIndex]);
+  // Synchronize browser URL bar for Admin route without inserting duplicate history entries
+  useEffect(() => {
+    if (navIndex === 3) {
+      if (window.location.pathname !== '/admin') {
+        window.history.replaceState(null, '', '/admin');
+      }
+    } else {
+      if (window.location.pathname === '/admin') {
+        window.history.replaceState(null, '', '/');
+      }
+    }
+  }, [navIndex]);
 
   // Strict session and cryptographic integrity check for Admin
   useEffect(() => {
@@ -773,6 +779,137 @@ export function App() {
 
   const [activePushBanner, setActivePushBanner] = useState<InAppPushNotification | null>(null);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+
+  // =========================================================================
+  // Android System Back Button & Edge-Swipe Navigation Hierarchy Integration
+  // =========================================================================
+
+  // 1. Topmost Priority (100): Side Drawer (القائمة الجانبية)
+  useBackLayer({
+    id: 'admin_drawer',
+    isOpen: isAdminDrawerOpen,
+    priority: 100,
+    onClose: () => setIsAdminDrawerOpen(false),
+  });
+
+  // 2. High Priority (95): Filter Popovers
+  useBackLayer({
+    id: 'offers_filter',
+    isOpen: isOffersFilterOpen,
+    priority: 95,
+    onClose: () => setIsOffersFilterOpen(false),
+  });
+
+  useBackLayer({
+    id: 'requests_filter',
+    isOpen: isRequestsFilterOpen,
+    priority: 95,
+    onClose: () => setIsRequestsFilterOpen(false),
+  });
+
+  // 3. High Priority (90): Bottom Sheet FAB Choice (عرض عقار / طلب عقار)
+  useBackLayer({
+    id: 'choice_add',
+    isOpen: isChoiceAddOpen,
+    priority: 90,
+    onClose: () => setIsChoiceAddOpen(false),
+  });
+
+  // 4. Modals & Dialogs (Priority 85)
+  useBackLayer({
+    id: 'smart_match_modal',
+    isOpen: smartMatchModalData.isOpen,
+    priority: 85,
+    onClose: () => setSmartMatchModalData((prev) => ({ ...prev, isOpen: false })),
+  });
+
+  useBackLayer({
+    id: 'supabase_sync_error',
+    isOpen: Boolean(supabaseSyncError),
+    priority: 85,
+    onClose: () => setSupabaseSyncError(null),
+  });
+
+  useBackLayer({
+    id: 'voice_assistant',
+    isOpen: isVoiceAssistantOpen,
+    priority: 85,
+    onClose: () => setIsVoiceAssistantOpen(false),
+  });
+
+  useBackLayer({
+    id: 'notification_center',
+    isOpen: isNotificationCenterOpen,
+    priority: 85,
+    onClose: () => setIsNotificationCenterOpen(false),
+  });
+
+  useBackLayer({
+    id: 'saved_search_modal',
+    isOpen: isSavedSearchModalOpen,
+    priority: 85,
+    onClose: () => setIsSavedSearchModalOpen(false),
+  });
+
+  useBackLayer({
+    id: 'favorites_modal',
+    isOpen: isFavoritesModalOpen,
+    priority: 85,
+    onClose: () => setIsFavoritesModalOpen(false),
+  });
+
+  useBackLayer({
+    id: 'inspection_modal',
+    isOpen: isInspectionModalOpen,
+    priority: 85,
+    onClose: () => {
+      setIsInspectionModalOpen(false);
+      setSelectedPropertyForInspection(null);
+    },
+  });
+
+  useBackLayer({
+    id: 'rating_modal',
+    isOpen: Boolean(ratingModalProperty),
+    priority: 85,
+    onClose: () => setRatingModalProperty(null),
+  });
+
+  // 5. Details Views (Priority 70): Returns user to current listings
+  useBackLayer({
+    id: 'property_details',
+    isOpen: Boolean(selectedProperty),
+    priority: 70,
+    onClose: () => setSelectedProperty(null),
+  });
+
+  useBackLayer({
+    id: 'tenant_request_details',
+    isOpen: Boolean(selectedTenantRequest),
+    priority: 70,
+    onClose: () => setSelectedTenantRequest(null),
+  });
+
+  // 6. Fullscreen Overlay Screens (Priority 60): Form Entry
+  useBackLayer({
+    id: 'form_entry_overlay',
+    isOpen: overlayScreen !== 'none',
+    priority: 60,
+    onClose: () => {
+      setEditingProperty(null);
+      setEditingTenantRequest(null);
+      setOverlayScreen('none');
+    },
+  });
+
+  // 7. Sub-Tabs & Sub-Screens (Priority 30): Returns to previous tab or Home (0)
+  useBackLayer({
+    id: 'sub_tab_navigation',
+    isOpen: navIndex !== 0,
+    priority: 30,
+    onClose: handleNavigateBackTab,
+    url: navIndex === 3 ? '/admin' : '/',
+  });
 
   const dispatchPushNotification = (notification: Omit<InAppPushNotification, 'id' | 'createdAt' | 'isRead'>) => {
     const newPush: InAppPushNotification = {

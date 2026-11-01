@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import QRCode from 'qrcode';
 import { Property } from '../types/property';
 import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
+import { useBackLayer } from '../utils/navigationHistory';
 import { 
   X, Copy, Check, MapPin, Zap, Droplets, Flame, ArrowUpDown, 
   MessageSquare, MessageCircle, Calendar, ShieldCheck, Edit3, Heart, Star, AlertTriangle, Share2,
@@ -40,6 +41,14 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [isQrCopied, setIsQrCopied] = useState(false);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+
+  // Back Navigation layer for QR share modal (Priority 88)
+  useBackLayer({
+    id: 'property_qr_modal',
+    isOpen: isQrModalOpen,
+    priority: 88,
+    onClose: () => setIsQrModalOpen(false),
+  });
 
   const isLand = property ? (property.propertyType === 'قطعة أرض فضاء' || property.propertyType.includes('أرض')) : false;
 
