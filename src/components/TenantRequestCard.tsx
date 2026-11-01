@@ -2,7 +2,7 @@ import React from 'react';
 import { TenantRequest } from '../types/property';
 import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
-  ShieldCheck, MessageSquare, MapPin, Building, Calendar, 
+  ShieldCheck, MessageSquare, MessageCircle, MapPin, Building, Calendar, 
   Maximize2, Bed, Bath, ArrowUpRight, Edit3, AlertTriangle 
 } from 'lucide-react';
 
@@ -190,12 +190,11 @@ export const TenantRequestCard: React.FC<TenantRequestCardProps> = ({
             <button
               type="button"
               onClick={handleWhatsApp}
-              className="h-9.5 px-3 sm:px-3.5 rounded-xl bg-white hover:bg-[#F5F9F8] text-[#124C46] border border-[#D6DEE5] text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
-              title="تواصل مع إدارة التطبيق بخصوص هذا الطلب"
+              className="h-9.5 px-3.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-95 shrink-0 cursor-pointer"
+              title="محادثة وتواصل عبر واتساب"
             >
-              <MessageSquare className="w-4 h-4 text-[#16856B] shrink-0" />
-              <span className="hidden sm:inline">تواصل للإفادة</span>
-              <span className="sm:hidden">تواصل</span>
+              <MessageCircle className="w-4 h-4 text-white" />
+              <span>واتساب</span>
             </button>
 
             {onOpenDetails && (

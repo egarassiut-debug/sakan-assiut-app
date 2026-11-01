@@ -1,10 +1,10 @@
 import React from 'react';
 import { RealEstateAgent, Assignment, AdminPanelSettings, Add } from './FlutterIcons';
-import { Layers } from 'lucide-react';
+import { Layers, Flame } from 'lucide-react';
 import { isStaffRole } from '../utils/adminManager';
 import { GranularRole } from '../types/property';
 
-export type NavTabIndex = 0 | 1 | 2 | 3;
+export type NavTabIndex = 0 | 1 | 2 | 3 | 4;
 
 interface BottomNavBarProps {
   currentIndex: number;
@@ -34,7 +34,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   if (!isAdmin) {
     return (
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md text-[#5D6B78] border-t border-[#D6DEE5] shadow-[0_-4px_20px_rgba(0,0,0,0.04)] select-none">
-        <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-between relative">
+        <div className="max-w-md mx-auto px-3 h-16 flex items-center justify-between relative">
           
           {/* 1. عروض الإيجار (Index 0) */}
           <button
@@ -80,7 +80,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           </button>
 
           {/* 3. المنتصف: زر الإضافة الأوسط البارز (+) */}
-          <div className="relative -top-3.5 flex flex-col items-center justify-center px-1.5 z-10">
+          <div className="relative -top-3.5 flex flex-col items-center justify-center px-1 z-10">
             <button
               onClick={onOpenAddModal}
               className="w-12 h-12 rounded-2xl bg-[#124C46] hover:bg-[#0D3D38] text-white shadow-md shadow-[#124C46]/25 flex items-center justify-center border-2 border-white transition-transform active:scale-95 hover:scale-105 group cursor-pointer"
@@ -94,7 +94,27 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             </span>
           </div>
 
-          {/* 4. إعلاناتي (Index 2) */}
+          {/* 4. ترند (Index 4) */}
+          <button
+            onClick={() => onSelectIndex(4)}
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
+              currentIndex === 4 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
+            }`}
+            title="ترند ويوميات سكن أسيوط"
+          >
+            <div className="relative">
+              <Flame className={`w-5 h-5 transition-transform ${currentIndex === 4 ? 'text-amber-500 fill-amber-500 stroke-[2.5]' : 'stroke-2 group-hover:text-amber-500'}`} />
+              <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+            </div>
+            <span className="text-[10px] mt-1 font-semibold tracking-tight">
+              ترند
+            </span>
+            {currentIndex === 4 && (
+              <span className="w-1.5 h-1.5 bg-[#124C46] rounded-full mt-0.5" />
+            )}
+          </button>
+
+          {/* 5. إعلاناتي (Index 2) */}
           <button
             onClick={() => onSelectIndex(2)}
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
@@ -125,7 +145,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md text-[#5D6B78] border-t border-[#D6DEE5] shadow-[0_-4px_20px_rgba(0,0,0,0.04)] select-none">
-      <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-between relative">
+      <div className="max-w-md mx-auto px-3 h-16 flex items-center justify-between relative">
         
         {/* 1. عروض الإيجار (Index 0) */}
         <button
@@ -171,7 +191,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         </button>
 
         {/* 3. المنتصف: زر الإضافة الأوسط البارز (+) */}
-        <div className="relative -top-3.5 flex flex-col items-center justify-center px-1.5 z-10">
+        <div className="relative -top-3.5 flex flex-col items-center justify-center px-1 z-10">
           <button
             onClick={onOpenAddModal}
             className="w-12 h-12 rounded-2xl bg-[#124C46] hover:bg-[#0D3D38] text-white shadow-md shadow-[#124C46]/25 flex items-center justify-center border-2 border-white transition-transform active:scale-95 hover:scale-105 group cursor-pointer"
@@ -185,7 +205,27 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           </span>
         </div>
 
-        {/* 4. لوحة التحكم الإدارية (Index 3 للأدمن) */}
+        {/* 4. ترند (Index 4) */}
+        <button
+          onClick={() => onSelectIndex(4)}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
+            currentIndex === 4 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
+          }`}
+          title="ترند ويوميات سكن أسيوط"
+        >
+          <div className="relative">
+            <Flame className={`w-5 h-5 transition-transform ${currentIndex === 4 ? 'text-amber-500 fill-amber-500 stroke-[2.5]' : 'stroke-2 group-hover:text-amber-500'}`} />
+            <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+          </div>
+          <span className="text-[10px] mt-1 font-semibold tracking-tight">
+            ترند
+          </span>
+          {currentIndex === 4 && (
+            <span className="w-1.5 h-1.5 bg-[#124C46] rounded-full mt-0.5" />
+          )}
+        </button>
+
+        {/* 5. لوحة التحكم الإدارية (Index 3 للأدمن) */}
         <button
           onClick={() => onSelectIndex(3)}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${

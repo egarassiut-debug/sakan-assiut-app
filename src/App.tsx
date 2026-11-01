@@ -78,6 +78,7 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
 // Code-split heavy components & modals for optimal runtime performance
 const AdminPanel = lazyWithRetry(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
 import { FormEntryScreen } from './components/FormEntryScreen';
+import { TrendFeedScreen } from './components/TrendFeedScreen';
 import { VoiceAssistantModal } from './components/VoiceAssistantModal';
 const PropertyDetailsModal = lazyWithRetry(() => import('./components/PropertyDetailsModal').then(m => ({ default: m.PropertyDetailsModal })));
 const TenantRequestDetailsModal = lazyWithRetry(() => import('./components/TenantRequestDetailsModal').then(m => ({ default: m.TenantRequestDetailsModal })));
@@ -318,7 +319,12 @@ export function App() {
     };
   }, []);
   const [dropdownCategories, setDropdownCategories] = useState<Record<string, DropdownCategory>>(() => {
-    return safeStorageGetItem<Record<string, DropdownCategory>>('ardaw_dropdown_categories', INITIAL_DROPDOWN_CATEGORIES);
+    const saved = safeStorageGetItem<Record<string, DropdownCategory>>('ardaw_dropdown_categories', INITIAL_DROPDOWN_CATEGORIES);
+    return {
+      ...INITIAL_DROPDOWN_CATEGORIES,
+      ...saved,
+      legalStatuses: saved?.legalStatuses || INITIAL_DROPDOWN_CATEGORIES.legalStatuses,
+    };
   });
 
   // Dynamic utilities and meter options with localStorage persistence
@@ -2693,6 +2699,25 @@ export function App() {
               </div>
             </Suspense>
           </ProtectedRoute>
+        ) : navIndex === 4 ? (
+          /* ========================================================================= */
+          /* 6. شاشة ترند ويوميات سكن أسيوط (Social Feed) */
+          /* ========================================================================= */
+          <div className="animate-in fade-in duration-150">
+            <TrendFeedScreen
+              currentUser={currentUser}
+              isAdmin={isAdmin}
+              onOpenLogin={() => {
+                setNavIndex(0);
+                addToast({
+                  type: 'info',
+                  title: 'تسجيل الدخول مطلوب للنشر',
+                  message: 'يرجى تسجيل الدخول برقم هاتفك للنشر والتفاعل في الترند.',
+                });
+              }}
+              onAddToast={addToast}
+            />
+          </div>
         ) : (
           /* Fallback for regular user or out-of-range index */
           <div className="text-center py-10">

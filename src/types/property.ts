@@ -195,6 +195,8 @@ export interface PropertyUtilities {
 export const DEFAULT_PROPERTY_IMAGE = '/default-card-placeholder.webp';
 export const DEFAULT_CARD_IMAGE = '/default-card-placeholder.webp';
 
+export type LegalStatusOption = 'مرخصة' | 'بعد الرخصة' | 'تصالح نهائي' | 'جاري التصالح' | 'مخالف';
+
 export interface Property {
   id: string;
   code: string; // e.g. "ASY-102"
@@ -204,6 +206,7 @@ export interface Property {
   description: string;
   propertyType: string; // e.g. "شقة سكنية", "قطعة أرض فضاء", "سكن طلابي", etc.
   purpose: PropertyPurpose; // 'rent' | 'sale'
+  legalStatus?: LegalStatusOption | string; // الموقف القانوني للعقار (مرخصة، بعد الرخصة، تصالح نهائي، جاري التصالح، مخالف)
   price: number;
   originalPrice?: number;
   deposit?: number;
@@ -277,6 +280,7 @@ export interface TenantRequest {
   preferredDistrict: string;
   propertyType: string;
   purpose: PropertyPurpose;
+  legalStatus?: LegalStatusOption | string; // الموقف القانوني المفضل للعقار المطلوب
   minPrice?: number;
   maxPrice: number;
   minArea?: number;
@@ -358,4 +362,27 @@ export interface SavedSearchCriteria {
   purpose?: 'all' | 'rent' | 'sale';
   searchQuery?: string;
   createdAt: string;
+}
+
+export interface TrendPost {
+  id: string;
+  authorName: string;
+  authorPhone: string;
+  authorRole?: string;
+  authorAvatar?: string;
+  content: string;
+  image?: string;
+  createdAt: string;
+  expiresAt: string;
+  likesCount?: number;
+  likedBy?: string[];
+  sharesCount?: number;
+  isPinned?: boolean;
+  status: 'active' | 'expired' | 'removed';
+}
+
+export interface TrendSettings {
+  expiryDays: number; // مدة بقاء البوست بالأيام (الافتراضي 30 يوماً / شهر)
+  maxCharacters: number;
+  allowImageUpload: boolean;
 }

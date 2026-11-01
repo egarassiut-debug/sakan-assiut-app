@@ -146,6 +146,15 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
                   <span className="font-bold text-[#124C46]">{request.furnishingStatus}</span>
                 </div>
               )}
+              {request.legalStatus && (
+                <div className="bg-white p-2.5 rounded-lg border border-[#D6DEE5] col-span-2 sm:col-span-1">
+                  <span className="text-[10px] text-[#788593] block font-bold">الموقف القانوني المشترط:</span>
+                  <span className="font-bold text-[#124C46] flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#124C46]" />
+                    <span>{request.legalStatus}</span>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -214,10 +223,11 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
           <div className="flex items-center gap-2 flex-1 justify-end">
             <button
               onClick={handleWhatsApp}
-              className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
+              className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-2xs transition-all active:scale-95 cursor-pointer"
+              title="محادثة وتواصل عبر واتساب"
             >
-              <MessageCircle className="w-4 h-4" />
-              <span>تواصل مع الإدارة بشأن هذا الطلب</span>
+              <MessageCircle className="w-4 h-4 text-white" />
+              <span>واتساب</span>
             </button>
 
             <button

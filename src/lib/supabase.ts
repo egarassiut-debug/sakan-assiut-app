@@ -242,6 +242,7 @@ export function mapPropertyFromDb(row: any): Property {
     description: row.description || '',
     propertyType: row.property_type || 'شقة سكنية',
     purpose: (row.purpose === 'sale' ? 'sale' : 'rent'),
+    legalStatus: row.legal_status || row.legalStatus || 'مرخصة',
     price: Number(row.price) || 0,
     originalPrice: row.original_price ? Number(row.original_price) : undefined,
     deposit: row.deposit ? Number(row.deposit) : undefined,
@@ -290,6 +291,7 @@ export function mapPropertyToDb(p: Property): any {
     description: p.description,
     property_type: p.propertyType,
     purpose: p.purpose,
+    legal_status: p.legalStatus || 'مرخصة',
     price: p.price,
     original_price: p.originalPrice || null,
     deposit: p.deposit || null,
@@ -333,6 +335,7 @@ export function mapTenantRequestFromDb(row: any): TenantRequest {
     preferredDistrict: row.preferred_district || '',
     propertyType: row.property_type || 'شقة سكنية',
     purpose: (row.purpose === 'sale' ? 'sale' : 'rent'),
+    legalStatus: row.legal_status || row.legalStatus || undefined,
     minPrice: row.min_price ? Number(row.min_price) : undefined,
     maxPrice: Number(row.max_price) || 0,
     minArea: row.min_area ? Number(row.min_area) : undefined,
@@ -361,6 +364,7 @@ export function mapTenantRequestToDb(r: TenantRequest): any {
     preferred_district: r.preferredDistrict,
     property_type: r.propertyType,
     purpose: r.purpose,
+    legal_status: r.legalStatus || null,
     min_price: r.minPrice || null,
     max_price: r.maxPrice,
     min_area: r.minArea || null,
@@ -727,6 +731,9 @@ export function validatePropertyPayload(prop: Partial<Property>): PropertyValida
   }
   if (prop.price === undefined || prop.price === null || isNaN(Number(prop.price)) || Number(prop.price) <= 0) {
     return { isValid: false, errorMessage: 'تنبيه: السعر/الإيجار (price) يجب أن يكون رقماً أكبر من صفر.', field: 'price' };
+  }
+  if (!prop.legalStatus || typeof prop.legalStatus !== 'string' || !prop.legalStatus.trim()) {
+    return { isValid: false, errorMessage: 'تنبيه: الموقف القانوني للعقار حقل إجباري لاكتمال الإعلان (مرخصة، بعد الرخصة، تصالح نهائي، جاري التصالح، مخالف).', field: 'legalStatus' };
   }
   if (!prop.ownerPhone || typeof prop.ownerPhone !== 'string' || !prop.ownerPhone.trim()) {
     return { isValid: false, errorMessage: 'تنبيه: رقم هاتف المالك/المعلن (ownerPhone) إجباري للاتصال والمعاينة.', field: 'phone' };

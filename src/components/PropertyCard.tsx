@@ -3,8 +3,8 @@ import { Property } from '../types/property';
 import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
   Copy, Check, MapPin, Maximize2, Bed, Bath, ArrowUpRight, 
-  MessageSquare, Compass, Building, ChevronLeft, ChevronRight, Camera, Edit3, AlertTriangle, Heart, Star,
-  Lock, Tag, ShieldCheck, Sparkles
+  MessageSquare, MessageCircle, Compass, Building, ChevronLeft, ChevronRight, Camera, Edit3, AlertTriangle, Heart, Star,
+  Lock, Tag, ShieldCheck, Sparkles, Calendar
 } from 'lucide-react';
 
 interface PropertyCardProps {
@@ -105,6 +105,40 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ar-EG').format(price);
+  };
+
+  // Helper to format publication date cleanly in Arabic for enhanced transparency
+  const formatPublishDate = (dateStr?: string) => {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('T')[0].split('-');
+      let d: Date;
+      if (parts.length === 3) {
+        d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      } else {
+        d = new Date(dateStr);
+      }
+      if (isNaN(d.getTime())) return dateStr;
+
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const diffTime = today.getTime() - target.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) return 'اليوم';
+      if (diffDays === 1) return 'أمس';
+      if (diffDays === 2) return 'منذ يومين';
+      if (diffDays > 2 && diffDays <= 7) return `منذ ${diffDays} أيام`;
+
+      return d.toLocaleDateString('ar-EG', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return dateStr;
+    }
   };
 
   // Helper to format unified property type and purpose badge
@@ -233,6 +267,17 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </>
         )}
 
+        {/* Publication Date Badge (ركن البطاقة لزيادة الشفافية والاحترافية) */}
+        {property.createdAt && (
+          <div 
+            className="absolute bottom-2.5 right-2.5 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-[10px] sm:text-[11px] font-bold shadow-md border border-white/20 select-none pointer-events-none transition-transform group-hover:scale-105"
+            title={`تاريخ نشر الإعلان: ${property.createdAt}`}
+          >
+            <Calendar className="w-3.5 h-3.5 text-[#D6A84F] shrink-0" />
+            <span>نُشر: {formatPublishDate(property.createdAt)}</span>
+          </div>
+        )}
+
         {/* Status Overlay Watermark for Rented / Sold properties */}
         {(property.status === 'rented' || property.status === 'sold') && (
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs z-10 flex items-center justify-center pointer-events-none">
@@ -263,6 +308,19 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             <span className="px-3 py-1 rounded-xl font-bold text-xs shadow-md backdrop-blur-xs flex items-center gap-1 bg-[#124C46] text-white border border-white/20">
               <span>{getUnifiedTypePurposeBadge()}</span>
             </span>
+
+            {property.legalStatus && (
+              <span className={`px-2 py-0.5 rounded-xl font-bold text-[11px] shadow-xs border backdrop-blur-xs flex items-center gap-1 ${
+                property.legalStatus === 'مرخصة' || property.legalStatus === 'تصالح نهائي'
+                  ? 'bg-[#124C46]/90 text-white border-emerald-400/40'
+                  : property.legalStatus === 'مخالف'
+                  ? 'bg-rose-900/90 text-rose-100 border-rose-400/40'
+                  : 'bg-amber-900/90 text-amber-100 border-amber-400/40'
+              }`}>
+                <ShieldCheck className="w-3 h-3 text-[#D6A84F] shrink-0" />
+                <span>{property.legalStatus}</span>
+              </span>
+            )}
 
             {property.status === 'rented' && (
               <span className="px-2.5 py-1 rounded-xl bg-[#FFF2D6] text-[#A96F0B] font-bold text-xs shadow-xs border border-[#A96F0B]/30 flex items-center gap-1">
@@ -491,12 +549,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             <button
               type="button"
               onClick={handleWhatsApp}
-              className="h-9.5 px-3 sm:px-3.5 rounded-xl bg-white hover:bg-[#F5F9F8] text-[#124C46] border border-[#D6DEE5] text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
-              title="تواصل مع إدارة التطبيق عبر واتساب"
+              className="h-9.5 px-3.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-95 shrink-0 cursor-pointer"
+              title="محادثة وتواصل عبر واتساب"
             >
-              <MessageSquare className="w-4 h-4 text-[#16856B] shrink-0" />
-              <span className="hidden sm:inline">تواصل للإفادة</span>
-              <span className="sm:hidden">تواصل</span>
+              <MessageCircle className="w-4 h-4 text-white" />
+              <span>واتساب</span>
             </button>
 
             <button

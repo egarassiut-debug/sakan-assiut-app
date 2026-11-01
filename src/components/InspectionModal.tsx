@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Property, ScheduledInspection } from '../types/property';
-import { X, Calendar, CheckCircle2, MessageSquare, AlertCircle } from 'lucide-react';
+import { X, Calendar, CheckCircle2, MessageSquare, MessageCircle, AlertCircle } from 'lucide-react';
 import { validateEgyptianPhone, normalizeEgyptianPhone, isValidEgyptianPhone } from '../utils/phoneValidator';
 import { dbUpsertProfile } from '../lib/supabase';
 
@@ -120,9 +120,9 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
 
             <button
               onClick={handleOpenWhatsApp}
-              className="w-full py-3 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+              className="w-full py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xs cursor-pointer"
             >
-              <MessageSquare className="w-4 h-4" />
+              <MessageCircle className="w-4 h-4 text-white" />
               <span>إرسال تأكيد الموعد عبر واتساب الآن</span>
             </button>
           </div>

@@ -135,5 +135,17 @@ export const INITIAL_DROPDOWN_CATEGORIES: Record<string, DropdownCategory> = {
       { id: 'pm-4', name: 'كاش فوري (للبيع)', isActive: true },
       { id: 'pm-5', name: 'مقدم 50% وتقسيط حتى سنتين (للبيع)', isActive: true }
     ]
+  },
+  legalStatuses: {
+    id: 'legalStatuses',
+    title: 'الموقف القانوني للعقار',
+    description: 'الحالات القانونية وتراخيص البناء الرسمية للعقارات والوحدات بمحافظة أسيوط',
+    items: [
+      { id: 'ls-1', name: 'مرخصة', description: 'عقار صادر له رخصة بناء رسمية ومعتمدة', isActive: true },
+      { id: 'ls-2', name: 'بعد الرخصة', description: 'أدوار أو توسعات مبنية بعد الترخيص الأصلي', isActive: true },
+      { id: 'ls-3', name: 'تصالح نهائي', description: 'تم استلام نموذج 8 أو نموذج 10 للتصالح النهائي المعتمد', isActive: true },
+      { id: 'ls-4', name: 'جاري التصالح', description: 'طلب التصالح قيد الفحص والإجراءات الرسمية', isActive: true },
+      { id: 'ls-5', name: 'مخالف', description: 'عقار بدون ترخيص رسمي أو غير متصالح', isActive: true }
+    ]
   }
 };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Property } from '../types/property';
 import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
-import { X, Heart, Building2, MapPin, Trash2, MessageSquare, Bed, Bath, Maximize2 } from 'lucide-react';
+import { X, Heart, Building2, MapPin, Trash2, MessageSquare, MessageCircle, Bed, Bath, Maximize2 } from 'lucide-react';
 
 interface FavoritesModalProps {
   isOpen: boolean;
@@ -179,11 +179,11 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleWhatsApp(prop)}
-                      className="p-2 px-3 rounded-lg bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
-                      title="تواصل مع إدارة التطبيق بشأن هذا العقار"
+                      className="px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                      title="محادثة وتواصل عبر واتساب"
                     >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span>تواصل</span>
+                      <MessageCircle className="w-3.5 h-3.5 text-white" />
+                      <span>واتساب</span>
                     </button>
 
                     <button

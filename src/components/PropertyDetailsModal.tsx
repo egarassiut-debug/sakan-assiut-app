@@ -4,7 +4,7 @@ import { Property } from '../types/property';
 import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
   X, Copy, Check, MapPin, Zap, Droplets, Flame, ArrowUpDown, 
-  MessageSquare, Calendar, ShieldCheck, Edit3, Heart, Star, AlertTriangle, Share2,
+  MessageSquare, MessageCircle, Calendar, ShieldCheck, Edit3, Heart, Star, AlertTriangle, Share2,
   QrCode, Download, Smartphone
 } from 'lucide-react';
 
@@ -400,6 +400,23 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
               </>
             )}
 
+            {/* Legal Status */}
+            <div className="bg-[#F5F9F8] p-2.5 rounded-xl border border-[#D6DEE5]/80 col-span-2 sm:col-span-4 flex items-center justify-between text-xs">
+              <span className="text-[#5D6B78] font-semibold flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#124C46]" />
+                <span>الموقف القانوني للعقار:</span>
+              </span>
+              <span className={`font-black px-3 py-1 rounded-lg text-xs shadow-2xs border ${
+                property.legalStatus === 'مرخصة' || property.legalStatus === 'تصالح نهائي'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  : property.legalStatus === 'مخالف'
+                  ? 'bg-rose-50 text-rose-800 border-rose-300'
+                  : 'bg-amber-50 text-amber-800 border-amber-300'
+              }`}>
+                {property.legalStatus || 'مرخصة'}
+              </span>
+            </div>
+
             {/* Source of the listing */}
             <div className="bg-[#F5F9F8] p-2.5 rounded-xl border border-[#D6DEE5]/80 col-span-2 sm:col-span-4 flex items-center justify-between text-xs">
               <span className="text-[#5D6B78] font-semibold">جهة النشر ومصدر الإعلان:</span>
@@ -480,6 +497,33 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* الموقف القانوني للعقار والتراخيص الرسمية (مباشرة بعد قسم المرافق) */}
+          <div className="bg-[#F8FAF9] border border-[#D6DEE5] rounded-2xl p-4 shadow-2xs space-y-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h4 className="font-bold text-sm text-[#24313D] flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#124C46]" />
+                <span>الموقف القانوني للعقار وتراخيص البناء</span>
+              </h4>
+              <span className={`text-xs font-black px-3 py-1 rounded-lg border shadow-2xs ${
+                property.legalStatus === 'مرخصة' || property.legalStatus === 'تصالح نهائي'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  : property.legalStatus === 'مخالف'
+                  ? 'bg-rose-50 text-rose-800 border-rose-300'
+                  : 'bg-amber-50 text-amber-800 border-amber-300'
+              }`}>
+                {property.legalStatus || 'مرخصة'}
+              </span>
+            </div>
+            <p className="text-xs text-[#5D6B78] leading-relaxed">
+              {property.legalStatus === 'مرخصة' && 'عقار صادر له رخصة بناء رسمية ومعتمدة ومستوفي لكافة الاشتراطات الهندسية والقانونية بمحافظة أسيوط.'}
+              {property.legalStatus === 'بعد الرخصة' && 'توجد أدوار أو أجزاء من العقار مبنية بعد الرخصة الأصلية ومقدم بشأنها إجراءات توفيق الأوضاع.'}
+              {property.legalStatus === 'تصالح نهائي' && 'تم استيفاء كافة إجراءات التصالح والحصول على نموذج التصالح النهائي المعتمد رسمياً.'}
+              {property.legalStatus === 'جاري التصالح' && 'ملف التصالح قيد المراجعة والفحص بلجان البت في التصالح بالحي أو الجهاز المختص.'}
+              {property.legalStatus === 'مخالف' && 'عقار بدون ترخيص رسمي أو غير متصالح، يرجى الاستفسار والمراجعة قبل إتمام التعاقد.'}
+              {!property.legalStatus && 'عقار صادر له ترخيص بناء رسمي ومعتمد بمحافظة أسيوط.'}
+            </p>
+          </div>
 
           {/* Verified Inspections Rating Banner */}
           <div className="bg-[#FFF3D6] border border-[#D6A84F]/40 rounded-2xl p-3.5 flex items-center justify-between gap-3">
@@ -584,10 +628,11 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
 
             <button
               onClick={handleWhatsApp}
-              className="py-3 px-5 rounded-xl bg-white hover:bg-[#F5F9F8] text-[#124C46] border border-[#D6DEE5] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
+              className="py-3 px-5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-2xs transition-all active:scale-95 cursor-pointer"
+              title="محادثة وتواصل عبر واتساب مع الإدارة"
             >
-              <MessageSquare className="w-4 h-4 text-[#16856B]" />
-              <span>تواصل مع الإدارة (واتساب)</span>
+              <MessageCircle className="w-4 h-4 text-white" />
+              <span>واتساب</span>
             </button>
           </div>
         </div>

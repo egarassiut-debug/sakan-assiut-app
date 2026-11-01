@@ -981,10 +981,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                       href={`https://wa.me/20${item.ownerPhone.replace(/^0+/, '')}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs"
+                                      className="px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs active:scale-95"
                                       title="مراسلة عبر الواتساب"
                                     >
-                                      <MessageCircle className="w-3 h-3" />
+                                      <MessageCircle className="w-3.5 h-3.5" />
                                       <span>واتساب</span>
                                     </a>
                                   </>
@@ -1229,10 +1229,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                       href={`https://wa.me/20${req.tenantPhone.replace(/^0+/, '')}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs"
+                                      className="px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs active:scale-95"
                                       title="مراسلة عبر الواتساب"
                                     >
-                                      <MessageCircle className="w-3 h-3" />
+                                      <MessageCircle className="w-3.5 h-3.5" />
                                       <span>واتساب</span>
                                     </a>
                                   </>
@@ -1636,9 +1636,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         href={`https://wa.me/20${insp.tenantPhone}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                        className="px-3.5 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1.5"
+                        title="محادثة واتساب مباشرة مع العميل"
                       >
-                        واتساب العميل
+                        <MessageCircle className="w-3.5 h-3.5 text-white" />
+                        <span>واتساب العميل</span>
                       </a>
                     </div>
                   </div>

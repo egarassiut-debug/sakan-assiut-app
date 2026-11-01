@@ -31,7 +31,8 @@ import {
   ArrowUp,
   AlertTriangle,
   Info,
-  X
+  X,
+  ShieldCheck
 } from 'lucide-react';
 import { RealEstateAgent, Assignment, HourglassTopRounded } from './FlutterIcons';
 import { validatePropertyPayload, validateTenantRequestPayload, dbUpsertProfile } from '../lib/supabase';
@@ -106,6 +107,13 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const activePaymentMethods = (dropdownCategories?.paymentMethods?.items || [])
     .filter((i) => i.isActive)
     .map((i) => i.name);
+  const activeLegalStatusOptions = useMemo(() => {
+    const fromCategories = (dropdownCategories?.legalStatuses?.items || [])
+      .filter((i) => i.isActive)
+      .map((i) => i.name);
+    if (fromCategories.length > 0) return fromCategories;
+    return ['مرخصة', 'بعد الرخصة', 'تصالح نهائي', 'جاري التصالح', 'مخالف'];
+  }, [dropdownCategories]);
 
   const draftStorageKey = isOffer ? 'asuit_property_form_draft_offer' : 'asuit_property_form_draft_request';
 
@@ -125,14 +133,30 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const [district, setDistrict] = useState<string>(
     editingProperty?.district || editingTenantRequest?.preferredDistrict || ''
   );
+  const [legalStatus, setLegalStatus] = useState<string>(
+    editingProperty?.legalStatus || editingTenantRequest?.legalStatus || initialDraft?.legalStatus || ''
+  );
   const [address, setAddress] = useState(editingProperty?.address || '');
   const [facade, setFacade] = useState(editingProperty?.facade || '');
   const [area, setArea] = useState<number | ''>(
     editingProperty ? editingProperty.area : (editingTenantRequest?.maxArea || editingTenantRequest?.minArea || '')
   );
   const [notes, setNotes] = useState(editingProperty?.description || editingTenantRequest?.notes || '');
-  const [contactName, setContactName] = useState(editingProperty?.ownerName || editingTenantRequest?.tenantName || '');
-  const [contactPhone, setContactPhone] = useState(editingProperty?.ownerPhone || editingTenantRequest?.tenantPhone || '');
+  // Automatic pulling of registered contact info from currentUser (القاعدة العامة لبيانات التواصل)
+  const [contactName, setContactName] = useState(
+    editingProperty?.ownerName || 
+    editingTenantRequest?.tenantName || 
+    initialDraft?.contactName || 
+    currentUser?.name || 
+    ''
+  );
+  const [contactPhone, setContactPhone] = useState(
+    editingProperty?.ownerPhone || 
+    editingTenantRequest?.tenantPhone || 
+    initialDraft?.contactPhone || 
+    currentUser?.phone || 
+    ''
+  );
   const [uploadedImages, setUploadedImages] = useState<string[]>(editingProperty?.images || []);
   const [hasAgreedDeclaration, setHasAgreedDeclaration] = useState(Boolean(editingProperty || editingTenantRequest));
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -145,6 +169,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   // Validation Refs for Smooth Auto-Scroll
   const propertyTypeRef = useRef<HTMLSelectElement | null>(null);
   const districtRef = useRef<HTMLSelectElement | null>(null);
+  const legalStatusRef = useRef<HTMLSelectElement | null>(null);
   const areaInputRef = useRef<HTMLInputElement | null>(null);
   const priceInputRef = useRef<HTMLInputElement | null>(null);
   const maxPriceInputRef = useRef<HTMLInputElement | null>(null);
@@ -202,6 +227,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
       scrollToError(areaInputRef, 'area');
     } else if (invalidField === 'price') {
       scrollToError(priceInputRef, 'price');
+    } else if (invalidField === 'legalStatus') {
+      scrollToError(legalStatusRef, 'legalStatus');
     } else if (invalidField === 'maxPrice') {
       scrollToError(maxPriceInputRef, 'maxPrice');
     } else if (invalidField === 'district') {
@@ -218,6 +245,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         scrollToError(areaInputRef, 'area');
       } else if (isOffer && (!price || Number(price) <= 0)) {
         scrollToError(priceInputRef, 'price');
+      } else if (!legalStatus || !legalStatus.trim()) {
+        scrollToError(legalStatusRef, 'legalStatus');
       } else if (!isOffer && (!maxPrice || Number(maxPrice) <= 0)) {
         scrollToError(maxPriceInputRef, 'maxPrice');
       } else if (!district) {
@@ -339,6 +368,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     setHasElevator(true);
     setPropertyType('');
     setDistrict('');
+    setLegalStatus('');
     setSelectedPaymentMethods([]);
     setFee('');
   };
@@ -352,6 +382,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
       address?.trim() ||
       facade?.trim() ||
       notes?.trim() ||
+      legalStatus?.trim() ||
       (area !== '' && Number(area) > 0) ||
       (price !== '' && Number(price) > 0) ||
       (minPrice !== '' && Number(minPrice) > 0) ||
@@ -370,6 +401,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           propertyType,
           purpose,
           district,
+          legalStatus,
           address,
           facade,
           area,
@@ -624,6 +656,15 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
       return;
     }
 
+    // 3. Legal status validation (إلزامي لجميع العقارات - مرخصة، بعد الرخصة، تصالح نهائي، جاري التصالح، مخالف)
+    if (!legalStatus || !legalStatus.trim()) {
+      setErrorMsg('تنبيه: يرجى تحديد الموقف القانوني للعقار (مرخصة، بعد الرخصة، تصالح نهائي، جاري التصالح، مخالف).');
+      setInvalidField('legalStatus');
+      triggerValidationToast('يرجى اختيار الموقف القانوني للعقار أولاً');
+      scrollToError(legalStatusRef, 'legalStatus');
+      return;
+    }
+
     // 1. تجهيز الكود المعرف بنمط 'ASY-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}'
     const generatedListingId = `ASY-${Date.now().toString().substring(7)}`;
     const todayDate = new Date().toISOString().split('T')[0];
@@ -668,6 +709,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         address: address.trim() || district,
         facade: facade.trim() || undefined,
         area: Number(area),
+        legalStatus: (legalStatus.trim() as any) || 'مرخصة',
         bedrooms: !isLand && bedrooms !== '' ? Number(bedrooms) : undefined,
         bathrooms: !isLand && bathrooms !== '' ? Number(bathrooms) : undefined,
         totalFloors: !isLand && totalFloors !== '' ? Number(totalFloors) : undefined,
@@ -780,6 +822,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         bedrooms: !isLand && bedrooms !== '' ? Number(bedrooms) : undefined,
         bathrooms: !isLand && bathrooms !== '' ? Number(bathrooms) : undefined,
         urgency,
+        legalStatus: legalStatus.trim() || undefined,
         notes: notes.trim(),
         createdAt: todayDate,
       };
@@ -1597,12 +1640,82 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             </div>
           )}
 
+          {/* Section: الموقف القانوني للعقار (مباشرة بعد قسم المرافق وقبل بيانات الاتصال - إلزامي) */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#D6A84F]" />
+                <span>الموقف القانوني للعقار</span>
+              </h3>
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+                حقل إلزامي *
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <span>حالة التراخيص والموقف القانوني *</span>
+                  <span className="text-rose-500 font-bold">(إجباري)</span>
+                </span>
+                <FieldInfoTooltip
+                  fieldKey="legalStatus"
+                  title="الموقف القانوني للعقار"
+                  hint="يضمن الموقف القانوني الشفافية الكاملة ويوضح للعميل وضع الترخيص أو التصالح بدقة وفقاً للأنظمة العقارية المعتمدة بمحافظة أسيوط."
+                />
+              </label>
+
+              <div className="relative">
+                <select
+                  ref={legalStatusRef}
+                  value={legalStatus}
+                  onChange={(e) => {
+                    setLegalStatus(e.target.value);
+                    if (invalidField === 'legalStatus') setInvalidField(null);
+                  }}
+                  required
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold text-[#124C46] bg-slate-50 focus:outline-hidden transition-all ${
+                    invalidField === 'legalStatus'
+                      ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
+                      : 'border-slate-200 focus:ring-1 focus:ring-[#124C46]'
+                  }`}
+                >
+                  <option value="" disabled>-- اختر الموقف القانوني للعقار (إلزامي) --</option>
+                  {activeLegalStatusOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {invalidField === 'legalStatus' ? (
+                <p className="text-[11px] font-bold text-rose-600 mt-1.5 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>يرجى اختيار الموقف القانوني للعقار من القائمة للمتابعة</span>
+                </p>
+              ) : (
+                <p className="text-[10px] text-slate-500 mt-1">
+                  اختر أحد الخيارات الرسمية: مرخصة، بعد الرخصة، تصالح نهائي، جاري التصالح، مخالف.
+                </p>
+              )}
+            </div>
+          </div>
+
           {/* Section 5: معلومات التواصل والوصف */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
-              <User className="w-4 h-4 text-[#D6A84F]" />
-              <span>بيانات الاتصال والتواصل</span>
-            </h3>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2 flex-wrap gap-2">
+              <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2">
+                <User className="w-4 h-4 text-[#D6A84F]" />
+                <span>بيانات الاتصال والتواصل</span>
+              </h3>
+              {currentUser && (
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#124C46] border border-emerald-200 flex items-center gap-1 shadow-2xs">
+                  <ShieldCheck className="w-3 h-3 text-[#124C46]" />
+                  <span>معبأة تلقائياً من حسابك المعتمد</span>
+                </span>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>

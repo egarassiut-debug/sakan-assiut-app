@@ -502,6 +502,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
         ownerPhone: extractedData.contactPhone || '01000000000',
         source: `فيسبوك: ${extractedData.sourceName}`,
         images: [finalImage],
+        legalStatus: 'مرخصة',
         createdAt: timestamp,
         createdByAdmin: true,
       };
@@ -538,6 +539,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
         bedrooms: extractedData.bedrooms,
         bathrooms: extractedData.bathrooms,
         urgency: 'immediate',
+        legalStatus: 'مرخصة',
         notes: `${extractedData.rawText}\n\n[المصدر: ${extractedData.sourceName}]`,
         createdAt: timestamp,
       };
@@ -1053,7 +1055,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
                             href={`https://wa.me/20${extractedData.contactPhone.replace(/\D/g, '')}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs"
+                            className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-95"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
                             <span>واتساب</span>

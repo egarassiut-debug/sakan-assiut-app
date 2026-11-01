@@ -4,7 +4,7 @@ import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
   Building2, Clock, CheckCircle2, AlertTriangle, Edit3, Trash2, 
   Archive, RotateCcw, Eye, Plus, MapPin, Calendar, Copy, Check, CreditCard,
-  Search, X, Bell, Heart, ArrowUpRight, MessageSquare, Maximize2, Bed, Bath
+  Search, X, Bell, Heart, ArrowUpRight, MessageSquare, MessageCircle, Maximize2, Bed, Bath
 } from 'lucide-react';
 import { RealEstateAgent, Assignment } from './FlutterIcons';
 
@@ -916,11 +916,11 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
                         <button
                           type="button"
                           onClick={handleContactWhatsApp}
-                          className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                          title="تواصل مع إدارة التطبيق بخصوص هذا العقار"
+                          className="px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                          title="محادثة وتواصل عبر واتساب"
                         >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>تواصل</span>
+                          <MessageCircle className="w-3.5 h-3.5 text-white" />
+                          <span>واتساب</span>
                         </button>
 
                         <button
