@@ -134,6 +134,7 @@ ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS created_by_admin BOOLEAN 
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS created_at TEXT DEFAULT CURRENT_DATE::text;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS ownership_document_url TEXT;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS views_count INTEGER DEFAULT 1;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS legal_status TEXT NOT NULL DEFAULT 'مرخصة';
 
 -- الفهارس لتسريع البحث والفلاتر
 CREATE INDEX IF NOT EXISTS idx_properties_code ON public.properties(code);
@@ -143,6 +144,7 @@ CREATE INDEX IF NOT EXISTS idx_properties_owner_phone ON public.properties(owner
 CREATE INDEX IF NOT EXISTS idx_properties_district ON public.properties(district);
 CREATE INDEX IF NOT EXISTS idx_properties_purpose ON public.properties(purpose);
 CREATE INDEX IF NOT EXISTS idx_properties_property_type ON public.properties(property_type);
+CREATE INDEX IF NOT EXISTS idx_properties_legal_status ON public.properties(legal_status);
 
 -- ============================================================================
 -- 4. جدول طلبات المستأجرين والباحثين عن عقارات (tenant_requests)
@@ -196,10 +198,12 @@ ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
 ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS admin_note TEXT;
 ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS created_at TEXT DEFAULT CURRENT_DATE::text;
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS legal_status TEXT DEFAULT 'مرخصة';
 
 CREATE INDEX IF NOT EXISTS idx_tenant_requests_status ON public.tenant_requests(status);
 CREATE INDEX IF NOT EXISTS idx_tenant_requests_phone ON public.tenant_requests(tenant_phone);
 CREATE INDEX IF NOT EXISTS idx_tenant_requests_district ON public.tenant_requests(preferred_district);
+CREATE INDEX IF NOT EXISTS idx_tenant_requests_legal_status ON public.tenant_requests(legal_status);
 
 -- ============================================================================
 -- 5. جدول مواعيد المعاينات الميدانية (scheduled_inspections)
@@ -263,6 +267,14 @@ ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS inspection_id TEXT;
 ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 5;
 ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS comment TEXT;
 ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS created_at TEXT DEFAULT CURRENT_DATE::text;
+ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS client_name TEXT;
+ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS client_phone TEXT;
+ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS rating NUMERIC DEFAULT 5;
+ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS cleanliness NUMERIC DEFAULT 5;
+ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS location NUMERIC DEFAULT 5;
+ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS value_for_money NUMERIC DEFAULT 5;
+ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS accuracy NUMERIC DEFAULT 5;
+ALTER TABLE public.property_ratings ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE;
 
 CREATE INDEX IF NOT EXISTS idx_ratings_property_id ON public.property_ratings(property_id);
 CREATE INDEX IF NOT EXISTS idx_ratings_user_phone ON public.property_ratings(user_phone);

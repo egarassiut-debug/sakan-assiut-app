@@ -117,6 +117,12 @@ export const ADMIN_NAVIGATION_ITEMS: AdminNavigationItem[] = [
     title: 'الإعدادات وتصدير البيانات',
     icon: Download,
   },
+  // 10. ترقيات ومزامنة قاعدة البيانات (Migrations)
+  {
+    id: 'database_migrations',
+    title: 'ترقيات ومزامنة قاعدة البيانات',
+    icon: Database,
+  },
 ];
 
 export const AdminDrawer: React.FC<AdminDrawerProps> = ({

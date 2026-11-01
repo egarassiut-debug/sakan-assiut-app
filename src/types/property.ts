@@ -103,6 +103,12 @@ export const ADMIN_SECTION_PERMISSIONS: SectionPermissionMeta[] = [
     description: 'تصدير التقارير إلى Excel/CSV وطباعة الجداول وضبط إعدادات الخادم والاتصال',
     category: 'system',
   },
+  {
+    id: 'database_migrations',
+    label: 'مزامنة وترقيات قاعدة البيانات (Migrations)',
+    description: 'فحص التوافق وتطبيق ترقيات قاعدة البيانات غير المدمرة وتتبع إصدارات schema_migrations',
+    category: 'system',
+  },
 ];
 
 export const GRANULAR_ROLES: RoleDefinition[] = [
@@ -372,13 +378,16 @@ export interface TrendPost {
   authorAvatar?: string;
   content: string;
   image?: string;
+  screenshotUrl?: string;
+  additionalImages?: string[];
   createdAt: string;
   expiresAt: string;
   likesCount?: number;
   likedBy?: string[];
   sharesCount?: number;
   isPinned?: boolean;
-  status: 'active' | 'expired' | 'removed';
+  status: 'active' | 'expired' | 'removed' | 'pending' | 'approved' | 'rejected';
+  isApproved?: boolean;
 }
 
 export interface TrendSettings {

@@ -21,6 +21,7 @@ import { UserManagement } from './UserManagement';
 import { RoleClassificationManagement } from './RoleClassificationManagement';
 import { ScreenshotConverter } from './ScreenshotConverter';
 import { AdminDrawer, AdminSectionId, ADMIN_NAVIGATION_ITEMS } from './AdminDrawer';
+import { DatabaseMigrationsTab } from './DatabaseMigrationsTab';
 import { SupabaseConnectionStatus } from './SupabaseConnectionStatus';
 import { exportToCSV, exportToPrintablePDF } from '../utils/exportUtils';
 import { 
@@ -62,6 +63,7 @@ interface AdminPanelProps {
   setIsDrawerOpen?: (open: boolean) => void;
   onToggleDrawer?: (open?: boolean) => void;
   onCloseDrawer?: () => void;
+  onAddToast?: (toast: any) => void;
 }
 
 /**
@@ -101,6 +103,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   setIsDrawerOpen: propSetIsDrawerOpen,
   onToggleDrawer,
   onCloseDrawer,
+  onAddToast,
 }) => {
   // Active Section & Slide-over Drawer State (Defaults based on user's granular role permissions)
   const [activeSection, setActiveSection] = useState<AdminSectionId>(() => {
@@ -1874,6 +1877,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 )}
               </div>
             </div>
+          )}
+
+          {/* القسم 10: ترقيات ومزامنة قاعدة البيانات (Database Migrations) */}
+          {activeSection === 'database_migrations' && (
+            <DatabaseMigrationsTab onAddToast={onAddToast} />
           )}
           </>
           )}

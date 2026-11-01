@@ -59,6 +59,7 @@ import {
   runStorageMaintenance 
 } from './utils/storageManager';
 import { logAdminActivity, isStaffRole } from './utils/adminManager';
+import { logAuditEvent } from './utils/auditManager';
 
 // Resilient dynamic chunk loader with automatic retry for transient network hiccups
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -1091,6 +1092,18 @@ export function App() {
       });
     }
 
+    // Central audit logging
+    logAuditEvent({
+      userName: currentUser?.name || newProp.ownerName,
+      userPhone: currentUser?.phone || newProp.ownerPhone,
+      userRole: currentUser?.role || 'owner',
+      action: 'CREATE',
+      entityType: 'property',
+      entityId: newProp.id,
+      entityCode: newProp.code,
+      newValues: newProp,
+    });
+
     if (newProp.isApproved === false || newProp.status === 'pending_approval') {
       addToast({
         type: 'info',
@@ -1190,6 +1203,18 @@ export function App() {
         console.warn('Auto-save tenant to profiles error:', err);
       });
     }
+
+    // Central audit logging
+    logAuditEvent({
+      userName: currentUser?.name || newReq.tenantName,
+      userPhone: currentUser?.phone || newReq.tenantPhone,
+      userRole: currentUser?.role || 'tenant',
+      action: 'CREATE',
+      entityType: 'tenant_request',
+      entityId: newReq.id,
+      entityCode: newReq.requestCode || newReq.id,
+      newValues: newReq,
+    });
 
     addToast({
       type: 'success',
@@ -1292,6 +1317,17 @@ export function App() {
       `العنوان: "${updatedProp.title}" - المنطقة: ${updatedProp.district} - السعر: ${updatedProp.price.toLocaleString()} ج.م - النوع: ${updatedProp.propertyType}`
     );
 
+    logAuditEvent({
+      userName: currentUser?.name || 'مدير المنظومة',
+      userPhone: currentUser?.phone || '01002345678',
+      userRole: currentUser?.role || 'admin',
+      action: 'UPDATE',
+      entityType: 'property',
+      entityId: updatedProp.id,
+      entityCode: updatedProp.code,
+      newValues: updatedProp,
+    });
+
     setEditingProperty(null);
     setOverlayScreen('none');
     addToast({
@@ -1321,6 +1357,17 @@ export function App() {
       `تعديل طلب سكن (كود: ${updatedReq.requestCode || updatedReq.id})`,
       `المطلوب: ${updatedReq.propertyType} في حي ${updatedReq.preferredDistrict} - الحد الأقصى للسعر: ${updatedReq.maxPrice.toLocaleString()} ج.م - العميل: ${updatedReq.tenantName}`
     );
+
+    logAuditEvent({
+      userName: currentUser?.name || 'مدير المنظومة',
+      userPhone: currentUser?.phone || '01002345678',
+      userRole: currentUser?.role || 'admin',
+      action: 'UPDATE',
+      entityType: 'tenant_request',
+      entityId: updatedReq.id,
+      entityCode: updatedReq.requestCode || updatedReq.id,
+      newValues: updatedReq,
+    });
 
     setEditingTenantRequest(null);
     setOverlayScreen('none');
@@ -1406,6 +1453,18 @@ export function App() {
       `العميل: ${targetReq?.tenantName || ''} (${targetReq?.tenantPhone || ''})${note ? ` - ملاحظة الإدارة: ${note}` : ''}`
     );
 
+    logAuditEvent({
+      userName: currentUser?.name || 'مدير المنظومة',
+      userPhone: currentUser?.phone || '01002345678',
+      userRole: currentUser?.role || 'admin',
+      action: 'STATUS_CHANGE',
+      entityType: 'tenant_request',
+      entityId: reqId,
+      entityCode: targetReq?.requestCode,
+      oldValues: { status: targetReq?.status },
+      newValues: { status: newStatus, adminNote: note },
+    });
+
     addToast({
       type: newStatus === 'approved' ? 'success' : 'warning',
       title: 'تم تحديث حالة الطلب',
@@ -1432,6 +1491,17 @@ export function App() {
       `حذف طلب سكن (كود: ${targetReq?.requestCode || reqId})`,
       `تم حذف طلب ${targetReq?.propertyType || ''} بحي ${targetReq?.preferredDistrict || ''} - صاحب الطلب: ${targetReq?.tenantName || ''} (${targetReq?.tenantPhone || ''})`
     );
+
+    logAuditEvent({
+      userName: currentUser?.name || 'مدير المنظومة',
+      userPhone: currentUser?.phone || '01002345678',
+      userRole: currentUser?.role || 'admin',
+      action: 'DELETE',
+      entityType: 'tenant_request',
+      entityId: reqId,
+      entityCode: targetReq?.requestCode,
+      oldValues: targetReq,
+    });
 
     addToast({
       type: 'info',
@@ -1530,6 +1600,18 @@ export function App() {
       `العنوان: "${targetProp?.title || ''}" - المالك: ${targetProp?.ownerName || ''}${adminNote ? ` - ملاحظة الإدارة: ${adminNote}` : ''}`
     );
 
+    logAuditEvent({
+      userName: currentUser?.name || 'مدير المنظومة',
+      userPhone: currentUser?.phone || '01002345678',
+      userRole: currentUser?.role || 'admin',
+      action: 'STATUS_CHANGE',
+      entityType: 'property',
+      entityId: propId,
+      entityCode: targetProp?.code,
+      oldValues: { status: targetProp?.status },
+      newValues: { status: newStatus, adminNote },
+    });
+
     addToast({
       type: newStatus === 'approved' ? 'success' : 'warning',
       title: 'تم تحديث حالة العقار',
@@ -1559,6 +1641,17 @@ export function App() {
       `حذف عقار معروض (كود: ${targetProp?.code || propId})`,
       `العنوان: "${targetProp?.title || ''}" في منطقة ${targetProp?.district || ''} - السعر: ${targetProp?.price?.toLocaleString() || 0} ج.م - المالك: ${targetProp?.ownerName || ''} (${targetProp?.ownerPhone || ''})`
     );
+
+    logAuditEvent({
+      userName: currentUser?.name || 'مدير المنظومة',
+      userPhone: currentUser?.phone || '01002345678',
+      userRole: currentUser?.role || 'admin',
+      action: 'DELETE',
+      entityType: 'property',
+      entityId: propId,
+      entityCode: targetProp?.code,
+      oldValues: targetProp,
+    });
 
     addToast({
       type: 'info',
@@ -2695,6 +2788,7 @@ export function App() {
                   isDrawerOpen={isAdminDrawerOpen}
                   setIsDrawerOpen={setIsAdminDrawerOpen}
                   onCloseDrawer={() => setIsAdminDrawerOpen(false)}
+                  onAddToast={addToast}
                 />
               </div>
             </Suspense>

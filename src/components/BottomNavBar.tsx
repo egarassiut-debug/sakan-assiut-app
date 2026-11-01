@@ -1,6 +1,6 @@
 import React from 'react';
 import { RealEstateAgent, Assignment, AdminPanelSettings, Add } from './FlutterIcons';
-import { Layers, Flame } from 'lucide-react';
+import { Layers, Flame, Zap } from 'lucide-react';
 import { isStaffRole } from '../utils/adminManager';
 import { GranularRole } from '../types/property';
 
@@ -103,7 +103,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             title="ترند ويوميات سكن أسيوط"
           >
             <div className="relative">
-              <Flame className={`w-5 h-5 transition-transform ${currentIndex === 4 ? 'text-amber-500 fill-amber-500 stroke-[2.5]' : 'stroke-2 group-hover:text-amber-500'}`} />
+              <Zap className={`w-5 h-5 transition-transform ${currentIndex === 4 ? 'text-amber-500 fill-amber-500 stroke-[2.5]' : 'stroke-2 text-amber-600 group-hover:text-amber-500'}`} />
               <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
             </div>
             <span className="text-[10px] mt-1 font-semibold tracking-tight">
@@ -214,7 +214,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           title="ترند ويوميات سكن أسيوط"
         >
           <div className="relative">
-            <Flame className={`w-5 h-5 transition-transform ${currentIndex === 4 ? 'text-amber-500 fill-amber-500 stroke-[2.5]' : 'stroke-2 group-hover:text-amber-500'}`} />
+            <Zap className={`w-5 h-5 transition-transform ${currentIndex === 4 ? 'text-amber-500 fill-amber-500 stroke-[2.5]' : 'stroke-2 text-amber-600 group-hover:text-amber-500'}`} />
             <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
           </div>
           <span className="text-[10px] mt-1 font-semibold tracking-tight">

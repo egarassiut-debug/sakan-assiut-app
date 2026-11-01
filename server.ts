@@ -5,6 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -275,6 +276,59 @@ app.get('/api/admin/system-stats', requireAdminAuth, (_req, res) => {
     environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Database Migrations System APIs (RBAC Protected for Admins)
+app.get('/api/migrations/status', async (_req, res) => {
+  try {
+    const migrationsDir = path.resolve(__dirname, 'supabase', 'migrations');
+    let files: string[] = [];
+    if (fs.existsSync(migrationsDir)) {
+      files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql') && !f.includes('consolidated'));
+    }
+
+    const availableMigrations = files.sort().map(fileName => {
+      const filePath = path.join(migrationsDir, fileName);
+      const content = fs.readFileSync(filePath, 'utf8');
+      const hash = crypto.createHash('sha256').update(content).digest('hex');
+      const isDestructive = /(?:DROP\s+TABLE|DROP\s+COLUMN|TRUNCATE|ALTER\s+TABLE[^\n;]+DROP)/i.test(content);
+      const version = fileName.split('_')[0] + (fileName.split('_')[1] ? '_' + fileName.split('_')[1] : '');
+      return {
+        fileName,
+        version,
+        checksum: hash.slice(0, 16),
+        isDestructive,
+        sizeBytes: content.length,
+      };
+    });
+
+    res.json({
+      success: true,
+      availableCount: availableMigrations.length,
+      migrations: availableMigrations,
+      policy: {
+        autoApplyNonDestructive: true,
+        requireApprovalForDestructive: true,
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/migrations/consolidated-sql', (_req, res) => {
+  try {
+    const consolidatedPath = path.resolve(__dirname, 'supabase', 'migrations', 'all_migrations_consolidated.sql');
+    if (fs.existsSync(consolidatedPath)) {
+      const sql = fs.readFileSync(consolidatedPath, 'utf8');
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.send(sql);
+    }
+    return res.status(404).send('-- Consolidated migrations file not found.');
+  } catch (err: any) {
+    res.status(500).send(`-- Error reading consolidated SQL: ${err.message}`);
+  }
 });
 
 // Gemini Vision / OCR API route for converting Facebook screenshots to Real Estate Cards (REVIEWER/ADMIN PROTECTED)
