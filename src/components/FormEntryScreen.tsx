@@ -520,14 +520,34 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     }
   };
 
-  const startVoice = () => {
+  const startVoice = async () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setErrorMsg('المتصفح لا يدعم التسجيل الصوتي المباشر، يمكنك الكتابة في الحقول.');
       return;
     }
 
+    if (navigator?.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (err: any) {
+        console.warn('Microphone permission check in form:', err);
+        setVoiceStatus('يرجى السماح باستخدام الميكروفون من إعدادات المتصفح لبدء التحدث.');
+        setIsRecording(false);
+        return;
+      }
+    }
+
     try {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {
+          // ignore
+        }
+      }
+
       const recognition = new SpeechRecognition();
       recognition.lang = 'ar-EG';
       recognition.continuous = true;
@@ -537,6 +557,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         setIsRecording(true);
         setVoiceSeconds(0);
         setVoiceStatus('جاري الاستماع... تحدث بوضوح عن تفاصيل العقار');
+        if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = window.setInterval(() => {
           setVoiceSeconds((prev) => {
             if (prev >= 120) {
@@ -591,10 +612,11 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
       recognition.onerror = (e: any) => {
         // Ignore minor noise/no-speech events without killing session prematurely
         if (e.error === 'no-speech') {
+          setVoiceStatus('في انتظار صوتك... تحدث بوضوح بالقرب من الميكروفون');
           return;
         }
         stopVoice();
-        if (e.error === 'not-allowed') {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
           setVoiceStatus('تم رفض إذن الميكروفون. يرجى تفعيله من إعدادات المتصفح.');
         } else {
           setVoiceStatus('انتهى التسجيل الصوتي.');

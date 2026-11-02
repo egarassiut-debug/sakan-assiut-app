@@ -546,17 +546,17 @@ export const TrendFeedScreen: React.FC<TrendFeedScreenProps> = ({
         </div>
       </div>
 
-      {/* 2. Instructional Guidance & Policy Banner (شروط ورسالة الترند الإرشادية) */}
+      {/* 2. Instructional Guidance & Policy Banner (شروط ورسالة الترند الإرشادية المحدثة) */}
       <div className="bg-gradient-to-l from-amber-50 to-orange-50 border border-amber-200/90 rounded-2xl p-3.5 sm:p-4 text-xs text-amber-950 flex items-start gap-3 shadow-2xs">
         <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
           <Zap className="w-4 h-4 fill-current" />
         </div>
         <div className="space-y-1">
           <p className="font-bold leading-relaxed text-slate-900">
-            قسم الترند مخصص حصرياً للاسكرينات والمنشورات المنقولة من الفيسبوك ووسائل التواصل.
+            يمكنك نشر طلبك أو عرضك العقاري كتابةً بشكل مباشر وبسيط، أو مشاركة لقطات الشاشة (الاسكرينات) والمنشورات المنقولة من وسائل التواصل.
           </p>
           <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
-            <span className="font-bold text-amber-950">ملاحظة هامة:</span> لا يظهر أي بوست في التايملاين إلا بعد المراجعة والموافقة الفورية من الإدارة.
+            <span className="font-bold text-amber-950">ملاحظة هامة:</span> يُتاح النشر النصي المباشر للجميع لسهولة التعبير، وتخضع المنشورات للمراجعة والاعتماد السريع للحفاظ على جودة المحتوى.
           </p>
         </div>
       </div>
@@ -577,7 +577,7 @@ export const TrendFeedScreen: React.FC<TrendFeedScreenProps> = ({
 
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#124C46] border border-emerald-200 text-[10px] font-bold">
             <ShieldCheck className="w-3 h-3 text-[#124C46]" />
-            <span>تعبئة تلقائية موثقة</span>
+            <span>نشر نصي مباشر / اسكرينات</span>
           </span>
         </div>
 
@@ -588,7 +588,7 @@ export const TrendFeedScreen: React.FC<TrendFeedScreenProps> = ({
               rows={2}
               value={content}
               onChange={(e) => setContent(e.target.value.slice(0, charLimit))}
-              placeholder="اكتب نصاً قصيراً (سطرين) أو فرصة سريعة منقولة..."
+              placeholder="اكتب طلبك أو عرضك العقاري هنا كتابةً في سطرين (أو شارك فرصة منقولة مع سكرين شوت)..."
               className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50/70 text-slate-900 text-xs sm:text-sm font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46] focus:bg-white resize-none transition-all placeholder:text-slate-400"
             />
             <span className={`absolute bottom-2 left-3 text-[10px] font-bold ${

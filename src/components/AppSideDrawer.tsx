@@ -30,6 +30,7 @@ export interface AppSideDrawerProps {
   unreadNotificationCount?: number;
   onOpenNotifications?: () => void;
   onOpenVoiceAssistant?: () => void;
+  onOpenScreenshotConverter?: () => void;
   // Admin specific props
   adminActiveSection?: AdminSectionId;
   onSelectAdminSection?: (section: AdminSectionId) => void;
@@ -59,6 +60,7 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
   unreadNotificationCount = 0,
   onOpenNotifications,
   onOpenVoiceAssistant,
+  onOpenScreenshotConverter,
   onLogout,
 }) => {
   const isStaff = Boolean(currentUser && isStaffRole(currentUser.role));
@@ -361,6 +363,33 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
                     </div>
                   </div>
                   <Sparkles className="w-4 h-4 text-[#D6A84F] shrink-0" />
+                </button>
+              )}
+
+              {/* 7. محول الاسكرينات الذكي (متاح لجميع المستخدمين) */}
+              {onOpenScreenshotConverter && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenScreenshotConverter();
+                    onClose();
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50/60 hover:from-amber-100/70 hover:to-orange-100/70 text-slate-800 flex items-center justify-between transition-all cursor-pointer shadow-xs border border-amber-300/80 group"
+                  title="تحويل لقطات شاشة فيسبوك لبطاقة عقارية فوراً"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs sm:text-sm font-black text-slate-900 block">محول الاسكرينات الذكي</span>
+                        <span className="text-[9px] bg-amber-200/80 text-amber-900 font-bold px-1.5 py-0.2 rounded-full">AI</span>
+                      </div>
+                      <span className="text-[10px] text-slate-600 block font-medium">استخراج بيانات البوستات واللقطات</span>
+                    </div>
+                  </div>
+                  <ChevronLeft className="w-4 h-4 text-amber-700 shrink-0" />
                 </button>
               )}
 

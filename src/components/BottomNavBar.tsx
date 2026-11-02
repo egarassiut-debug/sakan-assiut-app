@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { RealEstateAgent, Assignment, AdminPanelSettings, Add } from './FlutterIcons';
 import { Layers, Flame, Zap } from 'lucide-react';
 import { isStaffRole } from '../utils/adminManager';
@@ -9,6 +9,7 @@ export type NavTabIndex = 0 | 1 | 2 | 3 | 4;
 interface BottomNavBarProps {
   currentIndex: number;
   onSelectIndex: (index: number) => void;
+  onDoubleTap?: (index: number) => void;
   onOpenAddModal: () => void;
   userRole: GranularRole | 'admin' | 'user' | string;
   pendingModerationCount?: number;
@@ -23,6 +24,7 @@ interface BottomNavBarProps {
 export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   currentIndex,
   onSelectIndex,
+  onDoubleTap,
   onOpenAddModal,
   userRole,
   pendingModerationCount = 0,
@@ -30,6 +32,22 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   myAdsCount = 0,
 }) => {
   const isAdmin = isStaffRole(userRole);
+  const lastTapRef = useRef<Record<number, number>>({});
+
+  const handleTabClick = (index: number) => {
+    const now = Date.now();
+    const lastTap = lastTapRef.current[index] || 0;
+    if (now - lastTap < 380) {
+      // Double tap detected!
+      if (onDoubleTap) {
+        onDoubleTap(index);
+      }
+      lastTapRef.current[index] = 0;
+    } else {
+      lastTapRef.current[index] = now;
+      onSelectIndex(index);
+    }
+  };
 
   if (!isAdmin) {
     return (
@@ -38,7 +56,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           
           {/* 1. عروض الإيجار (Index 0) */}
           <button
-            onClick={() => onSelectIndex(0)}
+            onClick={() => handleTabClick(0)}
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
               currentIndex === 0 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
             }`}
@@ -57,7 +75,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
           {/* 2. طلبات الإيجار (Index 1) */}
           <button
-            onClick={() => onSelectIndex(1)}
+            onClick={() => handleTabClick(1)}
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
               currentIndex === 1 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
             }`}
@@ -96,7 +114,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
           {/* 4. ترند (Index 4) */}
           <button
-            onClick={() => onSelectIndex(4)}
+            onClick={() => handleTabClick(4)}
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
               currentIndex === 4 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
             }`}
@@ -116,7 +134,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
           {/* 5. إعلاناتي (Index 2) */}
           <button
-            onClick={() => onSelectIndex(2)}
+            onClick={() => handleTabClick(2)}
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
               currentIndex === 2 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
             }`}
@@ -149,7 +167,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         
         {/* 1. عروض الإيجار (Index 0) */}
         <button
-          onClick={() => onSelectIndex(0)}
+          onClick={() => handleTabClick(0)}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
             currentIndex === 0 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
           }`}
@@ -168,7 +186,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
         {/* 2. طلبات الإيجار (Index 1) */}
         <button
-          onClick={() => onSelectIndex(1)}
+          onClick={() => handleTabClick(1)}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
             (currentIndex === 1 || currentIndex === 2) ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
           }`}
@@ -207,7 +225,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
         {/* 4. ترند (Index 4) */}
         <button
-          onClick={() => onSelectIndex(4)}
+          onClick={() => handleTabClick(4)}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
             currentIndex === 4 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
           }`}
@@ -227,7 +245,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
         {/* 5. لوحة التحكم الإدارية (Index 3 للأدمن) */}
         <button
-          onClick={() => onSelectIndex(3)}
+          onClick={() => handleTabClick(3)}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
             currentIndex === 3 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
           }`}

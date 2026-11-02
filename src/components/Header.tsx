@@ -58,15 +58,15 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* ترحيب هادئ ومختصر بالمستخدم بجانب زر القائمة */}
           {currentUser && (
-            <div className="hidden sm:flex flex-col text-right justify-center leading-tight">
+            <div className="flex flex-col text-right justify-center leading-tight max-w-[76px] sm:max-w-[120px]">
               <span 
-                className="text-xs font-extrabold text-[#24313D] truncate max-w-[90px] md:max-w-[120px]"
+                className="text-xs font-extrabold text-[#124C46] truncate"
                 title={rawName}
               >
-                {truncatedName}
+                {rawName.length > 8 ? `${rawName.slice(0, 8)}...` : rawName}
               </span>
-              <span className="text-[10px] text-[#5D6B78] font-normal">
-                مرحباً بك
+              <span className="text-[9px] sm:text-[10px] text-[#5D6B78] font-medium leading-none mt-0.5 whitespace-nowrap">
+                (أهلاً بيك في)
               </span>
             </div>
           )}
