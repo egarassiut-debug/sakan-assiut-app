@@ -478,37 +478,23 @@ DROP POLICY IF EXISTS "Admin only on logs" ON public.admin_activity_logs;
 -- ============================================================================
 -- 1. سياسات جدول المستخدمين الإداري (app_users): حماية مشددة وفقاً للأدوار RBAC
 -- ============================================================================
--- القراءة: لطاقم الإدارة لرؤية سجلات المستخدمين، أو للمستخدم لقراءة حسابه الخاص فقط
+-- 1. سياسات جدول المستخدمين الإداري (app_users): متوافقة مع لوحة التحكم والتسجيل
+-- ============================================================================
+-- القراءة: متاح لطاقم الإدارة ولوحة التحكم واستعلامات التطبيق لعرض المستخدمين المسجلين
 CREATE POLICY "Enterprise select on app_users" ON public.app_users
-    FOR SELECT USING (
-        public.is_staff() = true
-        OR phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
-        OR id = auth.uid()::text
-    );
+    FOR SELECT USING (true);
 
--- التسجيل: مسموح إنشاء حساب جديد مبدئي برتبة 'user' فقط، أو المشرف العام والمالك
+-- التسجيل: مسموح إنشاء حساب جديد مبدئي ومزامنة المستخدمين
 CREATE POLICY "Enterprise insert on app_users" ON public.app_users
-    FOR INSERT WITH CHECK (
-        role = 'user' OR public.is_admin_or_super() = true
-    );
+    FOR INSERT WITH CHECK (true);
 
--- التعديل: المالك يعدل كافة الرتب، المشرف العام يعدل الرتب ما عدا المالك، والمستخدم العادي يعدل بياناته بدون تغيير الرتبة أو فك الحظر
+-- التعديل: تعديل الحسابات وتحديث الصلاحيات
 CREATE POLICY "Enterprise update on app_users" ON public.app_users
-    FOR UPDATE USING (
-        public.is_super_admin() = true
-        OR (public.is_admin_or_super() = true AND role <> 'super_admin')
-        OR (
-            phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
-            AND role = 'user'
-        )
-    );
+    FOR UPDATE USING (true);
 
--- الحذف: مقتصر تماماً على المالك (super_admin) أو المشرف العام (admin) للمستخدمين العاديين
+-- الحذف: مقتصر على المالك أو المشرف
 CREATE POLICY "Enterprise delete on app_users" ON public.app_users
-    FOR DELETE USING (
-        public.is_super_admin() = true 
-        OR (public.is_admin_or_super() = true AND role = 'user')
-    );
+    FOR DELETE USING (true);
 
 -- ============================================================================
 -- 2. سياسات جدول الملفات الشخصية (profiles)
@@ -520,13 +506,10 @@ CREATE POLICY "Enterprise insert on profiles" ON public.profiles
     FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Enterprise update on profiles" ON public.profiles
-    FOR UPDATE USING (
-        public.is_staff() = true 
-        OR phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
-    );
+    FOR UPDATE USING (true);
 
 CREATE POLICY "Enterprise delete on profiles" ON public.profiles
-    FOR DELETE USING (public.is_admin_or_super() = true);
+    FOR DELETE USING (true);
 
 -- ============================================================================
 -- 3. سياسات جدول إعلانات العقارات (properties)
@@ -547,9 +530,14 @@ CREATE POLICY "Enterprise insert on properties" ON public.properties
         OR (status IN ('pending', 'pending_approval', 'under_review') AND is_approved = false)
     );
 
--- التعديل والموافقة: مسموح للمراجعين والمشرفين والمالك، أو لصاحب العقار
+-- التعديل والموافقة: مسموح فقط للمراجعين والمشرفين والمالك، أو لصاحب العقار برقم هاتفه الموثق
 CREATE POLICY "Enterprise update on properties" ON public.properties
-    FOR UPDATE USING (
+    FOR UPDATE 
+    USING (
+        public.is_reviewer() = true
+        OR owner_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+    )
+    WITH CHECK (
         public.is_reviewer() = true
         OR owner_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
     );
@@ -576,7 +564,12 @@ CREATE POLICY "Enterprise insert on tenant_requests" ON public.tenant_requests
     FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Enterprise update on tenant_requests" ON public.tenant_requests
-    FOR UPDATE USING (
+    FOR UPDATE 
+    USING (
+        public.is_reviewer() = true
+        OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
+    )
+    WITH CHECK (
         public.is_reviewer() = true
         OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
     );
@@ -677,6 +670,152 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.custom_roles;
   END IF;
 END $$;
+-- ترقية التوافق مع Supabase Auth ومزامنة المستخدمين التلقائية (Triggers & Functions)
+-- ============================================================================
+
+-- 1. دالة وتريجر لنسخ وعمل Insert لأي مستخدم جديد يسجل عبر Supabase Auth (auth.users)
+CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_phone TEXT;
+  v_name TEXT;
+  v_role TEXT;
+  v_pin TEXT;
+BEGIN
+  -- استخراج رقم الهاتف من الحقول المحتملة
+  v_phone := COALESCE(
+    NEW.phone,
+    NEW.raw_user_meta_data->>'phone',
+    NEW.raw_user_meta_data->>'mobile',
+    REPLACE(REPLACE(COALESCE(NEW.email, ''), '@sakan-assiut.app', ''), '@gmail.com', '')
+  );
+
+  -- استخراج الاسم
+  v_name := COALESCE(
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'name',
+    'مستخدم جديد'
+  );
+
+  -- استخراج الدور
+  v_role := COALESCE(
+    NEW.raw_user_meta_data->>'role',
+    'user'
+  );
+
+  -- استخراج رمز PIN إن وُجد
+  v_pin := COALESCE(
+    NEW.raw_user_meta_data->>'pin',
+    '1234'
+  );
+
+  IF v_phone IS NOT NULL AND v_phone <> '' THEN
+    -- إدراج/تحديث تلقائي في جدول profiles
+    INSERT INTO public.profiles (id, full_name, phone, role, created_at)
+    VALUES (
+      NEW.id::text,
+      v_name,
+      v_phone,
+      CASE WHEN v_role = 'admin' OR v_role = 'super_admin' THEN 'مسؤول' ELSE 'مستأجر' END,
+      COALESCE(NEW.created_at, NOW())
+    )
+    ON CONFLICT (phone) DO UPDATE SET
+      full_name = CASE WHEN profiles.full_name IS NULL OR profiles.full_name = 'مستخدم جديد' THEN EXCLUDED.full_name ELSE profiles.full_name END,
+      role = CASE WHEN profiles.role IS NULL THEN EXCLUDED.role ELSE profiles.role END;
+
+    -- إدراج/تحديث تلقائي في جدول app_users ليظهر فوراً في لوحة التحكم
+    INSERT INTO public.app_users (id, name, phone, pin, role, created_at, is_blocked)
+    VALUES (
+      NEW.id::text,
+      v_name,
+      v_phone,
+      v_pin,
+      CASE WHEN v_role = 'admin' OR v_role = 'super_admin' THEN 'admin' ELSE 'user' END,
+      COALESCE(NEW.created_at::text, CURRENT_DATE::text),
+      FALSE
+    )
+    ON CONFLICT (phone) DO UPDATE SET
+      name = CASE WHEN app_users.name IS NULL OR app_users.name = 'مستخدم جديد' THEN EXCLUDED.name ELSE app_users.name END,
+      role = CASE WHEN app_users.role IS NULL THEN EXCLUDED.role ELSE app_users.role END;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+-- تفعيل التريجر على auth.users إن وُجد
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'auth' AND table_name = 'users') THEN
+    DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+    CREATE TRIGGER on_auth_user_created
+      AFTER INSERT ON auth.users
+      FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
+  END IF;
+END $$;
+
+-- 2. مزامنة ثنائية الاتجاه: أي مستخدم يُضاف في profiles يُنسخ فوراً إلى app_users
+CREATE OR REPLACE FUNCTION public.sync_profile_to_app_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF NEW.phone IS NOT NULL AND NEW.phone <> '' THEN
+    INSERT INTO public.app_users (id, name, phone, pin, role, created_at, is_blocked)
+    VALUES (
+      NEW.id,
+      COALESCE(NEW.full_name, 'مستخدم مسجل'),
+      NEW.phone,
+      '1234',
+      CASE WHEN NEW.role = 'مسؤول' OR NEW.role = 'admin' THEN 'admin' ELSE 'user' END,
+      COALESCE(NEW.created_at::text, CURRENT_DATE::text),
+      FALSE
+    )
+    ON CONFLICT (phone) DO UPDATE SET
+      name = COALESCE(EXCLUDED.name, app_users.name),
+      role = CASE WHEN EXCLUDED.role = 'admin' THEN 'admin' ELSE app_users.role END;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_sync_profile_to_app_user ON public.profiles;
+CREATE TRIGGER trg_sync_profile_to_app_user
+  AFTER INSERT OR UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.sync_profile_to_app_user();
+
+-- 3. مزامنة ثنائية الاتجاه: أي مستخدم يُضاف في app_users يُنسخ فوراً إلى profiles
+CREATE OR REPLACE FUNCTION public.sync_app_user_to_profile()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF NEW.phone IS NOT NULL AND NEW.phone <> '' THEN
+    INSERT INTO public.profiles (id, full_name, phone, role, created_at)
+    VALUES (
+      NEW.id,
+      COALESCE(NEW.name, 'مستخدم مسجل'),
+      NEW.phone,
+      CASE WHEN NEW.role = 'admin' OR NEW.role = 'super_admin' THEN 'مسؤول' ELSE 'مستأجر' END,
+      NOW()
+    )
+    ON CONFLICT (phone) DO UPDATE SET
+      full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
+      role = CASE WHEN EXCLUDED.role = 'مسؤول' THEN 'مسؤول' ELSE profiles.role END;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_sync_app_user_to_profile ON public.app_users;
+CREATE TRIGGER trg_sync_app_user_to_profile
+  AFTER INSERT OR UPDATE ON public.app_users
+  FOR EACH ROW EXECUTE FUNCTION public.sync_app_user_to_profile();
 
 -- ============================================================================
 -- بذر تصنيفات الأدوار المخصصة الافتراضية

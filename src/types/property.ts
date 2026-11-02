@@ -300,7 +300,7 @@ export interface TenantRequest {
   notes?: string;
   adminNote?: string;
   images?: string[];
-  status?: 'pending' | 'pending_approval' | 'under_review' | 'active' | 'approved' | 'matched' | 'fulfilled' | 'rejected' | 'needs_completion';
+  status?: 'pending' | 'pending_approval' | 'under_review' | 'active' | 'approved' | 'matched' | 'fulfilled' | 'rejected' | 'needs_completion' | 'archived';
   createdAt: string;
 }
 

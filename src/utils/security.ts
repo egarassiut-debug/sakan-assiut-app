@@ -1,5 +1,7 @@
-import { AppUser } from '../types/property';
+import { AppUser, Property, TenantRequest } from '../types/property';
 import { safeStorageGetItem, safeStorageSetItem, safeStorageRemoveItem } from './storageManager';
+import { normalizeEgyptianPhone } from './phoneValidator';
+import { isStaffRole, hasSectionAccess } from './adminManager';
 
 const ADMIN_SESSION_KEY = 'ardaw_admin_session_token';
 
@@ -23,8 +25,6 @@ async function generateSessionHash(user: AppUser): Promise<string> {
   }
   return `h_${Math.abs(hash).toString(36)}`;
 }
-
-import { isStaffRole } from './adminManager';
 
 /**
  * Verify whether currentUser holds an untampered, active admin/staff session
@@ -148,3 +148,94 @@ export async function verifyPassword(plainText: string, storedHash: string): Pro
   const computed = await hashPassword(plainText);
   return computed === storedHash;
 }
+
+/**
+ * Checks whether an actor (user/admin) has permission to edit a specific Property listing.
+ * Strict RBAC & Ownership Rules:
+ * 1. Actor and Property must both exist.
+ * 2. System Admins ('super_admin' and 'admin') are granted edit permission.
+ * 3. Staff members with granular 'moderation' permission (e.g. 'reviewer') are granted edit permission.
+ *    Staff with restricted duties (e.g. 'support' or custom non-moderation roles) are strictly denied unless they are the owner.
+ * 4. Regular users are granted edit permission ONLY if their verified normalized phone matches
+ *    the listing's owner phone.
+ * 5. Name comparisons are strictly avoided to eliminate collision and spoofing vulnerabilities.
+ * 6. Supports listings created by admins on behalf of clients (createdByAdmin: true) by checking
+ *    the client's true owner phone.
+ */
+export function canUserEditProperty(
+  user: AppUser | null | undefined,
+  property: Property | null | undefined
+): boolean {
+  if (!user || !property) return false;
+
+  // 1. Super admin and General Admin
+  if (user.role === 'super_admin' || user.role === 'admin') {
+    return true;
+  }
+
+  // 2. Granular RBAC: Staff with moderation section access (e.g., reviewer)
+  if (hasSectionAccess(user.role, 'moderation')) {
+    return true;
+  }
+
+  // 3. True owner verification by normalized Egyptian phone number only
+  const userPhone = user.phone ? normalizeEgyptianPhone(user.phone) : '';
+  const ownerPhone = property.ownerPhone ? normalizeEgyptianPhone(property.ownerPhone) : '';
+
+  if (userPhone && ownerPhone && userPhone === ownerPhone) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Checks whether an actor (user/admin) has permission to edit a specific TenantRequest.
+ */
+export function canUserEditTenantRequest(
+  user: AppUser | null | undefined,
+  request: TenantRequest | null | undefined
+): boolean {
+  if (!user || !request) return false;
+
+  // 1. Super admin and General Admin
+  if (user.role === 'super_admin' || user.role === 'admin') {
+    return true;
+  }
+
+  // 2. Granular RBAC: Staff with moderation access
+  if (hasSectionAccess(user.role, 'moderation')) {
+    return true;
+  }
+
+  // 3. True tenant owner verification by normalized phone only
+  const userPhone = user.phone ? normalizeEgyptianPhone(user.phone) : '';
+  const tenantPhone = request.tenantPhone ? normalizeEgyptianPhone(request.tenantPhone) : '';
+
+  if (userPhone && tenantPhone && userPhone === tenantPhone) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Checks whether an actor has permission to delete or archive a specific Property listing.
+ */
+export function canUserDeleteProperty(
+  user: AppUser | null | undefined,
+  property: Property | null | undefined
+): boolean {
+  return canUserEditProperty(user, property);
+}
+
+/**
+ * Checks whether an actor has permission to delete a specific TenantRequest.
+ */
+export function canUserDeleteTenantRequest(
+  user: AppUser | null | undefined,
+  request: TenantRequest | null | undefined
+): boolean {
+  return canUserEditTenantRequest(user, request);
+}
+

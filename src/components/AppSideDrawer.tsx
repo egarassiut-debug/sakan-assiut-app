@@ -10,11 +10,13 @@ import {
   LogOut,
   ChevronLeft,
   Mic,
-  Sparkles
+  Sparkles,
+  Crown
 } from 'lucide-react';
 import { RealEstateAgent, Assignment, AdminPanelSettings } from './FlutterIcons';
 import { SupabaseConnectionStatus } from './SupabaseConnectionStatus';
 import { PWAInstallButton } from './PWAInstallButton';
+import { isStaffRole, isFoundingOwnerPhone } from '../utils/adminManager';
 import type { AdminSectionId } from '../types/adminNav';
 
 export interface AppSideDrawerProps {
@@ -60,7 +62,10 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
   onOpenVoiceAssistant,
   onLogout,
 }) => {
-  const isAdmin = currentUser?.role === 'admin';
+  const isStaff = Boolean(currentUser && isStaffRole(currentUser.role));
+  const isFounding = Boolean(currentUser && isFoundingOwnerPhone(currentUser.phone));
+  const isPartner = Boolean(currentUser && (currentUser.isPartner || (!isFounding && currentUser.role === 'super_admin')));
+  const isAdmin = isStaff;
 
   // Handle ESC key to dismiss drawer
   useEffect(() => {
@@ -145,13 +150,29 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold ${
-                  isAdmin ? 'bg-[#FDF8ED] text-[#D6A84F] border border-[#D6A84F]/40' : 'bg-[#EAF3EF] text-[#124C46] border border-[#DCECE7]'
+                  isFounding
+                    ? 'bg-gradient-to-br from-amber-100 to-amber-200 text-amber-900 border border-amber-300 ring-2 ring-amber-400/30'
+                    : isPartner
+                    ? 'bg-gradient-to-br from-purple-100 to-amber-100 text-purple-900 border border-purple-300 shadow-2xs ring-2 ring-purple-300/40'
+                    : isAdmin 
+                    ? 'bg-[#FDF8ED] text-[#D6A84F] border border-[#D6A84F]/40' 
+                    : 'bg-[#EAF3EF] text-[#124C46] border border-[#DCECE7]'
                 }`}>
-                  {isAdmin ? <ShieldCheck className="w-5 h-5 text-[#D6A84F]" /> : <User className="w-5 h-5 text-[#124C46]" />}
+                  {isFounding ? (
+                    <Crown className="w-5 h-5 text-amber-700 fill-amber-400" />
+                  ) : isPartner ? (
+                    <Crown className="w-5 h-5 text-purple-700 fill-purple-300" />
+                  ) : isAdmin ? (
+                    <ShieldCheck className="w-5 h-5 text-[#D6A84F]" />
+                  ) : (
+                    <User className="w-5 h-5 text-[#124C46]" />
+                  )}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-extrabold text-[#24313D] truncate">
-                    {rawName}
+                  <div className="text-xs font-extrabold text-[#24313D] truncate flex items-center gap-1">
+                    <span>{rawName}</span>
+                    {isFounding && <span className="text-amber-500 text-[11px]">👑</span>}
+                    {isPartner && <span className="text-purple-600 text-[11px]">🤝</span>}
                   </div>
                   <div className="text-[10px] text-[#5D6B78] flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#1F7A5C] animate-pulse" />
@@ -160,13 +181,26 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
                 </div>
               </div>
 
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border ${
-                isAdmin 
-                  ? 'bg-[#FDF8ED] text-[#9A7328] border-[#D6A84F]/50 font-extrabold' 
-                  : 'bg-[#EAF3EF] text-[#124C46] border-[#DCECE7]'
-              }`}>
-                {isAdmin ? 'مدير المنظومة' : 'مستخدم'}
-              </span>
+              {/* Status Badge */}
+              {isFounding ? (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 border bg-gradient-to-r from-amber-100 to-amber-200 text-amber-900 border-amber-400 shadow-2xs flex items-center gap-1">
+                  <Crown className="w-2.5 h-2.5 text-amber-700 fill-amber-500" />
+                  <span>مالك مؤسس</span>
+                </span>
+              ) : isPartner ? (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 border bg-gradient-to-r from-purple-100 to-amber-50 text-purple-900 border-purple-300 shadow-2xs flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5 text-purple-600" />
+                  <span>مالك شريك 🤝</span>
+                </span>
+              ) : isAdmin ? (
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 border bg-[#FDF8ED] text-[#9A7328] border-[#D6A84F]/50">
+                  {currentUser?.role === 'reviewer' ? 'مراجع معتمد' : currentUser?.role === 'support' ? 'دعم فني' : 'مشرف عام'}
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border bg-[#EAF3EF] text-[#124C46] border-[#DCECE7]">
+                  مستخدم
+                </span>
+              )}
             </div>
           </div>
         </div>

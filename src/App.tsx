@@ -61,6 +61,13 @@ import {
 } from './utils/storageManager';
 import { logAdminActivity, isStaffRole } from './utils/adminManager';
 import { logAuditEvent } from './utils/auditManager';
+import { syncUsersWithDatabase } from './utils/userManager';
+import { 
+  canUserEditProperty, 
+  canUserEditTenantRequest, 
+  canUserDeleteProperty, 
+  canUserDeleteTenantRequest 
+} from './utils/security';
 
 // Resilient dynamic chunk loader with automatic retry for transient network hiccups
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -310,6 +317,12 @@ export function App() {
                 safeStorageSetItem('ardaw_tenant_requests', fresh);
               }
             });
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'app_users' }, () => {
+            syncUsersWithDatabase().catch(() => {});
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+            syncUsersWithDatabase().catch(() => {});
           })
           .subscribe();
       } catch (e) {
@@ -1418,40 +1431,91 @@ export function App() {
     }
   };
 
-  // Start Editing Property
+  // Start Editing Property (Protected with Strict RBAC & Ownership Verification)
   const handleStartEditProperty = (prop: Property) => {
+    if (!canUserEditProperty(currentUser, prop)) {
+      addToast({
+        type: 'error',
+        title: 'غير مصرح بالتعديل',
+        message: 'لا تملك صلاحية تعديل هذا الإعلان. فقط صاحب الإعلان الأصلي أو المشرف المختص يمكنه التعديل.',
+        duration: 4000,
+      });
+      return;
+    }
     setEditingProperty(prop);
     setEditingTenantRequest(null);
     setOverlayScreen('form_entry_offer');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Start Editing Tenant Request
+  // Start Editing Tenant Request (Protected with Strict RBAC & Ownership Verification)
   const handleStartEditTenantRequest = (req: TenantRequest) => {
+    if (!canUserEditTenantRequest(currentUser, req)) {
+      addToast({
+        type: 'error',
+        title: 'غير مصرح بالتعديل',
+        message: 'لا تملك صلاحية تعديل هذا الطلب. فقط صاحب الطلب أو المشرف المختص يمكنه التعديل.',
+        duration: 4000,
+      });
+      return;
+    }
     setEditingTenantRequest(req);
     setEditingProperty(null);
     setOverlayScreen('form_entry_request');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Update Property in Local Storage and Database
+  // Update Property in Local Storage and Database (Protected with Identity & Ownership Check)
   const handleUpdateProperty = (updatedProp: Property) => {
+    const originalProp = properties.find((p) => p.id === updatedProp.id) || updatedProp;
+    if (!canUserEditProperty(currentUser, originalProp)) {
+      addToast({
+        type: 'error',
+        title: 'تم رفض العملية - انتهاك أمني',
+        message: 'غير مصرح لك بتعديل بيانات هذا الإعلان.',
+        duration: 5000,
+      });
+      logAuditEvent({
+        userName: currentUser?.name || 'مستخدم مجهول',
+        userPhone: currentUser?.phone || '',
+        userRole: currentUser?.role || 'user',
+        action: 'UPDATE',
+        entityType: 'property',
+        entityId: updatedProp.id,
+        entityCode: updatedProp.code,
+        oldValues: { securityWarning: 'Unauthorized property update rejected by RBAC guard.' },
+      });
+      return;
+    }
+
+    // Preserve owner phone and administrative publisher flags for non-admin users to prevent spoofing
+    const isFullStaff = currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin' || isStaffRole(currentUser.role));
+    const finalProp: Property = isFullStaff
+      ? updatedProp
+      : {
+          ...updatedProp,
+          ownerPhone: originalProp.ownerPhone,
+          createdByAdmin: originalProp.createdByAdmin,
+          isApproved: originalProp.isApproved,
+          status: originalProp.status === 'needs_completion' ? 'pending_approval' : originalProp.status,
+        };
+
     setProperties((prev) => {
-      const updated = prev.map((p) => (p.id === updatedProp.id ? updatedProp : p));
+      const updated = prev.map((p) => (p.id === finalProp.id ? finalProp : p));
       safeStorageSetItem('ardaw_properties', updated);
       return updated;
     });
-    dbUpsertProperty(updatedProp).catch((err) => {
+    dbUpsertProperty(finalProp).catch((err) => {
       console.warn('Supabase update property failed:', err);
     });
 
-    // Audit log for admin modifications
+    // Audit log for modifications
     logAdminActivity(
       currentUser?.name || 'مدير المنظومة',
       currentUser?.phone || '01002345678',
       'edit_operation',
-      `تعديل بيانات عقار (كود: ${updatedProp.code})`,
-      `العنوان: "${updatedProp.title}" - المنطقة: ${updatedProp.district} - السعر: ${updatedProp.price.toLocaleString()} ج.م - النوع: ${updatedProp.propertyType}`
+      `تعديل بيانات عقار (كود: ${finalProp.code})`,
+      `العنوان: "${finalProp.title}" - المنطقة: ${finalProp.district} - السعر: ${finalProp.price.toLocaleString()} ج.م - النوع: ${finalProp.propertyType}`
     );
 
     logAuditEvent({
@@ -1460,9 +1524,9 @@ export function App() {
       userRole: currentUser?.role || 'admin',
       action: 'UPDATE',
       entityType: 'property',
-      entityId: updatedProp.id,
-      entityCode: updatedProp.code,
-      newValues: updatedProp,
+      entityId: finalProp.id,
+      entityCode: finalProp.code,
+      newValues: finalProp,
     });
 
     setEditingProperty(null);
@@ -1470,29 +1534,60 @@ export function App() {
     addToast({
       type: 'success',
       title: 'تم حفظ التعديلات بنجاح',
-      message: `تم تحديث بيانات العقار (${updatedProp.code}) بنجاح.`,
+      message: `تم تحديث بيانات العقار (${finalProp.code}) بنجاح.`,
       duration: 4000,
     });
   };
 
-  // Update Tenant Request in Local Storage and Database
+  // Update Tenant Request in Local Storage and Database (Protected with Identity & Ownership Check)
   const handleUpdateTenantRequest = (updatedReq: TenantRequest) => {
+    const originalReq = tenantRequests.find((r) => r.id === updatedReq.id) || updatedReq;
+    if (!canUserEditTenantRequest(currentUser, originalReq)) {
+      addToast({
+        type: 'error',
+        title: 'تم رفض العملية - انتهاك أمني',
+        message: 'غير مصرح لك بتعديل بيانات هذا الطلب.',
+        duration: 5000,
+      });
+      logAuditEvent({
+        userName: currentUser?.name || 'مستخدم مجهول',
+        userPhone: currentUser?.phone || '',
+        userRole: currentUser?.role || 'user',
+        action: 'UPDATE',
+        entityType: 'tenant_request',
+        entityId: updatedReq.id,
+        entityCode: updatedReq.requestCode || updatedReq.id,
+        oldValues: { securityWarning: 'Unauthorized tenant request update rejected by RBAC guard.' },
+      });
+      return;
+    }
+
+    const isFullStaff = currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin' || isStaffRole(currentUser.role));
+    const finalReq: TenantRequest = isFullStaff
+      ? updatedReq
+      : {
+          ...updatedReq,
+          tenantPhone: originalReq.tenantPhone,
+          isApproved: originalReq.isApproved,
+          status: originalReq.status === 'needs_completion' ? 'pending_approval' : originalReq.status,
+        };
+
     setTenantRequests((prev) => {
-      const updated = prev.map((r) => (r.id === updatedReq.id ? updatedReq : r));
+      const updated = prev.map((r) => (r.id === finalReq.id ? finalReq : r));
       safeStorageSetItem('ardaw_tenant_requests', updated);
       return updated;
     });
-    dbUpsertTenantRequest(updatedReq).catch((err) => {
+    dbUpsertTenantRequest(finalReq).catch((err) => {
       console.warn('Supabase update tenant request failed:', err);
     });
 
-    // Audit log for admin modifications
+    // Audit log for modifications
     logAdminActivity(
       currentUser?.name || 'مدير المنظومة',
       currentUser?.phone || '01002345678',
       'edit_operation',
-      `تعديل طلب سكن (كود: ${updatedReq.requestCode || updatedReq.id})`,
-      `المطلوب: ${updatedReq.propertyType} في حي ${updatedReq.preferredDistrict} - الحد الأقصى للسعر: ${updatedReq.maxPrice.toLocaleString()} ج.م - العميل: ${updatedReq.tenantName}`
+      `تعديل طلب سكن (كود: ${finalReq.requestCode || finalReq.id})`,
+      `المطلوب: ${finalReq.propertyType} في حي ${finalReq.preferredDistrict} - الحد الأقصى للسعر: ${finalReq.maxPrice.toLocaleString()} ج.م - العميل: ${finalReq.tenantName}`
     );
 
     logAuditEvent({
@@ -1501,9 +1596,9 @@ export function App() {
       userRole: currentUser?.role || 'admin',
       action: 'UPDATE',
       entityType: 'tenant_request',
-      entityId: updatedReq.id,
-      entityCode: updatedReq.requestCode || updatedReq.id,
-      newValues: updatedReq,
+      entityId: finalReq.id,
+      entityCode: finalReq.requestCode || finalReq.id,
+      newValues: finalReq,
     });
 
     setEditingTenantRequest(null);
@@ -1511,7 +1606,7 @@ export function App() {
     addToast({
       type: 'success',
       title: 'تم حفظ التعديل',
-      message: `تم تحديث بيانات طلبك (${updatedReq.requestCode || updatedReq.id}) بنجاح.`,
+      message: `تم تحديث بيانات طلبك (${finalReq.requestCode || finalReq.id}) بنجاح.`,
       duration: 4000,
     });
   };
@@ -1610,9 +1705,18 @@ export function App() {
     });
   };
 
-  // Delete Tenant Request
+  // Delete Tenant Request (Protected with RBAC & Ownership Verification)
   const handleDeleteTenantRequest = (reqId: string) => {
     const targetReq = tenantRequests.find((r) => r.id === reqId);
+    if (targetReq && !canUserDeleteTenantRequest(currentUser, targetReq)) {
+      addToast({
+        type: 'error',
+        title: 'غير مصرح بحذف الطلب',
+        message: 'لا تملك الصلاحية لحذف هذا الطلب.',
+        duration: 4000,
+      });
+      return;
+    }
     setTenantRequests((prev) => {
       const updated = prev.filter((r) => r.id !== reqId);
       safeStorageSetItem('ardaw_tenant_requests', updated);
@@ -1757,9 +1861,19 @@ export function App() {
     });
   };
 
-  // Delete Property
+  // Delete Property (Protected with RBAC & Ownership Verification)
   const handleDeleteProperty = (propId: string) => {
     const targetProp = properties.find((p) => p.id === propId);
+    if (targetProp && !canUserDeleteProperty(currentUser, targetProp)) {
+      addToast({
+        type: 'error',
+        title: 'غير مصرح بحذف العقار',
+        message: 'لا تملك الصلاحية لحذف هذا الإعلان.',
+        duration: 4000,
+      });
+      return;
+    }
+
     setProperties((prev) => {
       const updated = prev.filter((p) => p.id !== propId);
       safeStorageSetItem('ardaw_properties', updated);
@@ -1798,8 +1912,19 @@ export function App() {
     });
   };
 
-  // Archive Property (أرشفة الإعلان)
+  // Archive Property (أرشفة الإعلان) (Protected with RBAC & Ownership Verification)
   const handleArchiveProperty = (propId: string) => {
+    const targetProp = properties.find((p) => p.id === propId);
+    if (targetProp && !canUserEditProperty(currentUser, targetProp)) {
+      addToast({
+        type: 'error',
+        title: 'غير مصرح بالأرشفة',
+        message: 'لا تملك الصلاحية لأرشفة هذا الإعلان.',
+        duration: 4000,
+      });
+      return;
+    }
+
     setProperties((prev) => {
       const updated = prev.map((p) => (p.id === propId ? { ...p, status: 'archived' as PropertyStatus } : p));
       safeStorageSetItem('ardaw_properties', updated);
@@ -1813,8 +1938,19 @@ export function App() {
     });
   };
 
-  // Republish Property (إعادة نشر الإعلان)
+  // Republish Property (إعادة نشر الإعلان) (Protected with RBAC & Ownership Verification)
   const handleRepublishProperty = (propId: string) => {
+    const targetProp = properties.find((p) => p.id === propId);
+    if (targetProp && !canUserEditProperty(currentUser, targetProp)) {
+      addToast({
+        type: 'error',
+        title: 'غير مصرح بإعادة النشر',
+        message: 'لا تملك الصلاحية لإعادة نشر هذا الإعلان.',
+        duration: 4000,
+      });
+      return;
+    }
+
     setProperties((prev) => {
       const updated = prev.map((p) => (p.id === propId ? { ...p, status: 'approved' as PropertyStatus, isApproved: true } : p));
       safeStorageSetItem('ardaw_properties', updated);
@@ -1828,8 +1964,19 @@ export function App() {
     });
   };
 
-  // Toggle Rented or Sold status (تحديد هل تم التأجير)
+  // Toggle Rented or Sold status (تحديد هل تم التأجير) (Protected with RBAC & Ownership Verification)
   const handleToggleRentedSold = (propId: string, currentStatus: PropertyStatus) => {
+    const targetProp = properties.find((p) => p.id === propId);
+    if (targetProp && !canUserEditProperty(currentUser, targetProp)) {
+      addToast({
+        type: 'error',
+        title: 'غير مصرح بتعديل الحالة',
+        message: 'لا تملك الصلاحية لتعديل حالة هذا الإعلان.',
+        duration: 4000,
+      });
+      return;
+    }
+
     const isCurrentlyRented = currentStatus === 'rented' || currentStatus === 'sold';
     const newStatus: PropertyStatus = isCurrentlyRented ? 'approved' : 'rented';
     setProperties((prev) => {
@@ -2491,7 +2638,7 @@ export function App() {
                     key={prop.id}
                     property={prop}
                     onOpenDetails={(p) => setSelectedProperty(p)}
-                    onEdit={handleStartEditProperty}
+                    onEdit={canUserEditProperty(currentUser, prop) ? handleStartEditProperty : undefined}
                     onRequestInspection={(p) => {
                       setSelectedPropertyForInspection(p);
                       setIsInspectionModalOpen(true);
@@ -2842,9 +2989,12 @@ export function App() {
                   <TenantRequestCard
                     key={req.id}
                     request={req}
-                    onEdit={handleStartEditTenantRequest}
+                    onEdit={canUserEditTenantRequest(currentUser, req) ? handleStartEditTenantRequest : undefined}
                     onOpenDetails={(r) => setSelectedTenantRequest(r)}
                     isAdmin={isAdmin}
+                    isFavorite={favoriteIdsSet.has(req.id)}
+                    onToggleFavorite={handleToggleFavorite}
+                    ratingSummary={getPropertyRatingSummary(req.id)}
                   />
                 ))}
               </div>
@@ -3062,10 +3212,14 @@ export function App() {
             property={selectedProperty}
             onClose={() => setSelectedProperty(null)}
             isAdmin={isAdmin}
-            onEdit={(p) => {
-              setSelectedProperty(null);
-              handleStartEditProperty(p);
-            }}
+            onEdit={
+              canUserEditProperty(currentUser, selectedProperty)
+                ? (p) => {
+                    setSelectedProperty(null);
+                    handleStartEditProperty(p);
+                  }
+                : undefined
+            }
             onScheduleInspection={(p) => {
               setSelectedPropertyForInspection(p);
               setIsInspectionModalOpen(true);
@@ -3111,10 +3265,14 @@ export function App() {
             request={selectedTenantRequest}
             onClose={() => setSelectedTenantRequest(null)}
             isAdmin={isAdmin}
-            onEdit={(r) => {
-              setSelectedTenantRequest(null);
-              handleStartEditTenantRequest(r);
-            }}
+            onEdit={
+              canUserEditTenantRequest(currentUser, selectedTenantRequest)
+                ? (r) => {
+                    setSelectedTenantRequest(null);
+                    handleStartEditTenantRequest(r);
+                  }
+                : undefined
+            }
           />
         )}
 

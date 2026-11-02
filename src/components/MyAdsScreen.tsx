@@ -7,6 +7,7 @@ import {
   Search, X, Bell, Heart, ArrowUpRight, MessageSquare, MessageCircle, Maximize2, Bed, Bath
 } from 'lucide-react';
 import { RealEstateAgent, Assignment } from './FlutterIcons';
+import { normalizeEgyptianPhone } from '../utils/phoneValidator';
 
 interface MyAdsScreenProps {
   currentUser: AppUser;
@@ -58,51 +59,113 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
   const [copiedAccount, setCopiedAccount] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // Normalize user phone for matching
-  const userPhone = currentUser.phone.trim();
-  const userName = currentUser.name.trim();
+  // Normalize user phone for matching (never match by name to prevent spoofing/collisions)
+  const normUserPhone = useMemo(() => normalizeEgyptianPhone(currentUser?.phone), [currentUser?.phone]);
 
-  // Filter properties belonging to this user strictly
+  // Filter properties belonging to this user strictly by verified phone number
   const userProperties = useMemo(() => {
+    if (!normUserPhone) return [];
     return properties.filter((p) => {
-      const matchPhone = p.ownerPhone && (p.ownerPhone === userPhone || p.ownerPhone.replace(/\D/g, '') === userPhone.replace(/\D/g, ''));
-      const matchName = p.ownerName && p.ownerName.toLowerCase().trim() === userName.toLowerCase().trim();
-      return Boolean(matchPhone || matchName);
+      const normOwnerPhone = normalizeEgyptianPhone(p.ownerPhone);
+      return Boolean(normOwnerPhone && normOwnerPhone === normUserPhone);
     });
-  }, [properties, userPhone, userName]);
+  }, [properties, normUserPhone]);
 
-  // Filter tenant requests belonging to this user strictly
+  // Filter tenant requests belonging to this user strictly by verified phone number
   const userRequests = useMemo(() => {
+    if (!normUserPhone) return [];
     return tenantRequests.filter((r) => {
-      const matchPhone = r.tenantPhone && (r.tenantPhone === userPhone || r.tenantPhone.replace(/\D/g, '') === userPhone.replace(/\D/g, ''));
-      const matchName = r.tenantName && r.tenantName.toLowerCase().trim() === userName.toLowerCase().trim();
-      return Boolean(matchPhone || matchName);
+      const normTenantPhone = normalizeEgyptianPhone(r.tenantPhone);
+      return Boolean(normTenantPhone && normTenantPhone === normUserPhone);
     });
-  }, [tenantRequests, userPhone, userName]);
+  }, [tenantRequests, normUserPhone]);
 
-  // Counts by status for property listings
+  // Counts by status combining properties and requests
   const stats = useMemo(() => {
-    const total = userProperties.length;
-    const pending = userProperties.filter((p) => p.status === 'pending_approval' || p.status === 'pending').length;
-    const needsCompletion = userProperties.filter((p) => p.status === 'needs_completion').length;
-    const approved = userProperties.filter((p) => p.status === 'approved' && p.isApproved !== false).length;
-    const rentedSold = userProperties.filter((p) => p.status === 'rented' || p.status === 'sold').length;
-    const archived = userProperties.filter((p) => p.status === 'archived').length;
-    return { total, pending, needsCompletion, approved, rentedSold, archived };
-  }, [userProperties]);
+    // Properties classification
+    let propApproved = 0;
+    let propPending = 0;
+    let propNeedsCompletion = 0;
+    let propArchived = 0;
+    let propRentedSold = 0;
+
+    userProperties.forEach((p) => {
+      if (p.status === 'needs_completion') {
+        propNeedsCompletion++;
+      } else if (p.status === 'archived' || p.status === 'rejected') {
+        propArchived++;
+      } else if (p.status === 'rented' || p.status === 'sold') {
+        propRentedSold++;
+      } else if (p.status === 'approved' || p.isApproved === true) {
+        propApproved++;
+      } else {
+        // 'pending', 'pending_approval', 'under_review', or awaiting review
+        propPending++;
+      }
+    });
+
+    // Tenant requests classification
+    let reqApproved = 0;
+    let reqPending = 0;
+    let reqNeedsCompletion = 0;
+    let reqArchived = 0;
+
+    userRequests.forEach((r) => {
+      if (r.status === 'needs_completion') {
+        reqNeedsCompletion++;
+      } else if (r.status === 'archived' || r.status === 'fulfilled' || r.status === 'rejected') {
+        reqArchived++;
+      } else if (r.isApproved === true || r.status === 'approved' || r.status === 'active' || r.status === 'matched') {
+        reqApproved++;
+      } else {
+        // 'pending', 'pending_approval', 'under_review', or unapproved
+        reqPending++;
+      }
+    });
+
+    const totalApproved = propApproved + reqApproved;
+    const totalPending = propPending + reqPending;
+    const totalNeedsCompletion = propNeedsCompletion + reqNeedsCompletion;
+    const totalArchived = propArchived + propRentedSold + reqArchived;
+    const total = userProperties.length + userRequests.length;
+
+    return {
+      total,
+      // Total combined stats for the top pipeline cards:
+      approved: totalApproved,
+      pending: totalPending,
+      needsCompletion: totalNeedsCompletion,
+      archived: totalArchived,
+      rentedSold: 0,
+
+      // Specific breakdown for category pills:
+      propApproved,
+      propPending,
+      propNeedsCompletion,
+      propArchived: propArchived + propRentedSold,
+      reqApproved,
+      reqPending,
+      reqNeedsCompletion,
+      reqArchived,
+    };
+  }, [userProperties, userRequests]);
 
   // Filtered properties based on search and stage
   const filteredProperties = useMemo(() => {
     return userProperties.filter((p) => {
       // Stage filter
       if (filterStage === 'pending') {
-        if (p.status !== 'pending' && p.status !== 'pending_approval') return false;
+        const isApproved = (p.status === 'approved' || p.isApproved === true) && p.status !== 'needs_completion' && p.status !== 'archived' && p.status !== 'rented' && p.status !== 'sold' && p.status !== 'rejected';
+        const isNeedsCompletion = p.status === 'needs_completion';
+        const isArchived = p.status === 'archived' || p.status === 'rented' || p.status === 'sold' || p.status === 'rejected';
+        if (isApproved || isNeedsCompletion || isArchived) return false;
       } else if (filterStage === 'needs_completion') {
         if (p.status !== 'needs_completion') return false;
       } else if (filterStage === 'approved') {
-        if (p.status !== 'approved' || p.isApproved === false) return false;
+        const isApproved = (p.status === 'approved' || p.isApproved === true) && p.status !== 'needs_completion' && p.status !== 'archived' && p.status !== 'rented' && p.status !== 'sold' && p.status !== 'rejected';
+        if (!isApproved) return false;
       } else if (filterStage === 'archived') {
-        if (p.status !== 'archived' && p.status !== 'rented' && p.status !== 'sold') return false;
+        if (p.status !== 'archived' && p.status !== 'rented' && p.status !== 'sold' && p.status !== 'rejected') return false;
       } else if (filterStage === 'inspections') {
         // Has scheduled inspection
         const hasInsp = inspections.some((i) => i.propertyId === p.id || i.propertyCode === p.code);
@@ -122,19 +185,36 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
     });
   }, [userProperties, filterStage, searchQuery, inspections]);
 
-  // Filtered requests based on search
+  // Filtered requests based on search and stage
   const filteredRequests = useMemo(() => {
     return userRequests.filter((r) => {
+      // Stage filter
+      if (filterStage === 'approved') {
+        const isApproved = (r.isApproved === true || r.status === 'approved' || r.status === 'active' || r.status === 'matched') &&
+          r.status !== 'needs_completion' && r.status !== 'archived' && r.status !== 'fulfilled' && r.status !== 'rejected';
+        if (!isApproved) return false;
+      } else if (filterStage === 'pending') {
+        const isApproved = (r.isApproved === true || r.status === 'approved' || r.status === 'active' || r.status === 'matched');
+        const isNeedsCompletion = r.status === 'needs_completion';
+        const isArchived = r.status === 'archived' || r.status === 'fulfilled' || r.status === 'rejected';
+        if (isApproved || isNeedsCompletion || isArchived) return false;
+      } else if (filterStage === 'needs_completion') {
+        if (r.status !== 'needs_completion') return false;
+      } else if (filterStage === 'archived') {
+        if (r.status !== 'archived' && r.status !== 'fulfilled' && r.status !== 'rejected') return false;
+      }
+
+      // Search filter
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
-        const codeMatch = r.requestCode?.toLowerCase().includes(q);
+        const codeMatch = (r.requestCode || r.id).toLowerCase().includes(q);
         const distMatch = r.preferredDistrict.toLowerCase().includes(q);
         const typeMatch = r.propertyType.toLowerCase().includes(q);
         if (!codeMatch && !distMatch && !typeMatch) return false;
       }
       return true;
     });
-  }, [userRequests, searchQuery]);
+  }, [userRequests, filterStage, searchQuery]);
 
   const handleCopyPaymentNumber = () => {
     navigator.clipboard.writeText('01002345678');
@@ -188,37 +268,69 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
 
         {/* 2. Quick Pipeline Metrics Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/15">
+          <button
+            type="button"
+            onClick={() => setFilterStage((prev) => (prev === 'approved' ? 'all' : 'approved'))}
+            className={`p-3 rounded-xl border text-right transition-all cursor-pointer ${
+              filterStage === 'approved'
+                ? 'bg-white/25 border-emerald-300 ring-2 ring-emerald-300/40 shadow-xs scale-[1.02]'
+                : 'bg-white/10 hover:bg-white/15 border-white/15'
+            }`}
+          >
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-[#DCECE7] font-semibold">المعروض النشط</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-300" />
             </div>
             <div className="text-xl font-black text-white mt-1">{stats.approved}</div>
-          </div>
+          </button>
 
-          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/15">
+          <button
+            type="button"
+            onClick={() => setFilterStage((prev) => (prev === 'pending' ? 'all' : 'pending'))}
+            className={`p-3 rounded-xl border text-right transition-all cursor-pointer ${
+              filterStage === 'pending'
+                ? 'bg-white/25 border-[#D6A84F] ring-2 ring-[#D6A84F]/40 shadow-xs scale-[1.02]'
+                : 'bg-white/10 hover:bg-white/15 border-white/15'
+            }`}
+          >
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-[#DCECE7] font-semibold">قيد المراجعة والسداد</span>
               <Clock className="w-4 h-4 text-[#D6A84F]" />
             </div>
             <div className="text-xl font-black text-white mt-1">{stats.pending}</div>
-          </div>
+          </button>
 
-          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/15">
+          <button
+            type="button"
+            onClick={() => setFilterStage((prev) => (prev === 'needs_completion' ? 'all' : 'needs_completion'))}
+            className={`p-3 rounded-xl border text-right transition-all cursor-pointer ${
+              filterStage === 'needs_completion'
+                ? 'bg-white/25 border-rose-300 ring-2 ring-rose-300/40 shadow-xs scale-[1.02]'
+                : 'bg-white/10 hover:bg-white/15 border-white/15'
+            }`}
+          >
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-[#DCECE7] font-semibold">مطلوب استكمال بيان</span>
               <AlertTriangle className="w-4 h-4 text-rose-300" />
             </div>
             <div className="text-xl font-black text-white mt-1">{stats.needsCompletion}</div>
-          </div>
+          </button>
 
-          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/15">
+          <button
+            type="button"
+            onClick={() => setFilterStage((prev) => (prev === 'archived' ? 'all' : 'archived'))}
+            className={`p-3 rounded-xl border text-right transition-all cursor-pointer ${
+              filterStage === 'archived'
+                ? 'bg-white/25 border-slate-300 ring-2 ring-slate-300/40 shadow-xs scale-[1.02]'
+                : 'bg-white/10 hover:bg-white/15 border-white/15'
+            }`}
+          >
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-[#DCECE7] font-semibold">المؤرشف والمنتهي</span>
               <Archive className="w-4 h-4 text-slate-300" />
             </div>
-            <div className="text-xl font-black text-white mt-1">{stats.archived + stats.rentedSold}</div>
-          </div>
+            <div className="text-xl font-black text-white mt-1">{stats.archived}</div>
+          </button>
         </div>
       </div>
 
@@ -264,8 +376,8 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
         </button>
       </div>
 
-      {/* 4. Stage Filters Pills (For Properties) & Search */}
-      {activeCategory === 'properties' && (
+      {/* 4. Stage Filters Pills & Search */}
+      {(activeCategory === 'properties' || activeCategory === 'requests') && (
         <div className="bg-white p-3 rounded-2xl border border-[#D6DEE5] shadow-2xs space-y-2.5">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
             <button
@@ -277,7 +389,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
                   : 'bg-[#F5F7F9] text-[#5D6B78] hover:text-[#24313D] hover:bg-[#EAF3EF]'
               }`}
             >
-              الكل ({userProperties.length})
+              الكل ({activeCategory === 'properties' ? userProperties.length : userRequests.length})
             </button>
 
             <button
@@ -290,7 +402,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>معتمد ومنشور ({stats.approved})</span>
+              <span>معتمد ومنشور ({activeCategory === 'properties' ? stats.propApproved : stats.reqApproved})</span>
             </button>
 
             <button
@@ -303,7 +415,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
               }`}
             >
               <Clock className="w-3.5 h-3.5" />
-              <span>قيد المراجعة والسداد ({stats.pending})</span>
+              <span>قيد المراجعة والسداد ({activeCategory === 'properties' ? stats.propPending : stats.reqPending})</span>
             </button>
 
             <button
@@ -316,7 +428,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>مطلوب استكمال بيان ({stats.needsCompletion})</span>
+              <span>مطلوب استكمال بيان ({activeCategory === 'properties' ? stats.propNeedsCompletion : stats.reqNeedsCompletion})</span>
             </button>
 
             <button
@@ -329,7 +441,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
               }`}
             >
               <Archive className="w-3.5 h-3.5" />
-              <span>مؤرشف ومنتهي ({stats.archived + stats.rentedSold})</span>
+              <span>مؤرشف ومنتهي ({activeCategory === 'properties' ? stats.propArchived : stats.reqArchived})</span>
             </button>
           </div>
 
@@ -340,7 +452,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ابحث في إعلاناتك برقم الكود، العنوان، أو المنطقة..."
+              placeholder={activeCategory === 'properties' ? 'ابحث في إعلاناتك برقم الكود، العنوان، أو المنطقة...' : 'ابحث في طلباتك برقم الكود، المنطقة، أو نوع العقار...'}
               className="w-full pr-10 pl-9 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:border-[#002B49] focus:ring-1 focus:ring-[#002B49]"
             />
             {searchQuery && (
@@ -721,9 +833,25 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
                   </div>
 
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                    req.isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
+                    req.status === 'needs_completion'
+                      ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                      : req.status === 'fulfilled' || req.status === 'archived' || req.status === 'rejected'
+                      ? 'bg-slate-200 text-slate-700'
+                      : req.isApproved || req.status === 'approved' || req.status === 'active'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-900'
                   }`}>
-                    {req.isApproved ? 'معتمد ومنشور' : 'قيد المراجعة'}
+                    {req.status === 'needs_completion'
+                      ? 'مطلوب استكمال بيان'
+                      : req.status === 'fulfilled'
+                      ? 'مكتمل'
+                      : req.status === 'rejected'
+                      ? 'مرفوض'
+                      : req.status === 'archived'
+                      ? 'مؤرشف'
+                      : req.isApproved || req.status === 'approved' || req.status === 'active'
+                      ? 'معتمد ومنشور'
+                      : 'قيد المراجعة'}
                   </span>
                 </div>
 

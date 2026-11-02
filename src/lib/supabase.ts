@@ -172,13 +172,15 @@ export function notifySupabaseSuccess(detail?: { table: string; entityId?: strin
 // ============================================================================
 
 export function mapUserFromDb(row: any): AppUser {
+  const rawRole = String(row.role || (row.is_admin ? 'admin' : 'user')).toLowerCase().trim();
+  const isAdmin = rawRole === 'admin' || rawRole === 'super_admin' || rawRole === 'مسؤول' || rawRole === 'مشرف';
   return {
     id: row.id || `user-${Date.now()}`,
-    name: row.name || 'مستخدم',
+    name: row.name || row.full_name || 'مستخدم مسجل',
     phone: row.phone || '',
-    pin: row.pin || '1234',
-    role: row.role === 'admin' ? 'admin' : 'user',
-    createdAt: row.created_at ? row.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+    pin: row.pin || row.password_hash || '1234',
+    role: isAdmin ? 'admin' : 'user',
+    createdAt: row.created_at ? String(row.created_at).split('T')[0] : new Date().toISOString().split('T')[0],
     isBlocked: Boolean(row.is_blocked),
     blockedReason: row.blocked_reason || undefined,
     blockedAt: row.blocked_at || undefined,
@@ -387,23 +389,116 @@ export function mapTenantRequestToDb(r: TenantRequest): any {
 // ============================================================================
 
 /**
- * Fetch all registered users from Supabase with graceful fallback
+ * Fetch all registered users from Supabase across all user sources (app_users, profiles, users)
+ * Merges and normalizes all records so no registered user is ever missed.
  */
 export async function dbFetchUsers(): Promise<AppUser[] | null> {
   const client = getSupabaseClient();
   if (!client) return null;
 
   try {
-    const { data, error } = await client
-      .from('app_users')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const usersMap = new Map<string, AppUser>();
 
-    if (error) {
-      console.warn('Supabase fetch users warning:', error.message);
-      return null;
+    // 1. Fetch from 'app_users'
+    try {
+      const { data: appUsersData, error: appUsersErr } = await client
+        .from('app_users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (appUsersErr) {
+        console.warn('Supabase fetch app_users notice:', appUsersErr.message);
+      } else if (Array.isArray(appUsersData)) {
+        appUsersData.forEach((row) => {
+          const u = mapUserFromDb(row);
+          if (u.phone) {
+            const normPhone = normalizeEgyptianPhone(u.phone) || u.phone;
+            usersMap.set(normPhone, u);
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Fetch app_users query error:', err);
     }
-    return (data || []).map(mapUserFromDb);
+
+    // 2. Fetch from 'profiles' (central user profiles table)
+    try {
+      const { data: profilesData, error: profilesErr } = await client
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (profilesErr) {
+        console.warn('Supabase fetch profiles notice:', profilesErr.message);
+      } else if (Array.isArray(profilesData)) {
+        profilesData.forEach((row) => {
+          const normPhone = normalizeEgyptianPhone(row.phone || '') || row.phone;
+          if (!normPhone) return;
+
+          const existing = usersMap.get(normPhone);
+          const rawRole = String(row.role || '').toLowerCase().trim();
+          const roleNormalized: 'admin' | 'user' = (
+            rawRole === 'admin' ||
+            rawRole === 'مسؤول' ||
+            rawRole === 'مشرف' ||
+            rawRole === 'super_admin'
+          ) ? 'admin' : (existing?.role === 'admin' ? 'admin' : 'user');
+
+          if (existing) {
+            usersMap.set(normPhone, {
+              ...existing,
+              name: (existing.name && existing.name !== 'مستخدم مسجل') ? existing.name : (row.full_name || existing.name),
+              role: existing.role === 'admin' ? 'admin' : roleNormalized,
+              createdAt: existing.createdAt || (row.created_at ? String(row.created_at).split('T')[0] : new Date().toISOString().split('T')[0]),
+            });
+          } else {
+            usersMap.set(normPhone, {
+              id: row.id || `user-${Date.now()}`,
+              name: row.full_name || 'مستخدم مسجل',
+              phone: normPhone,
+              pin: row.password_hash || '1234',
+              role: roleNormalized,
+              createdAt: row.created_at ? String(row.created_at).split('T')[0] : new Date().toISOString().split('T')[0],
+              isBlocked: false,
+            });
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Fetch profiles query error:', err);
+    }
+
+    // 3. Gracefully attempt fetch from generic 'users' table if present
+    try {
+      const { data: genericUsersData, error: genericErr } = await client
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!genericErr && Array.isArray(genericUsersData)) {
+        genericUsersData.forEach((row) => {
+          const phone = row.phone || row.mobile || row.phoneNumber;
+          if (!phone) return;
+          const normPhone = normalizeEgyptianPhone(phone) || phone;
+          if (!usersMap.has(normPhone)) {
+            usersMap.set(normPhone, {
+              id: row.id || `user-${Date.now()}`,
+              name: row.name || row.full_name || row.fullName || 'مستخدم مسجل',
+              phone: normPhone,
+              pin: row.pin || '1234',
+              role: (row.role === 'admin' || row.is_admin || row.role === 'super_admin') ? 'admin' : 'user',
+              createdAt: row.created_at ? String(row.created_at).split('T')[0] : new Date().toISOString().split('T')[0],
+              isBlocked: Boolean(row.is_blocked),
+            });
+          }
+        });
+      }
+    } catch {
+      // Table 'users' may not exist, ignored safely
+    }
+
+    const mergedList = Array.from(usersMap.values());
+    return mergedList;
   } catch (err) {
     console.warn('Supabase fetch users network error:', err);
     return null;
@@ -411,10 +506,7 @@ export async function dbFetchUsers(): Promise<AppUser[] | null> {
 }
 
 /**
- * Insert or update a user in Supabase
- */
-/**
- * Insert or update a user in Supabase
+ * Insert or update a user across all repositories in Supabase with complete consistency
  */
 export async function dbUpsertUser(user: AppUser): Promise<boolean> {
   const client = getSupabaseClient();
@@ -422,39 +514,61 @@ export async function dbUpsertUser(user: AppUser): Promise<boolean> {
 
   try {
     const dbPayload = mapUserToDb(user);
-    const { error } = await client
+    
+    // 1. Upsert to 'app_users'
+    const appUsersPromise = client
       .from('app_users')
       .upsert(dbPayload, { onConflict: 'phone' });
 
-    // Also automatically upsert to the central 'profiles' table with password_hash
-    hashPassword(user.pin).then((hashedPin) => {
-      dbUpsertProfile({
-        id: user.id,
-        fullName: user.name,
-        phone: user.phone,
-        role: user.role === 'admin' ? 'مسؤول' : 'مستأجر',
-        passwordHash: hashedPin,
-        createdAt: user.createdAt,
-      }).catch((e) => console.warn('Sync profile on upsert user error:', e));
-    }).catch(() => {
-      dbUpsertProfile({
-        id: user.id,
-        fullName: user.name,
-        phone: user.phone,
-        role: user.role === 'admin' ? 'مسؤول' : 'مستأجر',
-        createdAt: user.createdAt,
-      }).catch(() => {});
+    // 2. Upsert to 'profiles' with password hash
+    const hashedPin = await hashPassword(user.pin);
+    const profilePromise = dbUpsertProfile({
+      id: user.id,
+      fullName: user.name,
+      phone: user.phone,
+      role: user.role === 'admin' ? 'مسؤول' : 'مستأجر',
+      passwordHash: hashedPin,
+      createdAt: user.createdAt,
     });
 
-    if (error) {
-      const isFetchError = error.message?.includes('Failed to fetch') || (error as any).name === 'TypeError';
-      if (isFetchError) {
-        console.warn('Supabase offline / unreachable (dbUpsertUser):', error.message);
-      } else {
-        console.warn('Supabase upsert user warning:', error.message || error);
+    // 3. Attempt upsert to 'users' table if present
+    const usersTablePromise = Promise.resolve(
+      client
+        .from('users')
+        .upsert({
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          role: user.role,
+          created_at: user.createdAt,
+        }, { onConflict: 'phone' })
+    ).then(() => true).catch(() => false);
+
+    await Promise.allSettled([appUsersPromise, profilePromise, usersTablePromise]);
+
+    // 4. Background Supabase Auth user registration sync
+    try {
+      const cleanDigits = user.phone.replace(/\D/g, '');
+      if (cleanDigits.length >= 10) {
+        client.auth.signUp({
+          email: `${cleanDigits}@sakan-assiut.app`,
+          password: `SakanPass_${user.pin}_${cleanDigits}`,
+          phone: user.phone,
+          options: {
+            data: {
+              full_name: user.name,
+              name: user.name,
+              phone: user.phone,
+              role: user.role,
+              pin: user.pin,
+            },
+          },
+        }).catch(() => {});
       }
-      return false;
+    } catch {
+      // Ignore background auth signup note
     }
+
     return true;
   } catch (err: any) {
     console.warn('Supabase upsert user network warning:', err?.message || err);

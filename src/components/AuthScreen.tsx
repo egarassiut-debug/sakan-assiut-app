@@ -334,14 +334,102 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-[#D6DEE5] relative z-10 animate-in fade-in zoom-in-95 duration-200">
         
-        {/* Header Branding */}
-        <div className="bg-[#124C46] p-6 text-center text-white relative">
+        {/* Header Branding with Floating Rotated Keywords */}
+        <div className="bg-[#124C46] p-6 text-center text-white relative overflow-hidden select-none">
           
           {/* Subtle gold accent divider */}
-          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[#D6A84F] to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[#D6A84F] to-transparent z-10" />
+
+          {/* Floating Rotated Keywords Background in the Green Header */}
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none select-none overflow-hidden z-0">
+            {/* بيع */}
+            <span 
+              className="absolute font-black text-white font-['Tajawal','Cairo',sans-serif] text-xl"
+              style={{ top: '12%', left: '8%', transform: 'rotate(-15deg)', opacity: 0.2 }}
+            >
+              بيع
+            </span>
+
+            {/* شراء */}
+            <span 
+              className="absolute font-black text-white font-['Tajawal','Cairo',sans-serif] text-lg"
+              style={{ top: '48%', left: '4%', transform: 'rotate(25deg)', opacity: 0.18 }}
+            >
+              شراء
+            </span>
+
+            {/* إيجار */}
+            <span 
+              className="absolute font-extrabold text-[#D6A84F] font-['Tajawal','Cairo',sans-serif] text-2xl"
+              style={{ top: '15%', right: '10%', transform: 'rotate(45deg)', opacity: 0.22 }}
+            >
+              إيجار
+            </span>
+
+            {/* شقة */}
+            <span 
+              className="absolute font-black text-white font-['Tajawal','Cairo',sans-serif] text-base"
+              style={{ top: '50%', right: '6%', transform: 'rotate(-25deg)', opacity: 0.2 }}
+            >
+              شقة
+            </span>
+
+            {/* أرض */}
+            <span 
+              className="absolute font-bold text-white font-['Tajawal','Cairo',sans-serif] text-sm"
+              style={{ top: '8%', left: '38%', transform: 'rotate(180deg)', opacity: 0.16 }}
+            >
+              أرض
+            </span>
+
+            {/* فيلا */}
+            <span 
+              className="absolute font-black text-[#D6A84F] font-['Tajawal','Cairo',sans-serif] text-lg"
+              style={{ bottom: '14%', right: '18%', transform: 'rotate(-15deg)', opacity: 0.22 }}
+            >
+              فيلا
+            </span>
+
+            {/* فندق */}
+            <span 
+              className="absolute font-black text-white font-['Tajawal','Cairo',sans-serif] text-base"
+              style={{ bottom: '16%', left: '16%', transform: 'rotate(35deg)', opacity: 0.18 }}
+            >
+              فندق
+            </span>
+
+            {/* Additional angled keywords for rich modern atmosphere around the logo */}
+            <span 
+              className="absolute font-extrabold text-white font-['Tajawal','Cairo',sans-serif] text-xs"
+              style={{ top: '30%', left: '26%', transform: 'rotate(-40deg)', opacity: 0.15 }}
+            >
+              شقة
+            </span>
+
+            <span 
+              className="absolute font-black text-[#D6A84F] font-['Tajawal','Cairo',sans-serif] text-xs"
+              style={{ top: '28%', right: '28%', transform: 'rotate(30deg)', opacity: 0.17 }}
+            >
+              أرض
+            </span>
+
+            <span 
+              className="absolute font-extrabold text-white font-['Tajawal','Cairo',sans-serif] text-sm"
+              style={{ bottom: '8%', right: '40%', transform: 'rotate(180deg)', opacity: 0.16 }}
+            >
+              بيع
+            </span>
+
+            <span 
+              className="absolute font-bold text-white font-['Tajawal','Cairo',sans-serif] text-xs"
+              style={{ top: '6%', right: '35%', transform: 'rotate(-10deg)', opacity: 0.15 }}
+            >
+              فندق
+            </span>
+          </div>
 
           {/* Official Sakan Logo Image */}
-          <div className="w-20 h-20 mx-auto rounded-3xl overflow-hidden ring-4 ring-[#D6A84F]/60 shadow-xl mb-3 bg-white flex items-center justify-center p-1.5 group hover:scale-105 transition-all">
+          <div className="w-20 h-20 mx-auto rounded-3xl overflow-hidden ring-4 ring-[#D6A84F]/60 shadow-xl mb-3 bg-white flex items-center justify-center p-1.5 group hover:scale-105 transition-all relative z-10">
             <img 
               src="/sakan-logo.png" 
               alt="شعار سكن أسيوط" 
@@ -350,11 +438,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             />
           </div>
 
-          <h1 className="text-2xl font-black text-white tracking-tight">
+          <h1 className="text-2xl font-black text-white tracking-tight relative z-10">
             سكن <span className="text-[#D6A84F]">أسيوط</span>
           </h1>
 
-          <div className="absolute top-4 left-4">
+          <div className="absolute top-4 left-4 z-10">
             <PWAInstallButton />
           </div>
         </div>

@@ -119,7 +119,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
       // Role match
-      if (roleFilter !== 'all' && u.role !== roleFilter) return false;
+      if (roleFilter === 'admin' && u.role !== 'admin') return false;
+      if (roleFilter === 'user' && u.role === 'admin') return false;
 
       // Status match
       if (statusFilter === 'active' && u.isBlocked) return false;

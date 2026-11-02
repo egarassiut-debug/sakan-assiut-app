@@ -23,28 +23,28 @@ interface KeywordItem {
 }
 
 const KEYWORDS_LIST: KeywordItem[] = [
-  // Top Perimeter (Above the central form)
-  { id: 'top-1', text: 'أسيوط', top: '3%', right: '10%', rotation: '-rotate-12', fontSize: 'text-2xl md:text-4xl', color: 'text-[#124C46]', weight: 'font-black' },
-  { id: 'top-2', text: 'بيع', top: '4%', left: '12%', rotation: 'rotate-15', fontSize: 'text-2xl md:text-3xl', color: 'text-[#D4AF37]', weight: 'font-extrabold' },
-  { id: 'top-3', text: 'شقق', top: '5%', right: '40%', rotation: '-rotate-6', fontSize: 'text-xl md:text-2xl', color: 'text-[#124C46]', weight: 'font-bold', visibility: 'hidden sm:block' },
-  { id: 'top-4', text: 'إيجار', top: '4%', left: '42%', rotation: 'rotate-12', fontSize: 'text-xl md:text-3xl', color: 'text-[#124C46]', weight: 'font-black', visibility: 'hidden sm:block' },
+  // Top Perimeter
+  { id: 'top-1', text: 'شقة', top: '3%', right: '8%', rotation: '-rotate-15', fontSize: 'text-2xl md:text-3xl', color: 'text-[#124C46]', weight: 'font-black' },
+  { id: 'top-2', text: 'بيع', top: '4%', left: '10%', rotation: 'rotate-25', fontSize: 'text-2xl md:text-4xl', color: 'text-[#D6A84F]', weight: 'font-extrabold' },
+  { id: 'top-3', text: 'فيلا', top: '5%', right: '35%', rotation: 'rotate-45', fontSize: 'text-xl md:text-2xl', color: 'text-[#124C46]', weight: 'font-bold', visibility: 'hidden sm:block' },
+  { id: 'top-4', text: 'إيجار', top: '4%', left: '38%', rotation: 'rotate-180', fontSize: 'text-xl md:text-3xl', color: 'text-[#124C46]', weight: 'font-black', visibility: 'hidden sm:block' },
 
-  // Right Flank (Out on the right margin - hidden on mobile so it never collides with login form)
-  { id: 'rf-1', text: 'عقارات', top: '22%', right: '4%', rotation: 'rotate-18', fontSize: 'text-2xl md:text-4xl', color: 'text-[#124C46]', weight: 'font-black', visibility: 'hidden md:block' },
-  { id: 'rf-2', text: 'تمليك', top: '40%', right: '3%', rotation: '-rotate-15', fontSize: 'text-2xl md:text-3xl', color: 'text-[#D4AF37]', weight: 'font-black', visibility: 'hidden md:block' },
-  { id: 'rf-3', text: 'أبراج', top: '58%', right: '5%', rotation: 'rotate-14', fontSize: 'text-2xl md:text-4xl', color: 'text-[#124C46]', weight: 'font-black', visibility: 'hidden md:block' },
-  { id: 'rf-4', text: 'استثمار', top: '75%', right: '4%', rotation: '-rotate-20', fontSize: 'text-xl md:text-3xl', color: 'text-[#D4AF37]', weight: 'font-bold', visibility: 'hidden md:block' },
+  // Right Flank
+  { id: 'rf-1', text: 'أرض', top: '22%', right: '4%', rotation: 'rotate-45', fontSize: 'text-2xl md:text-4xl', color: 'text-[#124C46]', weight: 'font-black', visibility: 'hidden md:block' },
+  { id: 'rf-2', text: 'فندق', top: '42%', right: '3%', rotation: '-rotate-15', fontSize: 'text-2xl md:text-3xl', color: 'text-[#D6A84F]', weight: 'font-black', visibility: 'hidden md:block' },
+  { id: 'rf-3', text: 'شراء', top: '62%', right: '5%', rotation: 'rotate-25', fontSize: 'text-2xl md:text-4xl', color: 'text-[#124C46]', weight: 'font-black', visibility: 'hidden md:block' },
+  { id: 'rf-4', text: 'شقة', top: '80%', right: '4%', rotation: 'rotate-180', fontSize: 'text-xl md:text-3xl', color: 'text-[#D6A84F]', weight: 'font-bold', visibility: 'hidden md:block' },
 
-  // Left Flank (Out on the left margin - hidden on mobile so it never collides with login form)
-  { id: 'lf-1', text: 'شراء', top: '24%', left: '4%', rotation: '-rotate-18', fontSize: 'text-2xl md:text-3xl', color: 'text-[#0D3D38]', weight: 'font-extrabold', visibility: 'hidden md:block' },
-  { id: 'lf-2', text: 'مفروش', top: '42%', left: '3%', rotation: 'rotate-15', fontSize: 'text-2xl md:text-4xl', color: 'text-[#D4AF37]', weight: 'font-black', visibility: 'hidden md:block' },
-  { id: 'lf-3', text: 'سكن', top: '60%', left: '5%', rotation: '-rotate-12', fontSize: 'text-2xl md:text-4xl', color: 'text-[#124C46]', weight: 'font-black', visibility: 'hidden md:block' },
-  { id: 'lf-4', text: 'أراضي', top: '78%', left: '4%', rotation: 'rotate-20', fontSize: 'text-xl md:text-3xl', color: 'text-[#124C46]', weight: 'font-extrabold', visibility: 'hidden md:block' },
+  // Left Flank
+  { id: 'lf-1', text: 'شراء', top: '24%', left: '4%', rotation: '-rotate-15', fontSize: 'text-2xl md:text-3xl', color: 'text-[#0D3D38]', weight: 'font-extrabold', visibility: 'hidden md:block' },
+  { id: 'lf-2', text: 'إيجار', top: '44%', left: '3%', rotation: 'rotate-25', fontSize: 'text-2xl md:text-4xl', color: 'text-[#D6A84F]', weight: 'font-black', visibility: 'hidden md:block' },
+  { id: 'lf-3', text: 'فيلا', top: '64%', left: '5%', rotation: 'rotate-45', fontSize: 'text-2xl md:text-4xl', color: 'text-[#124C46]', weight: 'font-black', visibility: 'hidden md:block' },
+  { id: 'lf-4', text: 'فندق', top: '82%', left: '4%', rotation: '-rotate-15', fontSize: 'text-xl md:text-3xl', color: 'text-[#124C46]', weight: 'font-extrabold', visibility: 'hidden md:block' },
 
-  // Bottom Perimeter (Below the central form)
-  { id: 'bot-1', text: 'معاينة', bottom: '3%', right: '14%', rotation: '-rotate-12', fontSize: 'text-xl md:text-2xl', color: 'text-[#0D3D38]', weight: 'font-bold' },
-  { id: 'bot-2', text: 'أسيوط', bottom: '3%', left: '16%', rotation: 'rotate-15', fontSize: 'text-2xl md:text-3xl', color: 'text-[#124C46]', weight: 'font-black' },
-  { id: 'bot-3', text: 'توثيق', bottom: '3%', right: '45%', rotation: '-rotate-8', fontSize: 'text-lg md:text-2xl', color: 'text-[#D4AF37]', weight: 'font-bold', visibility: 'hidden sm:block' },
+  // Bottom Perimeter
+  { id: 'bot-1', text: 'أرض', bottom: '3%', right: '12%', rotation: '-rotate-15', fontSize: 'text-xl md:text-2xl', color: 'text-[#0D3D38]', weight: 'font-bold' },
+  { id: 'bot-2', text: 'بيع', bottom: '3%', left: '14%', rotation: 'rotate-25', fontSize: 'text-2xl md:text-3xl', color: 'text-[#124C46]', weight: 'font-black' },
+  { id: 'bot-3', text: 'شقة', bottom: '3%', right: '42%', rotation: 'rotate-180', fontSize: 'text-lg md:text-2xl', color: 'text-[#D6A84F]', weight: 'font-bold', visibility: 'hidden sm:block' },
 ];
 
 export const FloatingBackgroundKeywords: React.FC = memo(() => {
@@ -52,7 +52,7 @@ export const FloatingBackgroundKeywords: React.FC = memo(() => {
     <div
       aria-hidden="true"
       className="fixed inset-0 pointer-events-none select-none overflow-hidden z-0"
-      style={{ opacity: 0.2 }}
+      style={{ opacity: 0.18 }}
     >
       {KEYWORDS_LIST.map((item) => (
         <span

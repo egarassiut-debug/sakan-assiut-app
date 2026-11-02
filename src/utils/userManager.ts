@@ -130,25 +130,35 @@ export async function syncUsersWithDatabase(): Promise<AppUser[]> {
   try {
     const dbUsers = await dbFetchUsers();
     if (dbUsers && Array.isArray(dbUsers)) {
-      // Merge DB users and local users by phone number
+      // Merge DB users and local users by normalized phone number
       const userMap = new Map<string, AppUser>();
       
       // Default fallback admins
-      DEFAULT_USERS_FALLBACK.forEach((u) => userMap.set(u.phone, u));
+      DEFAULT_USERS_FALLBACK.forEach((u) => {
+        const k = normalizeEgyptianPhone(u.phone) || u.phone;
+        userMap.set(k, u);
+      });
       
       // Local users
-      localUsers.forEach((u) => userMap.set(u.phone, u));
+      localUsers.forEach((u) => {
+        const k = normalizeEgyptianPhone(u.phone) || u.phone;
+        userMap.set(k, u);
+      });
       
       // DB users take precedence
-      dbUsers.forEach((u) => userMap.set(u.phone, u));
+      dbUsers.forEach((u) => {
+        const k = normalizeEgyptianPhone(u.phone) || u.phone;
+        userMap.set(k, u);
+      });
       
       const merged = Array.from(userMap.values());
       saveRegisteredUsers(merged);
 
       // Push any local-only users up to Supabase
-      const dbPhones = new Set(dbUsers.map((u) => u.phone));
+      const dbPhones = new Set(dbUsers.map((u) => normalizeEgyptianPhone(u.phone) || u.phone));
       for (const localUser of localUsers) {
-        if (!dbPhones.has(localUser.phone)) {
+        const localNorm = normalizeEgyptianPhone(localUser.phone) || localUser.phone;
+        if (!dbPhones.has(localNorm)) {
           dbUpsertUser(localUser).catch((e) => console.warn('Sync up user failed:', e));
         }
       }
@@ -162,26 +172,35 @@ export async function syncUsersWithDatabase(): Promise<AppUser[]> {
 }
 
 /**
- * Register or add a user with instant storage & background Supabase sync
+ * Register or add a user with instant storage & guaranteed Supabase sync
  */
 export async function registerNewUser(newUser: AppUser): Promise<AppUser[]> {
+  const normPhone = normalizeEgyptianPhone(newUser.phone) || newUser.phone;
+  const userPayload = { ...newUser, phone: normPhone };
   const current = getAllRegisteredUsers();
+
   // Check if exists
-  const existsIndex = current.findIndex((u) => u.phone === newUser.phone);
+  const existsIndex = current.findIndex((u) => {
+    const uNorm = normalizeEgyptianPhone(u.phone) || u.phone;
+    return uNorm === normPhone;
+  });
+
   let updated: AppUser[];
   if (existsIndex >= 0) {
     updated = [...current];
-    updated[existsIndex] = { ...updated[existsIndex], ...newUser };
+    updated[existsIndex] = { ...updated[existsIndex], ...userPayload };
   } else {
-    updated = [newUser, ...current];
+    updated = [userPayload, ...current];
   }
 
   saveRegisteredUsers(updated);
 
-  // Sync with Supabase in background
-  dbUpsertUser(newUser).catch((err) => {
-    console.warn('Background Supabase upsert user failed:', err);
-  });
+  // Sync with Supabase: ensure user record is written to all database tables immediately
+  try {
+    await dbUpsertUser(userPayload);
+  } catch (err) {
+    console.warn('Supabase upsert user failed on register:', err);
+  }
 
   return updated;
 }
