@@ -34,7 +34,6 @@ export interface AppSideDrawerProps {
   adminActiveSection?: AdminSectionId;
   onSelectAdminSection?: (section: AdminSectionId) => void;
   pendingModerationCount?: number;
-  pendingInspectionsCount?: number;
   blockedUsersCount?: number;
   onLogout?: () => void;
 }

@@ -320,12 +320,6 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
           bg: 'bg-red-950/90 text-red-300 border-red-800 shadow-xs',
           icon: <Ban className="w-3 h-3 text-red-400" />
         };
-      case 'inspection':
-        return { 
-          label: 'معاينة ميدانية', 
-          bg: 'bg-blue-950/80 text-blue-300 border-blue-800 shadow-xs',
-          icon: <Eye className="w-3 h-3 text-blue-400" />
-        };
       case 'admin_management':
         return { 
           label: 'إدارة المدراء', 
@@ -722,7 +716,6 @@ export const AdminRoleManagement: React.FC<AdminRoleManagementProps> = ({
                 <option value="approval">✅ اعتمادات العقارات والطلبات</option>
                 <option value="rejection">❌ رفض الإعلانات</option>
                 <option value="block">🚫 حظر المستخدمين (بلوك)</option>
-                <option value="inspection">👁️ المعاينات الميدانية</option>
                 <option value="admin_management">🛡️ إدارة المدراء</option>
                 <option value="category_update">⚙️ تحديث الفلاتر والقوائم</option>
               </select>

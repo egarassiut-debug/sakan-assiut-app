@@ -239,6 +239,147 @@ ON CONFLICT (version) DO UPDATE SET status = 'applied';
 NOTIFY pgrst, 'reload schema';
     `.trim(),
   },
+  {
+    version: '20261102_005',
+    name: 'deprecate_inspections_and_fees',
+    titleAr: 'تعطيل المعاينات والرسوم الميدانية وفك الارتباطات',
+    description: 'تحويل جدول المعاينات والرسوم لأرشيف تاريخي وفك كافة العلاقات مع جدول الإعلانات والتقييمات',
+    checksum: 'sha256_005_direct_listing_transition_v1',
+    isDestructive: false,
+    sql: `
+-- فك قيود المعاينات عن العقارات والتقييمات
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_scheduled_inspections_property') THEN
+        ALTER TABLE public.scheduled_inspections DROP CONSTRAINT fk_scheduled_inspections_property;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'scheduled_inspections_property_id_fkey') THEN
+        ALTER TABLE public.scheduled_inspections DROP CONSTRAINT scheduled_inspections_property_id_fkey;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_ratings_inspection') THEN
+        ALTER TABLE public.property_ratings DROP CONSTRAINT fk_ratings_inspection;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'property_ratings_inspection_id_fkey') THEN
+        ALTER TABLE public.property_ratings DROP CONSTRAINT property_ratings_inspection_id_fkey;
+    END IF;
+END $$;
+
+-- فك اشتراط المعاينة في التقييمات
+ALTER TABLE public.property_ratings ALTER COLUMN inspection_id DROP NOT NULL;
+ALTER TABLE public.property_ratings ALTER COLUMN inspection_id SET DEFAULT NULL;
+
+-- ترقية جدول الإعلانات للتواصل المباشر
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS contact_phone TEXT;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS whatsapp_phone TEXT;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS is_mediation_requested BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+UPDATE public.properties
+SET contact_phone = COALESCE(contact_phone, owner_phone),
+    whatsapp_phone = COALESCE(whatsapp_phone, contact_phone, owner_phone)
+WHERE contact_phone IS NULL OR whatsapp_phone IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_properties_contact_phone ON public.properties(contact_phone);
+CREATE INDEX IF NOT EXISTS idx_properties_whatsapp_phone ON public.properties(whatsapp_phone);
+
+-- تأمين وتعطيل جدول المعاينات كأرشيف تاريخي للقراءة فقط
+ALTER TABLE public.scheduled_inspections ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Archived read only for staff" ON public.scheduled_inspections;
+DROP POLICY IF EXISTS "Prevent all inserts on scheduled_inspections" ON public.scheduled_inspections;
+DROP POLICY IF EXISTS "Prevent all updates on scheduled_inspections" ON public.scheduled_inspections;
+
+CREATE POLICY "Archived read only for staff" ON public.scheduled_inspections FOR SELECT USING (public.is_staff() = true);
+CREATE POLICY "Prevent all inserts on scheduled_inspections" ON public.scheduled_inspections FOR INSERT WITH CHECK (false);
+CREATE POLICY "Prevent all updates on scheduled_inspections" ON public.scheduled_inspections FOR UPDATE USING (false);
+
+-- تأمين وتعطيل جدول الرسوم الميدانية
+CREATE TABLE IF NOT EXISTS public.fee_records (
+    id TEXT PRIMARY KEY,
+    property_id TEXT,
+    property_code TEXT,
+    payer_name TEXT,
+    payer_phone TEXT,
+    amount NUMERIC DEFAULT 50,
+    status TEXT DEFAULT 'archived',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.fee_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Archived read only for staff on fee_records" ON public.fee_records;
+DROP POLICY IF EXISTS "Prevent all inserts on fee_records" ON public.fee_records;
+DROP POLICY IF EXISTS "Prevent all updates on fee_records" ON public.fee_records;
+
+CREATE POLICY "Archived read only for staff on fee_records" ON public.fee_records FOR SELECT USING (public.is_staff() = true);
+CREATE POLICY "Prevent all inserts on fee_records" ON public.fee_records FOR INSERT WITH CHECK (false);
+CREATE POLICY "Prevent all updates on fee_records" ON public.fee_records FOR UPDATE USING (false);
+
+NOTIFY pgrst, 'reload schema';
+    `.trim(),
+  },
+  {
+    version: '20261102_006',
+    name: 'purge_inspections_and_fee_records_permanently',
+    titleAr: 'الحذف النهائي لجداول المعاينات ورسوم المعاينة القديمة',
+    description: 'حذف جداول scheduled_inspections و fee_records نهائياً وفك كافة العلاقات مع الحفاظ على التقييمات والإعلانات والمستخدمين',
+    checksum: 'sha256_006_permanent_purge_inspections_fees_v1',
+    isDestructive: true,
+    sql: `
+-- 1. فك القيود الأجنبية عن جدول التقييمات وجدول المعاينات القديم
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_ratings_inspection') THEN
+        ALTER TABLE public.property_ratings DROP CONSTRAINT fk_ratings_inspection;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'property_ratings_inspection_id_fkey') THEN
+        ALTER TABLE public.property_ratings DROP CONSTRAINT property_ratings_inspection_id_fkey;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_scheduled_inspections_property') THEN
+        ALTER TABLE public.scheduled_inspections DROP CONSTRAINT fk_scheduled_inspections_property;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'scheduled_inspections_property_id_fkey') THEN
+        ALTER TABLE public.scheduled_inspections DROP CONSTRAINT scheduled_inspections_property_id_fkey;
+    END IF;
+END $$;
+
+-- 2. تحرير عمود inspection_id في جدول التقييمات ليظل اختيارياً دون فرض أي شرط
+ALTER TABLE public.property_ratings ALTER COLUMN inspection_id DROP NOT NULL;
+ALTER TABLE public.property_ratings ALTER COLUMN inspection_id SET DEFAULT NULL;
+
+-- 3. إزالة جدول المعاينات من منشورات الـ Realtime إن وُجدت
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND tablename = 'scheduled_inspections'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime DROP TABLE public.scheduled_inspections;
+    END IF;
+END $$;
+
+-- 4. الحذف النهائي لجداول المعاينات والرسوم
+DROP TABLE IF EXISTS public.scheduled_inspections;
+DROP TABLE IF EXISTS public.fee_records;
+
+-- 5. حذف الأعمدة الملغاة من جدول properties
+ALTER TABLE public.properties DROP COLUMN IF EXISTS fee;
+ALTER TABLE public.properties DROP COLUMN IF EXISTS inspection_date;
+
+-- 6. تثبيت أعمدة التواصل المباشر والفهارس
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS contact_phone TEXT;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS whatsapp_phone TEXT;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS is_mediation_requested BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+UPDATE public.properties
+SET contact_phone = COALESCE(contact_phone, owner_phone),
+    whatsapp_phone = COALESCE(whatsapp_phone, contact_phone, owner_phone)
+WHERE contact_phone IS NULL OR whatsapp_phone IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_properties_contact_phone ON public.properties(contact_phone);
+CREATE INDEX IF NOT EXISTS idx_properties_whatsapp_phone ON public.properties(whatsapp_phone);
+
+NOTIFY pgrst, 'reload schema';
+    `.trim(),
+  },
 ];
 
 /**

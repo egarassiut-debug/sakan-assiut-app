@@ -7,7 +7,6 @@ export type AdminActionType =
   | 'approval'
   | 'rejection'
   | 'block'
-  | 'inspection'
   | 'admin_management'
   | 'user_management'
   | 'category_update'
@@ -64,7 +63,6 @@ export const SYSTEM_ROLES_CATALOG: CustomRoleDefinition[] = [
     permissions: [
       'moderation',
       'screenshot_converter',
-      'inspections',
       'dropdowns',
       'analytics',
       'users',
@@ -87,7 +85,6 @@ export const SYSTEM_ROLES_CATALOG: CustomRoleDefinition[] = [
     permissions: [
       'moderation',
       'screenshot_converter',
-      'inspections',
       'dropdowns',
       'analytics',
       'users',
@@ -102,13 +99,12 @@ export const SYSTEM_ROLES_CATALOG: CustomRoleDefinition[] = [
     id: 'reviewer',
     name: 'مراجع العقارات والطلبات',
     badge: 'مراجع معتمد',
-    description: 'مراجعة وتدقيق عروض الإيجار وطلبات المستأجرين واستخدام المحول الذكي والمعاينات',
+    description: 'مراجعة وتدقيق عروض الإيجار وطلبات المستأجرين واستخدام المحول الذكي',
     color: 'bg-blue-100 text-blue-800 border-blue-300',
     iconName: 'CheckCircle2',
     permissions: [
       'moderation',
       'screenshot_converter',
-      'inspections',
     ],
     isSystem: true,
   },
@@ -116,12 +112,11 @@ export const SYSTEM_ROLES_CATALOG: CustomRoleDefinition[] = [
     id: 'support',
     name: 'الدعم الفني وخدمة العملاء',
     badge: 'خدمة عملاء',
-    description: 'متابعة سجلات البلوكات، المعاينات الميدانية، وحل مشكلات حسابات المستخدمين',
+    description: 'متابعة سجلات البلوكات وحل مشكلات حسابات المستخدمين والتواصل المباشر',
     color: 'bg-amber-100 text-amber-800 border-amber-300',
     iconName: 'Headset',
     permissions: [
       'blocks',
-      'inspections',
     ],
     isSystem: true,
   },
@@ -157,13 +152,13 @@ export const INITIAL_CUSTOM_ROLES: CustomRoleDefinition[] = [
   },
   {
     id: 'field_coordinator',
-    name: 'منسق المعاينات والميدان',
-    badge: 'منسق ميداني',
-    description: 'إدارة وتأكيد مواعيد المعاينات الميدانية للوحدات ومتابعة أحياء أسيوط والخدمات',
+    name: 'منسق المحتوى والتصوير الميداني',
+    badge: 'منسق محتوى',
+    description: 'متابعة جودة تصوير العقارات وبيانات الإعلانات المباشرة ومتابعة أحياء أسيوط والخدمات',
     color: 'bg-teal-100 text-teal-800 border-teal-300',
-    iconName: 'Calendar',
+    iconName: 'Camera',
     permissions: [
-      'inspections',
+      'moderation',
       'dropdowns',
     ],
     isSystem: false,
@@ -176,7 +171,6 @@ export const ROLE_PERMISSIONS: Record<string, AdminSectionId[]> = {
   super_admin: [
     'moderation',
     'screenshot_converter',
-    'inspections',
     'dropdowns',
     'analytics',
     'users',
@@ -189,7 +183,6 @@ export const ROLE_PERMISSIONS: Record<string, AdminSectionId[]> = {
   admin: [
     'moderation',
     'screenshot_converter',
-    'inspections',
     'dropdowns',
     'analytics',
     'users',
@@ -200,11 +193,9 @@ export const ROLE_PERMISSIONS: Record<string, AdminSectionId[]> = {
   reviewer: [
     'moderation',
     'screenshot_converter',
-    'inspections',
   ],
   support: [
     'blocks',
-    'inspections',
   ],
   user: [],
 };

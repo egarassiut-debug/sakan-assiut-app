@@ -581,12 +581,12 @@ export const RoleClassificationManagement: React.FC<RoleClassificationManagement
                         // Suggest English key from common patterns
                         const val = e.target.value.trim();
                         if (val.includes('تسويق')) setRoleCode('marketing_officer');
-                        else if (val.includes('معاين')) setRoleCode('inspection_coordinator');
+                        else if (val.includes('محتو') || val.includes('تصوير')) setRoleCode('content_coordinator');
                         else if (val.includes('مالي') || val.includes('حساب')) setRoleCode('finance_auditor');
                         else if (val.includes('خدم') || val.includes('عملاء')) setRoleCode('customer_care');
                       }
                     }}
-                    placeholder="مثال: منسق المعاينات والتسويق"
+                    placeholder="مثال: منسق المحتوى والتسويق"
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-[#124C46] focus:bg-white transition-all font-medium"
                     required
                   />

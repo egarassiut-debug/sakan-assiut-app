@@ -151,11 +151,22 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     ''
   );
   const [contactPhone, setContactPhone] = useState(
+    editingProperty?.contactPhone || 
     editingProperty?.ownerPhone || 
     editingTenantRequest?.tenantPhone || 
     initialDraft?.contactPhone || 
     currentUser?.phone || 
     ''
+  );
+  const [whatsappPhone, setWhatsappPhone] = useState(
+    editingProperty?.whatsappPhone || 
+    initialDraft?.whatsappPhone || 
+    editingProperty?.ownerPhone || 
+    currentUser?.phone || 
+    ''
+  );
+  const [isMediationRequested, setIsMediationRequested] = useState<boolean>(
+    editingProperty?.isMediationRequested ?? false
   );
   const [uploadedImages, setUploadedImages] = useState<string[]>(editingProperty?.images || []);
   const [hasAgreedDeclaration, setHasAgreedDeclaration] = useState(Boolean(editingProperty || editingTenantRequest));
@@ -331,10 +342,6 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const maxArea = editingTenantRequest?.maxArea ?? '';
   const urgency = editingTenantRequest?.urgency || 'within_month';
 
-  // Admin-specific state for 3rd-party coordination
-  const [fee, setFee] = useState<number | ''>(editingProperty?.fee ?? '');
-  const [inspectionDate, setInspectionDate] = useState<string>(editingProperty?.inspectionDate ?? '');
-
   // Land detection
   const isLand = propertyType.includes('أرض') || propertyType.includes('فضاء');
 
@@ -370,7 +377,6 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     setDistrict('');
     setLegalStatus('');
     setSelectedPaymentMethods([]);
-    setFee('');
   };
 
   // تأثير الحفظ التلقائي عند كتابة أو تعديل أي بيان داخل النموذج
@@ -423,8 +429,6 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           selectedUtilities,
           minPrice,
           maxPrice,
-          fee,
-          inspectionDate,
           savedAt: timeStr,
         };
         safeSaveDraft(draftStorageKey, draftObj);
@@ -462,8 +466,6 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     selectedUtilities,
     minPrice,
     maxPrice,
-    fee,
-    inspectionDate,
     currentUser,
   ]);
 
@@ -734,11 +736,12 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         paymentMethods: isLand ? ['كاش فوري (للبيع)'] : selectedPaymentMethods,
         ownerName: contactName.trim() || 'مالك العقار',
         ownerPhone: cleanContactPhone,
+        contactPhone: cleanContactPhone,
+        whatsappPhone: whatsappPhone ? normalizeEgyptianPhone(whatsappPhone) : cleanContactPhone,
+        isMediationRequested: isMediationRequested,
         source: isAdmin ? 'إدارة المنظومة (نشر مباشر)' : 'مالك مباشر',
         images: uploadedImages.length > 0 ? uploadedImages : [DEFAULT_SAKAN_PLACEHOLDER],
         createdByAdmin: isAdmin,
-        fee: isAdmin && fee ? Number(fee) : undefined,
-        inspectionDate: isAdmin && inspectionDate ? inspectionDate : undefined,
         createdAt: todayDate,
         viewsCount: 1,
       };
@@ -1742,11 +1745,11 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                  <span>رقم الهاتف (واتساب / اتصال)*</span>
+                  <span>رقم الهاتف للاتصال المباشر*</span>
                   <FieldInfoTooltip
                     fieldKey="contactPhone"
                     title="رقم الهاتف"
-                    hint="رقم الهاتف الصحيح والمفعل بالواتساب يضمن استقبال إشعارات المطابقة الذكية ومواعيد المعاينات فور اعتماد إعلانك."
+                    hint="رقم الهاتف الأساسي لتلقي المكالمات المباشرة من المهتمين بالعقار فور اعتماده ونشره مجاناً."
                   />
                 </label>
                 <div className="relative">
@@ -1758,7 +1761,12 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     value={contactPhone}
                     onChange={(e) => {
                       const norm = normalizeEgyptianPhone(e.target.value);
-                      if (norm.length <= 11) setContactPhone(norm);
+                      if (norm.length <= 11) {
+                        setContactPhone(norm);
+                        if (!whatsappPhone || whatsappPhone === contactPhone) {
+                          setWhatsappPhone(norm);
+                        }
+                      }
                       if (invalidField === 'phone') setInvalidField(null);
                     }}
                     placeholder="01012345678"
@@ -1791,6 +1799,38 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               </div>
             </div>
 
+            {/* رقم واتساب المباشر وخيار الوساطة الاختيارية */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">رقم واتساب للتواصل المباشر</label>
+                <input
+                  type="tel"
+                  dir="ltr"
+                  value={whatsappPhone}
+                  onChange={(e) => {
+                    const norm = normalizeEgyptianPhone(e.target.value);
+                    if (norm.length <= 11) setWhatsappPhone(norm);
+                  }}
+                  placeholder="01012345678 (واتساب)"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-bold text-slate-800 text-right focus:ring-1 focus:ring-[#124C46]"
+                />
+              </div>
+
+              {isOffer && (
+                <div className="flex items-center">
+                  <label className="flex items-center gap-2 p-2.5 rounded-xl border border-[#D6DEE5] bg-[#F5F9F8] hover:bg-[#EAF3EF] cursor-pointer text-xs font-semibold text-[#124C46] transition-colors w-full select-none">
+                    <input
+                      type="checkbox"
+                      checked={isMediationRequested}
+                      onChange={(e) => setIsMediationRequested(e.target.checked)}
+                      className="w-4 h-4 rounded text-[#124C46] focus:ring-[#124C46] accent-[#124C46]"
+                    />
+                    <span>أرغب في مساعدة إدارة سكن أسيوط في التواصل (اختياري)</span>
+                  </label>
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
                 <span>ملاحظات وتفاصيل إضافية</span>
@@ -1821,41 +1861,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               </div>
             )}
 
-            {/* Admin Financial & Inspection Coordination */}
-            {isAdmin && (
-              <div className="bg-amber-50/80 p-4 rounded-2xl border-2 border-amber-300 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                    بيانات المعاينة الميدانية والرسوم (إدارة المنظومة)
-                  </span>
-                  <span className="text-[10px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded-full shadow-2xs">
-                    نشر مباشر ومعتمد فوراً
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-black text-slate-700 mb-1">رسوم المعاينة (ج.م)</label>
-                    <input
-                      type="number"
-                      value={fee}
-                      onChange={(e) => setFee(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder="200"
-                      className="w-full p-2.5 text-xs bg-white rounded-xl border border-amber-300 font-mono font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-black text-slate-700 mb-1">تاريخ المعاينة الميدانية</label>
-                    <input
-                      type="date"
-                      value={inspectionDate}
-                      onChange={(e) => setInspectionDate(e.target.value)}
-                      className="w-full p-2.5 text-xs bg-white rounded-xl border border-amber-300 font-bold"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+
 
             {/* Legal Declaration (إقرار الملكية والصحة) */}
             {isOffer && (

@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Property, PropertyRating, ScheduledInspection, AppUser } from '../types/property';
+import { Property, PropertyRating, AppUser } from '../types/property';
 import { 
   X, Star, ShieldCheck, AlertCircle, CheckCircle2, 
-  Calendar, Lock, Sparkles, UserCheck, Clock, ThumbsUp 
+  Sparkles, ThumbsUp, MessageSquare, Lock
 } from 'lucide-react';
 import { normalizeEgyptianPhone } from '../utils/phoneValidator';
 
@@ -11,16 +11,14 @@ interface PropertyRatingModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: AppUser | null;
-  inspections: ScheduledInspection[];
   propertyRatings: PropertyRating[];
   onSubmitRating: (ratingData: {
     propertyId: string;
     propertyCode: string;
     score: number;
     comment: string;
-    inspectionId: string;
+    inspectionId?: string;
   }) => void;
-  onRequestInspection?: (property: Property) => void;
 }
 
 const RATING_LABELS: Record<number, string> = {
@@ -36,10 +34,8 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
   isOpen,
   onClose,
   currentUser,
-  inspections,
   propertyRatings,
   onSubmitRating,
-  onRequestInspection,
 }) => {
   const [selectedScore, setSelectedScore] = useState<number>(5);
   const [hoverScore, setHoverScore] = useState<number | null>(null);
@@ -53,7 +49,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
     return propertyRatings.filter((r) => r.propertyId === property.id);
   }, [propertyRatings, property]);
 
-  // Average score and stats
+  // Average score and distribution stats
   const { averageScore, totalCount, distribution } = useMemo(() => {
     if (relevantRatings.length === 0) {
       return { averageScore: 0, totalCount: 0, distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } };
@@ -67,55 +63,29 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
     return { averageScore: avg, totalCount: relevantRatings.length, distribution: dist };
   }, [relevantRatings]);
 
-  // Check eligibility: user must have sent inspection, paid fees, and completed inspection
-  const { isEligible, eligibleInspection, userExistingRating, userInspectionStatus } = useMemo(() => {
+  // Direct listing eligibility: any logged-in user who isn't the advertiser
+  const { isEligible, isOwner, userExistingRating } = useMemo(() => {
     if (!currentUser || !property) {
-      return { isEligible: false, eligibleInspection: null, userExistingRating: null, userInspectionStatus: null };
+      return { isEligible: false, isOwner: false, userExistingRating: null };
     }
 
     const userPhoneNorm = normalizeEgyptianPhone(currentUser.phone);
-
-    // Look for any inspection by this user for this property
-    const userInspections = inspections.filter(
-      (insp) =>
-        insp.propertyId === property.id &&
-        (normalizeEgyptianPhone(insp.tenantPhone) === userPhoneNorm ||
-          (currentUser.phone === '01012345678' && insp.tenantPhone.includes('01012345678')))
-    );
-
-    // Specifically find an inspection that is completed AND fees paid
-    const completedPaid = userInspections.find(
-      (insp) => insp.status === 'completed' && insp.feePaid === true
-    );
+    const ownerPhoneNorm = normalizeEgyptianPhone(property.ownerPhone || property.contactPhone || '');
+    const isPropertyOwner = Boolean(userPhoneNorm && ownerPhoneNorm && userPhoneNorm === ownerPhoneNorm);
 
     // Check if user already submitted a rating
     const existing = relevantRatings.find(
       (r) =>
         r.userId === currentUser.id ||
-        normalizeEgyptianPhone(r.userPhone) === userPhoneNorm
+        (userPhoneNorm && normalizeEgyptianPhone(r.userPhone) === userPhoneNorm)
     );
 
-    let statusDescription: string | null = null;
-    if (userInspections.length > 0 && !completedPaid) {
-      const latest = userInspections[0];
-      if (latest.status === 'pending') {
-        statusDescription = 'طلب المعاينة الخاص بك قيد المراجعة لدى الإدارة ولم يتم تأكيده أو سداد رسومه بعد.';
-      } else if (latest.status === 'confirmed' && !latest.feePaid) {
-        statusDescription = 'تم تأكيد موعد المعاينة، لكن يلزم سداد رسوم المعاينة المقررة (50 ج.م) وإتمام الزيارة الميدانية لتتمكن من التقييم.';
-      } else if (latest.status === 'confirmed' && latest.feePaid) {
-        statusDescription = 'تم سداد الرسوم بانتظار إتمام المعاينة الميدانية مع مندوب الإدارة.';
-      } else if (latest.status === 'cancelled') {
-        statusDescription = 'تم إلغاء طلب المعاينة السابق لهذا العقار.';
-      }
-    }
-
     return {
-      isEligible: Boolean(completedPaid),
-      eligibleInspection: completedPaid || null,
+      isEligible: !isPropertyOwner,
+      isOwner: isPropertyOwner,
       userExistingRating: existing || null,
-      userInspectionStatus: statusDescription,
     };
-  }, [currentUser, property, inspections, relevantRatings]);
+  }, [currentUser, property, relevantRatings]);
 
   // Pre-fill existing user rating if any
   useEffect(() => {
@@ -128,7 +98,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
     }
   }, [userExistingRating, isOpen]);
 
-  // If eligible and has no previous ratings, default to 'rate' tab
+  // If eligible and has no previous ratings and list is empty, default to 'rate' tab
   useEffect(() => {
     if (isOpen) {
       if (isEligible && !userExistingRating && relevantRatings.length === 0) {
@@ -151,8 +121,8 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
       return;
     }
 
-    if (!isEligible || !eligibleInspection) {
-      setErrorMsg('التقييم محجوز ومتاح حصرياً للمستأجرين الذين أتموا المعاينة الميدانية وسددوا رسومها رسمياً لدى المنظومة.');
+    if (isOwner) {
+      setErrorMsg('لا يمكنك تقييم إعلانك الخاص حرصاً على مصداقية المنصة.');
       return;
     }
 
@@ -161,7 +131,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
       propertyCode: property.code,
       score: selectedScore,
       comment: comment.trim(),
-      inspectionId: eligibleInspection.id,
+      inspectionId: userExistingRating?.inspectionId,
     });
 
     onClose();
@@ -188,7 +158,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <h3 className="text-sm sm:text-base font-bold text-[#24313D]">
-                  تقييمات المعاينة الموثقة
+                  تقييمات ومراجعات الإعلان
                 </h3>
                 <span className="text-[10px] bg-[#EAF3EF] text-[#124C46] font-bold px-2 py-0.5 rounded-md border border-[#124C46]/20">
                   كود: {property.code}
@@ -235,10 +205,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5 text-[#16856B]" />
-            <span>{userExistingRating ? 'تعديل تقييمي' : 'تسجيل تقييم موثق'}</span>
-            {isEligible && (
-              <span className="w-2 h-2 rounded-full bg-[#16856B] animate-pulse" />
-            )}
+            <span>{userExistingRating ? 'تعديل تقييمي' : 'تسجيل تقييم جديد'}</span>
           </button>
         </div>
 
@@ -267,7 +234,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                       ))}
                     </div>
                     <div className="text-xs text-[#5D6B78] font-semibold mt-0.5">
-                      بناءً على {totalCount} تقييم ميداني موثق
+                      بناءً على {totalCount} تقييم من مستخدمي المنصة
                     </div>
                   </div>
                 </div>
@@ -293,11 +260,11 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                 </div>
               </div>
 
-              {/* Verified Anti-Fraud Notice Badge */}
+              {/* Transparency Notice */}
               <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-[#EAF3EF] border border-[#124C46]/20 text-xs text-[#124C46]">
                 <ShieldCheck className="w-4 h-4 text-[#124C46] shrink-0 mt-0.5" />
                 <div className="leading-relaxed">
-                  <strong>نظام النزاهة ومنع التقييمات الوهمية:</strong> جميع التقييمات المعروضة هنا صادرة حصرياً عن مستأجرين أرسلوا طلبات معاينة رسمية وسددوا رسوم المعاينة وتمت الزيارة الميدانية بالفعل بإشراف المنظومة.
+                  <strong>نظام التقييم المباشر:</strong> تقييمات موثقة من حسابات مستخدمين حقيقيين ومسجلين لمساعدتك في اتخاذ القرار السليم والتأكد من مطابقة المواصفات والأسعار.
                 </div>
               </div>
 
@@ -307,32 +274,20 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                   <div className="w-12 h-12 rounded-full bg-[#F5F9F8] text-slate-400 flex items-center justify-center mx-auto border border-[#D6DEE5]">
                     <Star className="w-6 h-6 text-slate-300" />
                   </div>
-                  <h4 className="font-bold text-[#24313D] text-sm">لا توجد تقييمات مسجلة بعد لهذا العقار</h4>
+                  <h4 className="font-bold text-[#24313D] text-sm">لا توجد تقييمات مسجلة بعد لهذا الإعلان</h4>
                   <p className="text-xs text-[#5D6B78] max-w-xs mx-auto">
-                    كن أول من يقيّم هذا العقار بعد حجز وإتمام المعاينة الميدانية الرسمية وسداد رسومها.
+                    كن أول من يقيّم هذا الإعلان ويشارك تجربته مع زملائه الباحثين في أسيوط.
                   </p>
-                  {isEligible ? (
+                  {isEligible && (
                     <button
                       type="button"
                       onClick={() => setActiveTab('rate')}
                       className="px-4 py-2 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-1.5 mt-1"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>أنت مؤهل! أضف تقييمك الآن</span>
+                      <span>أضف تقييمك الآن</span>
                     </button>
-                  ) : onRequestInspection ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        onRequestInspection(property);
-                      }}
-                      className="px-4 py-2 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-1.5 mt-1"
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>طلب معاينة ميدانية للعقار</span>
-                    </button>
-                  ) : null}
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -344,14 +299,14 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-full bg-[#EAF3EF] text-[#124C46] flex items-center justify-center text-xs font-bold">
-                            {rating.userName.charAt(0)}
+                            {rating.userName?.charAt(0) || 'م'}
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-xs text-[#24313D]">{rating.userName}</span>
+                              <span className="font-bold text-xs text-[#24313D]">{rating.userName || 'مستخدم مسكن أسيوط'}</span>
                               <span className="inline-flex items-center gap-0.5 text-[9px] bg-[#E4F4EC] text-[#16856B] border border-[#16856B]/30 px-1.5 py-0.2 rounded-full font-bold">
-                                <UserCheck className="w-2.5 h-2.5 text-[#16856B]" />
-                                <span>معاينة موثقة</span>
+                                <CheckCircle2 className="w-2.5 h-2.5 text-[#16856B]" />
+                                <span>حساب موثق</span>
                               </span>
                             </div>
                             <span className="text-[10px] text-slate-400 font-mono">{rating.createdAt}</span>
@@ -396,50 +351,20 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                     تسجيل الدخول مطلوب
                   </h4>
                   <p className="text-xs text-[#5D6B78] max-w-sm mx-auto leading-relaxed">
-                    لحماية النظام من التقييمات العشوائية، يجب تسجيل الدخول برقم هاتفك أولاً للتحقق من سجل المعاينات الميدانية وسداد الرسوم.
+                    لحماية النظام من التقييمات العشوائية والتأكد من نزاهة المنصة، يرجى تسجيل الدخول بحسابك برقم الهاتف لتسجيل تقييمك ورأيك.
                   </p>
                 </div>
-              ) : !isEligible ? (
-                <div className="space-y-4">
-                  <div className="bg-[#FFF3D6] border border-[#D6A84F]/40 rounded-3xl p-5 sm:p-6 text-center space-y-3">
-                    <div className="w-14 h-14 rounded-2xl bg-[#D6A84F]/20 text-[#8B641C] flex items-center justify-center mx-auto shadow-2xs">
-                      <Lock className="w-7 h-7 text-[#8B641C]" />
-                    </div>
-                    <h4 className="font-black text-[#24313D] text-sm sm:text-base">
-                      خاصية التقييم محجوزة للمعاينات الفعلية
-                    </h4>
-                    <p className="text-xs text-[#5D6B78] max-w-md mx-auto leading-relaxed">
-                      تنفيذاً لسياسة النزاهة وحماية ملاك ومستأجري أسيوط، <strong>لا يُسمح بالتقييم إلا للمستخدمين الذين أرسلوا طلب معاينة وسددوا رسوم المعاينة الرسمية (50 ج.م) وتمت المعاينة الميدانية بالفعل</strong>.
-                    </p>
-
-                    {userInspectionStatus ? (
-                      <div className="bg-white border border-[#D6A84F]/40 p-3 rounded-2xl text-xs text-[#8B641C] font-bold flex items-center gap-2 text-right">
-                        <Clock className="w-4 h-4 text-[#8B641C] shrink-0" />
-                        <span>{userInspectionStatus}</span>
-                      </div>
-                    ) : (
-                      <div className="bg-white border border-[#D6DEE5] p-3 rounded-2xl text-xs text-[#5D6B78] flex items-center justify-between text-right">
-                        <span>رقم هاتفك المسجل: <strong dir="ltr" className="text-[#24313D] font-mono">{currentUser.phone}</strong></span>
-                        <span className="text-[11px] text-[#A96F0B] font-bold">لا يوجد سجل معاينة مكتملة</span>
-                      </div>
-                    )}
-
-                    {onRequestInspection && (
-                      <div className="pt-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onClose();
-                            onRequestInspection(property);
-                          }}
-                          className="px-5 py-2.5 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer inline-flex items-center gap-1.5"
-                        >
-                          <Calendar className="w-4 h-4" />
-                          <span>طلب معاينة ميدانية رسمية لهذا العقار</span>
-                        </button>
-                      </div>
-                    )}
+              ) : isOwner ? (
+                <div className="py-8 text-center space-y-3 bg-[#FFF3D6] border border-[#D6A84F]/40 rounded-3xl p-6">
+                  <div className="w-14 h-14 rounded-2xl bg-[#D6A84F]/20 text-[#8B641C] flex items-center justify-center mx-auto shadow-2xs">
+                    <AlertCircle className="w-7 h-7 text-[#8B641C]" />
                   </div>
+                  <h4 className="font-black text-[#24313D] text-sm sm:text-base">
+                    هذا إعلانك الخاص
+                  </h4>
+                  <p className="text-xs text-[#5D6B78] max-w-sm mx-auto leading-relaxed">
+                    حفاظاً على الشفافية والمصداقية، لا يمكن للمعلن تقييم إعلانه الخاص. التقييم متاح لباقي مستخدمي وباحثي المنصة.
+                  </p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -450,31 +375,27 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                       </div>
                       <div>
                         <div className="text-xs font-bold text-[#16856B] flex items-center gap-1.5">
-                          <span>معاينة مكتملة ومسددة الرسوم رسمياً</span>
+                          <span>تقييم مباشر موثق بالحساب</span>
                           <span className="text-[9px] bg-[#16856B] text-white px-1.5 py-0.2 rounded-md">موثق ✓</span>
                         </div>
                         <div className="text-[11px] text-[#16856B] font-medium">
-                          العميل: {currentUser.name} • كود المعاينة: {eligibleInspection?.id}
+                          المستخدم: {currentUser.name} ({currentUser.phone})
                         </div>
                       </div>
-                    </div>
-
-                    <div className="text-left text-[11px] font-mono text-[#16856B] bg-white px-2 py-1 rounded-lg border border-[#16856B]/30">
-                      رسوم مسددة 50 ج.م
                     </div>
                   </div>
 
                   {userExistingRating && (
                     <div className="p-2.5 rounded-xl bg-[#E8F0FC] border border-[#3469A8]/30 text-xs text-[#3469A8] font-medium flex items-center gap-1.5">
                       <ThumbsUp className="w-3.5 h-3.5 text-[#3469A8] shrink-0" />
-                      <span>لقد قمت بتقييم هذا العقار سابقاً. يمكنك تعديل تقييمك الآن وحفظه مجدداً.</span>
+                      <span>لقد قمت بتقييم هذا الإعلان سابقاً. يمكنك تعديل تقييمك الآن وحفظه مجدداً.</span>
                     </div>
                   )}
 
                   {/* Star Rating Selector */}
                   <div className="bg-[#F5F9F8] border border-[#D6DEE5] rounded-2xl p-4 text-center space-y-2.5">
                     <label className="block text-xs font-bold text-[#24313D]">
-                      حدد تقييمك للعقار من 1 إلى 5 نجوم:
+                      حدد تقييمك للإعلان من 1 إلى 5 نجوم:
                     </label>
 
                     <div className="flex items-center justify-center gap-2 py-2">
@@ -507,13 +428,13 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                   {/* Comment Textarea */}
                   <div className="space-y-1.5">
                     <label className="block text-xs font-bold text-[#24313D]">
-                      ملاحظاتك وانطباعك الميداني عن العقار (اختياري):
+                      ملاحظاتك ورأيك حول العقار أو المعلن (اختياري):
                     </label>
                     <textarea
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
                       rows={3}
-                      placeholder="اذكر رأيك في نظافة العقار، مطابقة الصور للمعاينة الواقعية، هدوء المنطقة، أو تعامل المالك لمساعدة زملائك الباحثين..."
+                      placeholder="اذكر رأيك في مطابقة الصور للواقع، سرعة رد المعلن، وضوح السعر، أو هدوء المنطقة لمساعدة زملائك الباحثين..."
                       className="w-full p-3 rounded-2xl bg-white border border-[#D6DEE5] text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
                     />
                   </div>
@@ -531,7 +452,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
                       className="flex-1 py-3 px-4 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs active:scale-98 cursor-pointer"
                     >
                       <Star className="w-4 h-4 fill-[#D6A84F] text-[#D6A84F]" />
-                      <span>{userExistingRating ? 'تحديث وحفظ التقييم' : 'اعتماد ونشر التقييم الموثق'}</span>
+                      <span>{userExistingRating ? 'تحديث وحفظ التقييم' : 'اعتماد ونشر التقييم'}</span>
                     </button>
 
                     <button
@@ -553,7 +474,7 @@ export const PropertyRatingModal: React.FC<PropertyRatingModalProps> = ({
         <div className="p-3 bg-[#F5F9F8] border-t border-[#D6DEE5] flex items-center justify-between text-xs text-[#5D6B78]">
           <span className="flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-[#16856B]" />
-            <span>نظام موثوق للمعاينة الميدانية الحقيقية</span>
+            <span>نظام تقييمات مباشر وشفاف لمنصة سكن أسيوط</span>
           </span>
           <button
             type="button"

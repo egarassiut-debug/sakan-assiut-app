@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Property, PropertyStatus, ScheduledInspection, BlockedUser, TenantRequest, AppUser } from '../types/property';
+import { Property, PropertyStatus, BlockedUser, TenantRequest, AppUser } from '../types/property';
 import { DropdownCategory, UtilityOptionDefinition } from '../data/dropdownOptions';
 import { DropdownManager } from './DropdownManager';
 import { AdminRoleManagement } from './AdminRoleManagement';
@@ -54,11 +54,9 @@ interface AdminPanelProps {
   onUpdateUtilityDefinitions: (updated: UtilityOptionDefinition[]) => void;
   onResetDefaults?: () => void;
   onLockAdmin?: () => void;
-  inspections?: ScheduledInspection[];
   blockedUsers?: BlockedUser[];
   onAddBlockedUser?: (user: Omit<BlockedUser, 'id' | 'blockedAt'>) => void;
   onRemoveBlockedUser?: (id: string) => void;
-  onUpdateInspectionStatus?: (id: string, status: 'pending' | 'confirmed' | 'completed' | 'cancelled', feePaid?: boolean) => void;
   isDrawerOpen?: boolean;
   setIsDrawerOpen?: (open: boolean) => void;
   onToggleDrawer?: (open?: boolean) => void;
@@ -94,11 +92,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateUtilityDefinitions,
   onResetDefaults,
   onLockAdmin,
-  inspections = [],
   blockedUsers = [],
   onAddBlockedUser,
   onRemoveBlockedUser,
-  onUpdateInspectionStatus,
   isDrawerOpen: propIsDrawerOpen,
   setIsDrawerOpen: propSetIsDrawerOpen,
   onToggleDrawer,
@@ -194,9 +190,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     return pendingProps + pendingReqs;
   }, [properties, tenantRequests]);
 
-  const pendingInspectionsCount = useMemo(() => {
-    return inspections.filter((i) => i.status === 'pending').length;
-  }, [inspections]);
 
   // Moderation type: properties (عروض) or requests (طلبات)
   const [moderationType, setModerationType] = useState<'properties' | 'requests'>('properties');
@@ -466,7 +459,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         onSelectSection={(sec) => setActiveSection(sec)}
         currentUser={currentUser}
         pendingModerationCount={pendingModerationCount}
-        pendingInspectionsCount={pendingInspectionsCount}
         blockedUsersCount={blockedUsers.length}
         onLockAdmin={onLockAdmin}
       />
@@ -487,7 +479,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             onSelectSection={(sec) => setActiveSection(sec)}
             currentUser={currentUser}
             pendingModerationCount={pendingModerationCount}
-            pendingInspectionsCount={pendingInspectionsCount}
             blockedUsersCount={blockedUsers.length}
             onLockAdmin={onLockAdmin}
           />
@@ -532,8 +523,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 const badge =
                   item.id === 'moderation'
                     ? pendingModerationCount > 0 ? pendingModerationCount : null
-                    : item.id === 'inspections'
-                    ? pendingInspectionsCount > 0 ? pendingInspectionsCount : null
                     : item.id === 'blocks'
                     ? blockedUsers.length > 0 ? blockedUsers.length : null
                     : null;
@@ -1559,98 +1548,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          {/* SUB-SECTION C: INSPECTIONS MANAGEMENT (المعاينات) */}
-          {activeSection === 'inspections' && (
-            <div className="space-y-3">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 flex items-center justify-between shadow-xs">
-                <div>
-                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-amber-500" />
-                    <span>جدول المعاينات الميدانية ({inspections.length})</span>
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    إدارة وتأكيد مواعيد المعاينات للعملاء وتتبع المعاينات بالرمز الذكي
-                  </p>
-                </div>
-              </div>
 
-              {inspections.length === 0 ? (
-                <div className="bg-white p-8 rounded-2xl text-center text-slate-500 border border-slate-200 shadow-xs">
-                  لا توجد طلبات معاينة مسجلة حالياً
-                </div>
-              ) : (
-                inspections.map((insp) => (
-                  <div
-                    key={insp.id}
-                    className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-xs bg-amber-500 text-slate-950 px-2 py-0.5 rounded-md">
-                          كود: {insp.propertyCode}
-                        </span>
-                        <span className="text-xs text-slate-500 font-semibold">{insp.district}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          insp.status === 'completed' 
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                            : insp.status === 'confirmed' 
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200' 
-                            : 'bg-amber-50 text-amber-800 border border-amber-200'
-                        }`}>
-                          {insp.status === 'completed' ? 'معاينة مكتملة ومسددة (مؤهل للتقييم ✓)' : insp.status === 'confirmed' ? 'معاينة مؤكدة' : 'بانتظار التأكيد والسداد'}
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          insp.feePaid ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
-                        }`}>
-                          {insp.feePaid ? 'الرسوم مسددة ✓' : 'الرسوم معلقة (50 ج.م)'}
-                        </span>
-                      </div>
-                      <h4 className="font-bold text-sm text-slate-900 mt-1">{insp.propertyTitle}</h4>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        العميل: {insp.tenantName} (<strong dir="ltr" className="text-amber-700 font-mono font-bold">{insp.tenantPhone}</strong>) • الموعد المطلوب: {insp.preferredDate} الساعة {insp.preferredTime}
-                      </p>
-                      {insp.notes && <p className="text-[11px] text-slate-500 mt-0.5">ملاحظات: {insp.notes}</p>}
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {onUpdateInspectionStatus && insp.status !== 'completed' && (
-                        <button
-                          type="button"
-                          onClick={() => onUpdateInspectionStatus(insp.id, 'completed', true)}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer flex items-center gap-1"
-                          title="اعتماد إتمام المعاينة الميدانية وسداد الرسوم لتفعيل إمكانية التقييم للعميل"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>إتمام المعاينة وسداد الرسوم</span>
-                        </button>
-                      )}
-
-                      {onUpdateInspectionStatus && insp.status === 'pending' && (
-                        <button
-                          type="button"
-                          onClick={() => onUpdateInspectionStatus(insp.id, 'confirmed')}
-                          className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer"
-                        >
-                          تأكيد الموعد
-                        </button>
-                      )}
-
-                      <a
-                        href={`https://wa.me/20${insp.tenantPhone}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-3.5 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1.5"
-                        title="محادثة واتساب مباشرة مع العميل"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5 text-white" />
-                        <span>واتساب العميل</span>
-                      </a>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
 
           {/* القسم 6: إدارة المدراء والصلاحيات */}
           {activeSection === 'admins' && (

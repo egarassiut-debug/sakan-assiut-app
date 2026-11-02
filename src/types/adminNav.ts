@@ -6,7 +6,6 @@ export type AdminSectionId =
   | 'roles_management' 
   | 'admins' 
   | 'logs' 
-  | 'inspections' 
   | 'analytics' 
   | 'blocks' 
   | 'export_settings'

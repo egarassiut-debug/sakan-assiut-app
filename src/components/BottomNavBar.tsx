@@ -11,7 +11,7 @@ interface BottomNavBarProps {
   onSelectIndex: (index: number) => void;
   onOpenAddModal: () => void;
   userRole: GranularRole | 'admin' | 'user' | string;
-  pendingInspectionsCount?: number;
+  pendingModerationCount?: number;
   tenantRequestsCount?: number;
   myAdsCount?: number;
 }
@@ -25,7 +25,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   onSelectIndex,
   onOpenAddModal,
   userRole,
-  pendingInspectionsCount = 0,
+  pendingModerationCount = 0,
   tenantRequestsCount = 0,
   myAdsCount = 0,
 }) => {
@@ -235,9 +235,9 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         >
           <div className="relative">
             <AdminPanelSettings className={`w-5 h-5 transition-transform ${currentIndex === 3 ? 'stroke-[2.5]' : 'stroke-2'}`} />
-            {pendingInspectionsCount > 0 && (
+            {pendingModerationCount > 0 && (
               <span className="absolute -top-1.5 -right-2 bg-[#C9364F] text-white text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center shadow-xs">
-                {pendingInspectionsCount}
+                {pendingModerationCount}
               </span>
             )}
           </div>

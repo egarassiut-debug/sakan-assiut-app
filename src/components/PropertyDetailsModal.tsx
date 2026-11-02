@@ -6,13 +6,12 @@ import { useBackLayer } from '../utils/navigationHistory';
 import { 
   X, Copy, Check, MapPin, Zap, Droplets, Flame, ArrowUpDown, 
   MessageSquare, MessageCircle, Calendar, ShieldCheck, Edit3, Heart, Star, AlertTriangle, Share2,
-  QrCode, Download, Smartphone
+  QrCode, Download, Smartphone, Phone
 } from 'lucide-react';
 
 interface PropertyDetailsModalProps {
   property: Property | null;
   onClose: () => void;
-  onScheduleInspection: (property: Property) => void;
   onEdit?: (property: Property) => void;
   isAdmin?: boolean;
   isFavorite?: boolean;
@@ -24,7 +23,6 @@ interface PropertyDetailsModalProps {
 export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
   property,
   onClose,
-  onScheduleInspection,
   onEdit,
   isAdmin = false,
   isFavorite = false,
@@ -169,10 +167,14 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
 
   const handleWhatsApp = () => {
     if (!property) return;
+    const rawTargetPhone = property.whatsappPhone || property.contactPhone || property.ownerPhone || '01002345678';
+    const cleanPhone = rawTargetPhone.replace(/\D/g, '');
+    const intlPhone = cleanPhone.startsWith('0') ? `2${cleanPhone}` : cleanPhone.startsWith('2') ? cleanPhone : `20${cleanPhone}`;
+    const advertiserName = (property.ownerName || '').trim() || 'المعلن الكريم';
     const text = encodeURIComponent(
-      `السلام عليكم، أود التواصل مع إدارة تطبيق سكن أسيوط لطلب معاينة واستفسار عن العقار كود (${property.code}): ${property.title}.`
+      `السلام عليكم أ/ ${advertiserName}، أود الاستفسار بخصوص العقار كود (${property.code}) - ${property.title} في حي ${property.district} عبر منصة سكن أسيوط.`
     );
-    window.open(`https://wa.me/201002345678?text=${text}`, '_blank');
+    window.open(`https://wa.me/${intlPhone}?text=${text}`, '_blank');
   };
 
   if (!property) return null;
@@ -534,7 +536,7 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
             </p>
           </div>
 
-          {/* Verified Inspections Rating Banner */}
+          {/* Property Rating & Reviews Banner */}
           <div className="bg-[#FFF3D6] border border-[#D6A84F]/40 rounded-2xl p-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-[#D6A84F] text-white flex items-center justify-center font-black shadow-xs shrink-0">
@@ -543,7 +545,7 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-black text-sm text-[#24313D]">
-                    {ratingSummary && ratingSummary.count > 0 ? `${ratingSummary.average.toFixed(1)} من 5 نجوم` : 'تقييمات المعاينة الميدانية'}
+                    {ratingSummary && ratingSummary.count > 0 ? `${ratingSummary.average.toFixed(1)} من 5 نجوم` : 'تقييمات ومراجعات الإعلان'}
                   </span>
                   {ratingSummary && ratingSummary.count > 0 && (
                     <div className="flex items-center text-[#D6A84F]">
@@ -555,8 +557,8 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                 </div>
                 <p className="text-[11px] text-[#8B641C] font-medium">
                   {ratingSummary && ratingSummary.count > 0 
-                    ? `بناءً على ${ratingSummary.count} تقييم موثق لعملاء أتموا المعاينة وسددوا الرسوم`
-                    : 'حصرياً للمستأجرين الذين أتموا المعاينة الميدانية وسددوا الرسوم'}
+                    ? `بناءً على ${ratingSummary.count} تقييم مسجل من مستخدمي المنصة`
+                    : 'شارك برأيك وتجربتك حول مواصفات وجدية هذا الإعلان'}
                 </p>
               </div>
             </div>
@@ -604,44 +606,59 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
             </button>
           </div>
 
-          {/* Privacy & Direct Inspection Protection Note */}
-          {!isAdmin ? (
-            <div className="p-3.5 rounded-2xl bg-[#EAF3EF] border border-[#124C46]/20 flex items-start gap-2.5 text-xs text-[#124C46]">
+          {/* Direct Advertiser Contact Card (صندوق بيانات المعلن والتواصل المباشر) */}
+          <div className="p-4 rounded-2xl bg-[#F5F9F8] border border-[#D6DEE5] space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-[#EAF3EF] text-[#124C46] flex items-center justify-center font-bold text-sm">
+                  {property.ownerName ? property.ownerName.charAt(0) : 'م'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-sm text-[#24313D]">{property.ownerName || 'المعلن'}</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                      {property.source || 'معلن مباشر'}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-[#5D6B78]">هاتف التواصل: <strong dir="ltr" className="font-mono text-[#124C46]">{property.contactPhone || property.ownerPhone}</strong></span>
+                </div>
+              </div>
+
+              {property.isMediationRequested && (
+                <span className="text-[11px] bg-[#FFF3D6] text-[#8B641C] border border-[#D6A84F]/40 px-2.5 py-1 rounded-xl font-bold flex items-center gap-1">
+                  <span>وساطة إدارية اختيارية</span>
+                </span>
+              )}
+            </div>
+
+            {/* Direct Safety Guidance */}
+            <div className="p-3 rounded-xl bg-[#EAF3EF]/80 border border-[#124C46]/20 flex items-start gap-2 text-xs text-[#124C46] leading-relaxed">
               <ShieldCheck className="w-4 h-4 text-[#124C46] shrink-0 mt-0.5" />
-              <div className="leading-relaxed">
-                <strong>سياسة الخصوصية والأمان:</strong> بيانات المالك محفوظة وموثقة لدى إدارة المنصة لحمايتها من السماسرة غير المعتمدين. جميع المعاينات والتعاقدات تتم بإشراف إدارة تطبيق سكن أسيوط لضمان حقوق الطرفين.
-              </div>
+              <span>
+                <strong>إرشادات التعامل المباشر:</strong> تتيح المنصة التواصل المباشر بين الطرفين دون أي رسوم معاينة. احرص دائماً على معاينة العقار على الطبيعة والتحقق من سندات الملكية قبل إبرام أي اتفاق أو تحويل أموال.
+              </span>
             </div>
-          ) : (
-            <div className="p-3.5 rounded-2xl bg-[#F5F9F8] border border-[#D6DEE5] text-xs text-[#24313D] space-y-1.5">
-              <span className="font-bold text-[#124C46] block">بيانات المالك (معاينة الإدارة):</span>
-              <div className="grid grid-cols-2 gap-2">
-                <div>المالك: <strong>{property.ownerName}</strong></div>
-                <div>الهاتف: <strong dir="ltr">{property.ownerPhone}</strong></div>
-              </div>
-            </div>
-          )}
+          </div>
 
-          {/* Action Footer Buttons */}
+          {/* Action Footer Buttons (الاتصال المباشر والواتساب) */}
           <div className="pt-3 border-t border-[#D6DEE5]/60 flex flex-col sm:flex-row gap-2.5">
-            <button
-              onClick={() => {
-                onClose();
-                onScheduleInspection(property);
-              }}
-              className="flex-1 py-3 px-4 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
+            <a
+              href={`tel:${property.contactPhone || property.ownerPhone}`}
+              className="flex-1 py-3 px-4 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer text-center"
+              title="اتصال هاتفي مباشر بالمعلن"
             >
-              <Calendar className="w-4 h-4" />
-              <span>طلب معاينة رسمية مع الإدارة</span>
-            </button>
+              <Phone className="w-4 h-4" />
+              <span>اتصال هاتفي بالمعلن</span>
+            </a>
 
             <button
+              type="button"
               onClick={handleWhatsApp}
-              className="py-3 px-5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-2xs transition-all active:scale-95 cursor-pointer"
-              title="محادثة وتواصل عبر واتساب مع الإدارة"
+              className="flex-1 py-3 px-5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-2xs transition-all active:scale-95 cursor-pointer"
+              title="محادثة وتواصل مباشر عبر واتساب مع المعلن"
             >
               <MessageCircle className="w-4 h-4 text-white" />
-              <span>واتساب</span>
+              <span>محادثة واتساب مباشرة</span>
             </button>
           </div>
         </div>

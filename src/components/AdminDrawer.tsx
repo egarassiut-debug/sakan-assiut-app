@@ -34,7 +34,6 @@ export interface AdminDrawerProps {
   onSelectSection: (section: AdminSectionId) => void;
   currentUser?: AppUser | null;
   pendingModerationCount?: number;
-  pendingInspectionsCount?: number;
   blockedUsersCount?: number;
   onLockAdmin?: () => void;
   /** When 'sidebar', rendered statically/docked for desktop; when 'drawer', rendered as overlay/slide-over */
@@ -63,13 +62,7 @@ export const ADMIN_NAVIGATION_ITEMS: AdminNavigationItem[] = [
     title: 'المحول الذكي لإسكرينات الفيسبوك',
     icon: Sparkles,
   },
-  // 2. جدول المعاينات الميدانية
-  {
-    id: 'inspections',
-    title: 'جدول المعاينات الميدانية',
-    icon: Calendar,
-  },
-  // 3. إدارة القوائم الديناميكية
+  // 2. إدارة القوائم الديناميكية
   {
     id: 'dropdowns',
     title: 'إدارة القوائم الديناميكية',
@@ -132,7 +125,6 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
   onSelectSection,
   currentUser,
   pendingModerationCount = 0,
-  pendingInspectionsCount = 0,
   blockedUsersCount = 0,
   onLockAdmin,
   variant = 'drawer',
@@ -154,13 +146,6 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
         ...item,
         badge: pendingModerationCount > 0 ? pendingModerationCount : null,
         badgeColor: 'bg-rose-500 text-white animate-pulse',
-      };
-    }
-    if (item.id === 'inspections') {
-      return {
-        ...item,
-        badge: pendingInspectionsCount > 0 ? pendingInspectionsCount : null,
-        badgeColor: 'bg-amber-500 text-slate-950 font-black',
       };
     }
     if (item.id === 'blocks') {

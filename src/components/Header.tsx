@@ -5,7 +5,7 @@ import { Menu } from 'lucide-react';
 export interface HeaderProps {
   currentUser?: AppUser | null;
   onLogout?: () => void;
-  onSelectTab?: (tab: 'home' | 'inspections' | 'admin') => void;
+  onSelectTab?: (tab: 'home' | 'admin') => void;
   unreadNotificationCount?: number;
   onOpenNotifications?: () => void;
   favoritesCount?: number;

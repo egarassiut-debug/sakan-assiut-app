@@ -89,8 +89,6 @@ CREATE TABLE IF NOT EXISTS public.properties (
     featured BOOLEAN NOT NULL DEFAULT FALSE,
     status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'pending_approval' | 'under_review' | 'approved' | 'rejected' | 'rented' | 'sold' | 'needs_completion'
     admin_note TEXT,
-    fee NUMERIC,
-    inspection_date TEXT,
     created_by_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TEXT NOT NULL DEFAULT CURRENT_DATE::text,
     ownership_document_url TEXT,
@@ -128,13 +126,15 @@ ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS admin_note TEXT;
-ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS fee NUMERIC;
-ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS inspection_date TEXT;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS created_by_admin BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS created_at TEXT DEFAULT CURRENT_DATE::text;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS ownership_document_url TEXT;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS views_count INTEGER DEFAULT 1;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS legal_status TEXT NOT NULL DEFAULT 'مرخصة';
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS contact_phone TEXT;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS whatsapp_phone TEXT;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS is_mediation_requested BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 
 -- الفهارس لتسريع البحث والفلاتر
 CREATE INDEX IF NOT EXISTS idx_properties_code ON public.properties(code);
@@ -205,42 +205,6 @@ CREATE INDEX IF NOT EXISTS idx_tenant_requests_phone ON public.tenant_requests(t
 CREATE INDEX IF NOT EXISTS idx_tenant_requests_district ON public.tenant_requests(preferred_district);
 CREATE INDEX IF NOT EXISTS idx_tenant_requests_legal_status ON public.tenant_requests(legal_status);
 
--- ============================================================================
--- 5. جدول مواعيد المعاينات الميدانية (scheduled_inspections)
--- ============================================================================
-CREATE TABLE IF NOT EXISTS public.scheduled_inspections (
-    id TEXT PRIMARY KEY,
-    property_id TEXT NOT NULL,
-    property_code TEXT NOT NULL,
-    property_title TEXT NOT NULL,
-    district TEXT NOT NULL,
-    tenant_name TEXT NOT NULL,
-    tenant_phone TEXT NOT NULL,
-    preferred_date TEXT NOT NULL,
-    preferred_time TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'confirmed' | 'completed' | 'cancelled'
-    fee_paid BOOLEAN DEFAULT FALSE,
-    completed_at TEXT,
-    notes TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_DATE::text
-);
-
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS property_id TEXT;
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS property_code TEXT;
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS property_title TEXT;
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS district TEXT;
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS tenant_name TEXT;
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS tenant_phone TEXT;
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS preferred_date TEXT;
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS preferred_time TEXT;
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS fee_paid BOOLEAN DEFAULT FALSE;
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS completed_at TEXT;
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS notes TEXT;
-ALTER TABLE public.scheduled_inspections ADD COLUMN IF NOT EXISTS created_at TEXT DEFAULT CURRENT_DATE::text;
-
-CREATE INDEX IF NOT EXISTS idx_inspections_property_id ON public.scheduled_inspections(property_id);
-CREATE INDEX IF NOT EXISTS idx_inspections_tenant_phone ON public.scheduled_inspections(tenant_phone);
 
 -- ============================================================================
 -- 6. جدول تقييمات العقارات المعتمدة (property_ratings)
@@ -252,7 +216,7 @@ CREATE TABLE IF NOT EXISTS public.property_ratings (
     user_id TEXT NOT NULL,
     user_name TEXT NOT NULL,
     user_phone TEXT NOT NULL,
-    inspection_id TEXT NOT NULL,
+    inspection_id TEXT, -- اختياري: غير مشروط بعد التحول لمنظومة الإعلانات المباشرة
     score INTEGER NOT NULL DEFAULT 5, -- 1 إلى 5 نجوم
     comment TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_DATE::text
@@ -413,7 +377,6 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tenant_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.scheduled_inspections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.property_ratings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_activity_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.custom_roles ENABLE ROW LEVEL SECURITY;
@@ -454,15 +417,6 @@ DROP POLICY IF EXISTS "Enterprise select on tenant_requests" ON public.tenant_re
 DROP POLICY IF EXISTS "Enterprise insert on tenant_requests" ON public.tenant_requests;
 DROP POLICY IF EXISTS "Enterprise update on tenant_requests" ON public.tenant_requests;
 DROP POLICY IF EXISTS "Enterprise delete on tenant_requests" ON public.tenant_requests;
-
-DROP POLICY IF EXISTS "Public select on scheduled_inspections" ON public.scheduled_inspections;
-DROP POLICY IF EXISTS "Public insert on scheduled_inspections" ON public.scheduled_inspections;
-DROP POLICY IF EXISTS "Public update on scheduled_inspections" ON public.scheduled_inspections;
-DROP POLICY IF EXISTS "Public delete on scheduled_inspections" ON public.scheduled_inspections;
-DROP POLICY IF EXISTS "Enterprise select on scheduled_inspections" ON public.scheduled_inspections;
-DROP POLICY IF EXISTS "Enterprise insert on scheduled_inspections" ON public.scheduled_inspections;
-DROP POLICY IF EXISTS "Enterprise update on scheduled_inspections" ON public.scheduled_inspections;
-DROP POLICY IF EXISTS "Enterprise delete on scheduled_inspections" ON public.scheduled_inspections;
 
 DROP POLICY IF EXISTS "Public select on property_ratings" ON public.property_ratings;
 DROP POLICY IF EXISTS "Public insert on property_ratings" ON public.property_ratings;
@@ -580,23 +534,6 @@ CREATE POLICY "Enterprise delete on tenant_requests" ON public.tenant_requests
         OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
     );
 
--- ============================================================================
--- 5. سياسات جدول المعاينات الميدانية (scheduled_inspections): فحص ومتابعة
--- ============================================================================
-CREATE POLICY "Enterprise select on scheduled_inspections" ON public.scheduled_inspections
-    FOR SELECT USING (
-        public.is_staff() = true
-        OR tenant_phone = coalesce((current_setting('request.jwt.claims', true)::jsonb ->> 'phone'), '')
-    );
-
-CREATE POLICY "Enterprise insert on scheduled_inspections" ON public.scheduled_inspections
-    FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Enterprise update on scheduled_inspections" ON public.scheduled_inspections
-    FOR UPDATE USING (public.is_staff() = true);
-
-CREATE POLICY "Enterprise delete on scheduled_inspections" ON public.scheduled_inspections
-    FOR DELETE USING (public.is_admin_or_super() = true);
 
 -- ============================================================================
 -- 6. سياسات جدول تقييمات العقارات (property_ratings)
@@ -659,9 +596,6 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'tenant_requests') THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.tenant_requests;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'scheduled_inspections') THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.scheduled_inspections;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'property_ratings') THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.property_ratings;

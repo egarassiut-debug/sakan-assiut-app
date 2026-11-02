@@ -10,7 +10,6 @@ import {
 interface PropertyCardProps {
   property: Property;
   onOpenDetails: (property: Property) => void;
-  onRequestInspection?: (property: Property) => void;
   onEdit?: (property: Property) => void;
   isFavorite?: boolean;
   onToggleFavorite?: (propertyId: string) => void;
@@ -21,7 +20,6 @@ interface PropertyCardProps {
 export const PropertyCard: React.FC<PropertyCardProps> = ({
   property,
   onOpenDetails,
-  onRequestInspection,
   onEdit,
   isFavorite = false,
   onToggleFavorite,
@@ -99,10 +97,14 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
+    const rawTargetPhone = property.whatsappPhone || property.contactPhone || property.ownerPhone || '01002345678';
+    const cleanPhone = rawTargetPhone.replace(/\D/g, '');
+    const intlPhone = cleanPhone.startsWith('0') ? `2${cleanPhone}` : cleanPhone.startsWith('2') ? cleanPhone : `20${cleanPhone}`;
+    const advertiserName = (property.ownerName || '').trim() || 'المعلن الكريم';
     const text = encodeURIComponent(
-      `السلام عليكم، أود الاستفسار وطلب معاينة رسمية للعقار كود (${property.code}) - ${property.title} بأسيوط عبر منصة سكن أسيوط.`
+      `السلام عليكم أ/ ${advertiserName}، أود الاستفسار بخصوص العقار المعروض كود (${property.code}): "${property.title}" في ${property.district} عبر منصة سكن أسيوط.`
     );
-    window.open(`https://wa.me/201002345678?text=${text}`, '_blank');
+    window.open(`https://wa.me/${intlPhone}?text=${text}`, '_blank');
   };
 
   const formatPrice = (price: number) => {

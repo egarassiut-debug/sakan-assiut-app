@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspens
 import { useBackLayer } from './utils/navigationHistory';
 import { 
   Property, 
-  ScheduledInspection, 
   PropertyStatus, 
   TenantRequest, 
   BlockedUser, 
@@ -15,7 +14,6 @@ import {
 import { 
   INITIAL_PROPERTIES, 
   INITIAL_TENANT_REQUESTS, 
-  INITIAL_SCHEDULED_INSPECTIONS, 
   INITIAL_BLOCKED_USERS,
   INITIAL_PROPERTY_RATINGS
 } from './data/initialProperties';
@@ -91,7 +89,6 @@ import { TrendFeedScreen } from './components/TrendFeedScreen';
 import { VoiceAssistantModal } from './components/VoiceAssistantModal';
 const PropertyDetailsModal = lazyWithRetry(() => import('./components/PropertyDetailsModal').then(m => ({ default: m.PropertyDetailsModal })));
 const TenantRequestDetailsModal = lazyWithRetry(() => import('./components/TenantRequestDetailsModal').then(m => ({ default: m.TenantRequestDetailsModal })));
-const InspectionModal = lazyWithRetry(() => import('./components/InspectionModal').then(m => ({ default: m.InspectionModal })));
 const SmartMatchingResultsModal = lazyWithRetry(() => import('./components/SmartMatchingResultsModal').then(m => ({ default: m.SmartMatchingResultsModal })));
 const SavedSearchModal = lazyWithRetry(() => import('./components/SavedSearchModal').then(m => ({ default: m.SavedSearchModal })));
 const FavoritesModal = lazyWithRetry(() => import('./components/FavoritesModal').then(m => ({ default: m.FavoritesModal })));
@@ -230,10 +227,6 @@ export function App() {
 
   const [tenantRequests, setTenantRequests] = useState<TenantRequest[]>(() => {
     return safeStorageGetItem<TenantRequest[]>('ardaw_tenant_requests', INITIAL_TENANT_REQUESTS);
-  });
-
-  const [scheduledInspections, setScheduledInspections] = useState<ScheduledInspection[]>(() => {
-    return safeStorageGetItem<ScheduledInspection[]>('ardaw_scheduled_inspections', INITIAL_SCHEDULED_INSPECTIONS);
   });
 
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>(() => {
@@ -417,7 +410,6 @@ export function App() {
 
   // Modals & Active Selections
   const [isChoiceAddOpen, setIsChoiceAddOpen] = useState(false);
-  const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
   const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState(false);
   const [isAdminDrawerOpen, setIsAdminDrawerOpen] = useState(false);
   const [isVoiceAssistantOpen, setIsVoiceAssistantOpen] = useState(false);
@@ -480,7 +472,6 @@ export function App() {
   }, [isAdminDrawerOpen]);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [selectedTenantRequest, setSelectedTenantRequest] = useState<TenantRequest | null>(null);
-  const [selectedPropertyForInspection, setSelectedPropertyForInspection] = useState<Property | null>(null);
 
   // Favorite Properties system with localStorage persistence
   const [favoritePropertyIds, setFavoritePropertyIds] = useState<string[]>(() => {
@@ -613,7 +604,7 @@ export function App() {
     propertyCode: string;
     score: number;
     comment: string;
-    inspectionId: string;
+    inspectionId?: string;
   }) => {
     if (!currentUser) return;
     setPropertyRatings((prev) => {
@@ -869,16 +860,6 @@ export function App() {
     isOpen: isFavoritesModalOpen,
     priority: 85,
     onClose: () => setIsFavoritesModalOpen(false),
-  });
-
-  useBackLayer({
-    id: 'inspection_modal',
-    isOpen: isInspectionModalOpen,
-    priority: 85,
-    onClose: () => {
-      setIsInspectionModalOpen(false);
-      setSelectedPropertyForInspection(null);
-    },
   });
 
   useBackLayer({
@@ -1992,58 +1973,6 @@ export function App() {
     });
   };
 
-  // Schedule Inspection
-  const handleScheduleInspection = (inspection: Omit<ScheduledInspection, 'id' | 'createdAt' | 'status'>) => {
-    const newInspection: ScheduledInspection = {
-      ...inspection,
-      id: `insp-${Date.now()}`,
-      createdAt: new Date().toISOString().split('T')[0],
-      status: 'pending',
-    };
-    setScheduledInspections((prev) => {
-      const updated = [newInspection, ...prev];
-      safeStorageSetItem('ardaw_scheduled_inspections', updated);
-      return updated;
-    });
-    addToast({
-      type: 'success',
-      title: 'تم حجز موعد المعاينة!',
-      message: `تم حجز معاينة كود (${inspection.propertyCode}) يوم ${inspection.preferredDate} الساعة ${inspection.preferredTime}. ستتواصل الإدارة لتأكيد الموعد.`,
-      duration: 5000,
-    });
-  };
-
-  // Update Inspection Status & Fee verification
-  const handleUpdateInspectionStatus = (
-    id: string, 
-    status: 'pending' | 'confirmed' | 'completed' | 'cancelled',
-    feePaid?: boolean
-  ) => {
-    setScheduledInspections((prev) => {
-      const updated = prev.map((i) => {
-        if (i.id === id) {
-          const isComp = status === 'completed';
-          return {
-            ...i,
-            status,
-            feePaid: feePaid !== undefined ? feePaid : (isComp ? true : i.feePaid),
-            completedAt: isComp ? new Date().toISOString().split('T')[0] : i.completedAt,
-          };
-        }
-        return i;
-      });
-      safeStorageSetItem('ardaw_scheduled_inspections', updated);
-      return updated;
-    });
-    addToast({
-      type: 'success',
-      title: status === 'completed' ? 'تم إتمام المعاينة وسداد الرسوم' : 'تم تحديث المعاينة',
-      message: status === 'completed' 
-        ? 'تم توثيق المعاينة وسداد الرسوم بنجاح. العميل الآن مؤهل لإضافة تقييم موثق.'
-        : `تم تحديث حالة المعاينة إلى (${status === 'confirmed' ? 'مؤكدة' : status}).`,
-      duration: 3500,
-    });
-  };
 
   // Blocked Users Management
   const handleAddBlockedUser = (newUser: Omit<BlockedUser, 'id' | 'blockedAt'>) => {
@@ -2241,7 +2170,6 @@ export function App() {
           properties.filter((p) => p.status === 'pending_approval' || (p as any).isApproved === false).length +
           tenantRequests.filter((r) => r.status === 'pending' || (r as any).isApproved === false).length
         }
-        pendingInspectionsCount={scheduledInspections.filter((i) => i.status === 'pending').length}
         blockedUsersCount={blockedUsers.length}
         onLogout={handleLogout}
       />
@@ -2639,10 +2567,6 @@ export function App() {
                     property={prop}
                     onOpenDetails={(p) => setSelectedProperty(p)}
                     onEdit={canUserEditProperty(currentUser, prop) ? handleStartEditProperty : undefined}
-                    onRequestInspection={(p) => {
-                      setSelectedPropertyForInspection(p);
-                      setIsInspectionModalOpen(true);
-                    }}
                     isFavorite={favoriteIdsSet.has(prop.id)}
                     onToggleFavorite={handleToggleFavorite}
                     ratingSummary={getPropertyRatingSummary(prop.id)}
@@ -3009,7 +2933,6 @@ export function App() {
               currentUser={currentUser}
               properties={properties}
               tenantRequests={tenantRequests}
-              inspections={scheduledInspections}
               onEditProperty={handleStartEditProperty}
               onDeleteProperty={handleDeleteProperty}
               onArchiveProperty={handleArchiveProperty}
@@ -3067,11 +2990,9 @@ export function App() {
                   onUpdateUtilityDefinitions={handleUpdateUtilityDefinitions}
                   onResetDefaults={handleResetDefaults}
                   onLockAdmin={handleLogout}
-                  inspections={scheduledInspections}
                   blockedUsers={blockedUsers}
                   onAddBlockedUser={handleAddBlockedUser}
                   onRemoveBlockedUser={handleRemoveBlockedUser}
-                  onUpdateInspectionStatus={handleUpdateInspectionStatus}
                   isDrawerOpen={isAdminDrawerOpen}
                   setIsDrawerOpen={setIsAdminDrawerOpen}
                   onCloseDrawer={() => setIsAdminDrawerOpen(false)}
@@ -3122,7 +3043,10 @@ export function App() {
             setNavIndex(index as NavTabIndex);
           }}
           onOpenAddModal={() => setIsChoiceAddOpen(true)}
-          pendingInspectionsCount={scheduledInspections.filter((i) => i.status === 'pending').length}
+          pendingModerationCount={
+            properties.filter((p) => p.status === 'pending_approval' || (p as any).isApproved === false).length +
+            tenantRequests.filter((r) => r.status === 'pending' || (r as any).isApproved === false).length
+          }
           tenantRequestsCount={tenantRequests.length}
           myAdsCount={myAdsCount}
         />
@@ -3220,25 +3144,8 @@ export function App() {
                   }
                 : undefined
             }
-            onScheduleInspection={(p) => {
-              setSelectedPropertyForInspection(p);
-              setIsInspectionModalOpen(true);
-            }}
             ratingSummary={getPropertyRatingSummary(selectedProperty.id)}
             onOpenRatingModal={(p) => setRatingModalProperty(p)}
-          />
-        )}
-
-        {/* Inspection Modal */}
-        {isInspectionModalOpen && (
-          <InspectionModal
-            property={selectedPropertyForInspection}
-            isOpen={isInspectionModalOpen}
-            onClose={() => {
-              setIsInspectionModalOpen(false);
-              setSelectedPropertyForInspection(null);
-            }}
-            onScheduleSuccess={handleScheduleInspection}
           />
         )}
 
@@ -3327,14 +3234,8 @@ export function App() {
             property={ratingModalProperty}
             onClose={() => setRatingModalProperty(null)}
             currentUser={currentUser}
-            inspections={scheduledInspections}
             propertyRatings={propertyRatings}
             onSubmitRating={handleSubmitRating}
-            onRequestInspection={(p) => {
-              setRatingModalProperty(null);
-              setSelectedPropertyForInspection(p);
-              setIsInspectionModalOpen(true);
-            }}
           />
         )}
       </Suspense>

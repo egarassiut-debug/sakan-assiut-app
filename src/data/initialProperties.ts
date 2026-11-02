@@ -1,4 +1,4 @@
-import { Property, ScheduledInspection, TenantRequest, PropertyRating } from '../types/property';
+import { Property, TenantRequest, PropertyRating } from '../types/property';
 
 export const INITIAL_PROPERTIES: Property[] = [
   {
@@ -395,40 +395,6 @@ export const INITIAL_PROPERTIES: Property[] = [
   }
 ];
 
-export const INITIAL_SCHEDULED_INSPECTIONS: ScheduledInspection[] = [
-  {
-    id: 'insp-1',
-    propertyId: 'prop-1',
-    propertyCode: 'AS-101',
-    propertyTitle: 'شقة سوبر لوكس مفروشة بالكامل أمام بوابة جامعة أسيوط',
-    district: 'حي الجامعة',
-    tenantName: 'محمد أحمد حسن',
-    tenantPhone: '01012345678',
-    preferredDate: '2026-10-09',
-    preferredTime: '05:00 م',
-    status: 'completed',
-    feePaid: true,
-    completedAt: '2026-10-09',
-    notes: 'تمت المعاينة الميدانية الرسمية وسداد رسوم المعاينة بنجاح',
-    createdAt: '2026-10-07'
-  },
-  {
-    id: 'insp-2',
-    propertyId: 'prop-2',
-    propertyCode: 'AS-102',
-    propertyTitle: 'قطعة أرض فضاء مميزة على شارع رئيسي بأسيوط الجديدة',
-    district: 'أسيوط الجديدة',
-    tenantName: 'م. حسام الدين',
-    tenantPhone: '01123456789',
-    preferredDate: '2026-10-10',
-    preferredTime: '11:00 ص',
-    status: 'pending',
-    feePaid: false,
-    notes: 'مستثمر يريد فحص الواجهة والجسات الميدانية للأرض',
-    createdAt: '2026-10-07'
-  }
-];
-
 export const INITIAL_PROPERTY_RATINGS: PropertyRating[] = [
   {
     id: 'rate-1',
@@ -437,9 +403,8 @@ export const INITIAL_PROPERTY_RATINGS: PropertyRating[] = [
     userId: 'user-demo-1',
     userName: 'د. محمود السيوطي',
     userPhone: '01099887766',
-    inspectionId: 'insp-verified-1',
     score: 5,
-    comment: 'عقار مطابق تماماً للصور والمواصفات وموقعه ممتاز أمام بوابة الجامعة. المعاينة تمت بسلاسة مع إدارة المنظومة.',
+    comment: 'عقار مطابق تماماً للصور والمواصفات وموقعه ممتاز أمام بوابة الجامعة. التواصل مع المعلن كان سريعاً وواضحاً.',
     createdAt: '2026-10-10'
   },
   {

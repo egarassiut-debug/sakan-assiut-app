@@ -49,12 +49,7 @@ export const ADMIN_SECTION_PERMISSIONS: SectionPermissionMeta[] = [
     description: 'تحويل لقطات شاشة منشورات فيسبوك إلى بطاقات عقارية جاهزة للنشر تلقائياً',
     category: 'moderation',
   },
-  {
-    id: 'inspections',
-    label: 'جدول المعاينات الميدانية',
-    description: 'متابعة مواعيد معاينة العقارات وتأكيدها وتحديث حالة الرسوم وحجز المستأجرين',
-    category: 'operations',
-  },
+
   {
     id: 'dropdowns',
     label: 'إدارة القوائم الديناميكية والمناطق',
@@ -231,13 +226,15 @@ export interface Property {
   paymentMethods: string[];
   ownerName: string;
   ownerPhone: string;
+  contactPhone?: string; // رقم الهاتف المباشر للتواصل
+  whatsappPhone?: string; // رقم الواتساب المباشر للتواصل
+  isMediationRequested?: boolean; // خيار الوساطة الاختيارية من إدارة سكن أسيوط
+  rejectionReason?: string; // سبب رفض الإعلان في حال تم رفضه
   source: string;
   images: string[];
   featured?: boolean;
   status: PropertyStatus;
   adminNote?: string;
-  fee?: number;
-  inspectionDate?: string;
   createdByAdmin?: boolean;
   createdAt: string;
   ownershipDocumentUrl?: string;
@@ -253,26 +250,9 @@ export interface PropertyRating {
   userId: string;
   userName: string;
   userPhone: string;
-  inspectionId: string; // Linked verified inspection ID
+  inspectionId?: string; // اختياري / تاريخي - لا يشترط أي معاينة مسبقة
   score: number; // 1 to 5
   comment?: string;
-  createdAt: string;
-}
-
-export interface ScheduledInspection {
-  id: string;
-  propertyId: string;
-  propertyCode: string;
-  propertyTitle: string;
-  district: string;
-  tenantName: string;
-  tenantPhone: string;
-  preferredDate: string;
-  preferredTime: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  feePaid?: boolean;
-  completedAt?: string;
-  notes?: string;
   createdAt: string;
 }
 

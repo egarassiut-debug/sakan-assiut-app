@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Property, TenantRequest, ScheduledInspection, AppUser, PropertyStatus } from '../types/property';
+import { Property, TenantRequest, AppUser, PropertyStatus } from '../types/property';
 import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { 
   Building2, Clock, CheckCircle2, AlertTriangle, Edit3, Trash2, 
@@ -13,7 +13,6 @@ interface MyAdsScreenProps {
   currentUser: AppUser;
   properties: Property[];
   tenantRequests: TenantRequest[];
-  inspections: ScheduledInspection[];
   onEditProperty: (property: Property) => void;
   onDeleteProperty: (propertyId: string) => void;
   onArchiveProperty: (propertyId: string) => void;
@@ -30,13 +29,12 @@ interface MyAdsScreenProps {
 }
 
 type TabCategory = 'properties' | 'requests' | 'favorites';
-type FilterStage = 'all' | 'pending' | 'needs_completion' | 'approved' | 'inspections' | 'archived';
+type FilterStage = 'all' | 'pending' | 'needs_completion' | 'approved' | 'archived';
 
 export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
   currentUser,
   properties,
   tenantRequests,
-  inspections,
   onEditProperty,
   onDeleteProperty,
   onArchiveProperty,
@@ -55,7 +53,6 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
   const [activeCategory, setActiveCategory] = useState<TabCategory>('properties');
   const [filterStage, setFilterStage] = useState<FilterStage>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFeeModalProp, setSelectedFeeModalProp] = useState<Property | null>(null);
   const [copiedAccount, setCopiedAccount] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -166,10 +163,6 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
         if (!isApproved) return false;
       } else if (filterStage === 'archived') {
         if (p.status !== 'archived' && p.status !== 'rented' && p.status !== 'sold' && p.status !== 'rejected') return false;
-      } else if (filterStage === 'inspections') {
-        // Has scheduled inspection
-        const hasInsp = inspections.some((i) => i.propertyId === p.id || i.propertyCode === p.code);
-        if (!hasInsp && !p.inspectionDate) return false;
       }
 
       // Search filter
@@ -183,7 +176,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
 
       return true;
     });
-  }, [userProperties, filterStage, searchQuery, inspections]);
+  }, [userProperties, filterStage, searchQuery]);
 
   // Filtered requests based on search and stage
   const filteredRequests = useMemo(() => {
@@ -294,7 +287,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-[#DCECE7] font-semibold">قيد المراجعة والسداد</span>
+              <span className="text-[11px] text-[#DCECE7] font-semibold">بانتظار مراجعة الإدارة</span>
               <Clock className="w-4 h-4 text-[#D6A84F]" />
             </div>
             <div className="text-xl font-black text-white mt-1">{stats.pending}</div>
@@ -415,7 +408,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
               }`}
             >
               <Clock className="w-3.5 h-3.5" />
-              <span>قيد المراجعة والسداد ({activeCategory === 'properties' ? stats.propPending : stats.reqPending})</span>
+              <span>بانتظار مراجعة الإدارة ({activeCategory === 'properties' ? stats.propPending : stats.reqPending})</span>
             </button>
 
             <button
@@ -498,9 +491,6 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
               const isPending = prop.status === 'pending_approval' || prop.status === 'pending';
               const isArchived = prop.status === 'archived';
               const isRentedOrSold = prop.status === 'rented' || prop.status === 'sold';
-
-              // Associated inspection if any
-              const matchedInsp = inspections.find((i) => i.propertyId === prop.id || i.propertyCode === prop.code);
 
               return (
                 <div
@@ -611,33 +601,19 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
                     </div>
                   )}
 
-                  {/* Case B: Pending Review and Fee Status Box */}
+                  {/* Case B: Pending Direct Listing Review Box */}
                   {isPending && (
                     <div className="bg-amber-50/80 border border-amber-300 rounded-2xl p-3.5 space-y-2 text-xs">
                       <div className="flex items-start gap-2">
                         <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <span className="font-black text-amber-950 block mb-0.5">
-                            مرحلة المراجعة وسداد رسوم المعاينة والنشر:
+                            مرحلة مراجعة وتدقيق الإعلان (نشر مباشر مجاني):
                           </span>
                           <p className="text-amber-900 font-medium leading-relaxed">
-                            إعلانك قيد الفحص والمراجعة. يرجى سداد رسوم المعاينة والتوثيق الميداني (50 ج.م) لخروج مندوب المعاينة واعتماد الإعلان رسمياً.
+                            إعلانك قيد المراجعة الإدارية للتحقق من استيفاء البيانات وصحة المواصفات. يتم النشر المباشر فور الاعتماد دون أي رسوم معاينة أو وساطة إجبارية، ليتواصل معك الباحثون مباشرة.
                           </p>
                         </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-                        <span className="text-[11px] font-bold text-amber-900">
-                          وسائل الدفع المعتمدة: فودافون كاش / إنستاباي
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedFeeModalProp(prop)}
-                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                        >
-                          <CreditCard className="w-3.5 h-3.5" />
-                          <span>تفاصيل السداد والتحويل</span>
-                        </button>
                       </div>
 
                       {/* In-App Push Notice & Test Trigger */}
@@ -667,19 +643,6 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
                           </div>
                         )}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Case C: Scheduled Inspection Box */}
-                  {matchedInsp && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 text-xs space-y-1">
-                      <div className="flex items-center gap-2 text-blue-900 font-black">
-                        <Calendar className="w-4 h-4 text-blue-700" />
-                        <span>موعد المعاينة الميدانية المجدولة للعقار:</span>
-                      </div>
-                      <p className="text-blue-800 font-medium">
-                        التاريخ: <strong>{matchedInsp.preferredDate}</strong> • الوقت: <strong>{matchedInsp.preferredTime}</strong> • الحالة: <strong>{matchedInsp.status === 'confirmed' ? 'مؤكدة' : 'قيد التنسيق'}</strong>
-                      </p>
                     </div>
                   )}
 
@@ -1082,76 +1045,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
         </div>
       )}
 
-      {/* 7. Fee & Payment Instructions Modal */}
-      {selectedFeeModalProp && (
-        <div 
-          onClick={() => setSelectedFeeModalProp(null)}
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-200"
-          >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-[#002B49]" />
-                <h3 className="font-black text-sm text-[#002B49]">
-                  سداد رسوم المعاينة والتوثيق الميداني
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedFeeModalProp(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200">
-                <div className="font-bold text-amber-950">
-                  كود العقار: <span className="font-mono font-black">{selectedFeeModalProp.code}</span>
-                </div>
-                <div className="text-amber-800 mt-0.5">
-                  قيمة رسوم المعاينة والنشر المعتمد: <strong>50 ج.م فقط</strong>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
-                <div className="font-bold text-slate-800">
-                  طريقة التحويل عبر محفظة فودافون كاش / إنستاباي:
-                </div>
-                <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-200">
-                  <span className="font-mono text-sm font-black text-[#002B49]" dir="ltr">
-                    01002345678
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleCopyPaymentNumber}
-                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 cursor-pointer"
-                  >
-                    {copiedAccount ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedAccount ? 'تم النسخ' : 'نسخ الرقم'}</span>
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  بعد التحويل، يرجى إرسال لقطة شاشة لإيصال التحويل مع كود العقار ({selectedFeeModalProp.code}) إلى واتساب الإدارة لبدء المعاينة فوراً.
-                </p>
-              </div>
-
-              <a
-                href={`https://wa.me/201002345678?text=${encodeURIComponent(`السلام عليكم، تم تحويل رسوم المعاينة للعقار كود (${selectedFeeModalProp.code}). مرفق صورة الإيصال للاعتماد.`)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md transition-colors"
-              >
-                <span>إرسال إيصال السداد عبر واتساب</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
