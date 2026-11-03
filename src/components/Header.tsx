@@ -5,7 +5,7 @@ import { Menu } from 'lucide-react';
 export interface HeaderProps {
   currentUser?: AppUser | null;
   onLogout?: () => void;
-  onSelectTab?: (tab: 'home' | 'admin') => void;
+  onSelectTab?: (tab: 'home' | 'inspections' | 'admin') => void;
   unreadNotificationCount?: number;
   onOpenNotifications?: () => void;
   favoritesCount?: number;
@@ -29,9 +29,9 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleAdminDrawer,
   onToggleNavDrawer,
 }) => {
-  // Username Truncation for subtle greeting
-  const rawName = currentUser?.name?.trim() || currentUser?.phone || 'مستخدم';
-  const truncatedName = rawName.length > 8 ? `${rawName.slice(0, 8)}...` : rawName;
+  // Username Truncation for header (max 8 characters per specification)
+  const rawName = currentUser?.name?.trim() || currentUser?.phone?.trim() || 'مستخدم';
+  const truncatedName = rawName.length > 8 ? rawName.slice(0, 8) : rawName;
 
   const handleOpenDrawer = onToggleNavDrawer || onToggleAdminDrawer;
 
@@ -42,8 +42,8 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div className="max-w-6xl mx-auto px-3 sm:px-4 h-15 sm:h-16 relative flex items-center justify-between">
         
-        {/* 1. Zone Right (أعلى اليمين): زر القائمة الجانبية (Drawer Toggle) */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0 z-10">
+        {/* 1. Zone Right (أعلى اليمين): زر القائمة الجانبية (Drawer Toggle) + ترحيب أصلي باسم المستخدم */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 z-10">
           {handleOpenDrawer && (
             <button
               type="button"
@@ -56,20 +56,18 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* ترحيب هادئ ومختصر بالمستخدم بجانب زر القائمة */}
-          {currentUser && (
-            <div className="flex flex-col text-right justify-center leading-tight max-w-[76px] sm:max-w-[120px]">
-              <span 
-                className="text-xs font-extrabold text-[#124C46] truncate"
-                title={rawName}
-              >
-                {rawName.length > 8 ? `${rawName.slice(0, 8)}...` : rawName}
-              </span>
-              <span className="text-[9px] sm:text-[10px] text-[#5D6B78] font-medium leading-none mt-0.5 whitespace-nowrap">
-                (أهلاً بيك في)
-              </span>
-            </div>
-          )}
+          {/* استعادة التصميم الأصلي: اسم المستخدم بحد أقصى 8 أحرف وتحته بخط أصغر (أهلاً بيك في) */}
+          <div className="flex flex-col text-right justify-center leading-tight">
+            <span 
+              className="text-[11px] sm:text-xs font-bold text-[#24313D] truncate max-w-[70px] sm:max-w-[100px]"
+              title={rawName}
+            >
+              {truncatedName}
+            </span>
+            <span className="text-[9px] sm:text-[10px] text-[#5D6B78] font-normal">
+              أهلاً بيك في
+            </span>
+          </div>
         </div>
 
         {/* 2. Zone Center (في الوسط): اسم التطبيق «سكن أسيوط» */}

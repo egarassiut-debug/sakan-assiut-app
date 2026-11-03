@@ -10,13 +10,11 @@ import {
   LogOut,
   ChevronLeft,
   Mic,
-  Sparkles,
-  Crown
+  Sparkles
 } from 'lucide-react';
 import { RealEstateAgent, Assignment, AdminPanelSettings } from './FlutterIcons';
 import { SupabaseConnectionStatus } from './SupabaseConnectionStatus';
 import { PWAInstallButton } from './PWAInstallButton';
-import { isStaffRole, isFoundingOwnerPhone } from '../utils/adminManager';
 import type { AdminSectionId } from '../types/adminNav';
 
 export interface AppSideDrawerProps {
@@ -35,6 +33,7 @@ export interface AppSideDrawerProps {
   adminActiveSection?: AdminSectionId;
   onSelectAdminSection?: (section: AdminSectionId) => void;
   pendingModerationCount?: number;
+  pendingInspectionsCount?: number;
   blockedUsersCount?: number;
   onLogout?: () => void;
 }
@@ -63,10 +62,7 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
   onOpenScreenshotConverter,
   onLogout,
 }) => {
-  const isStaff = Boolean(currentUser && isStaffRole(currentUser.role));
-  const isFounding = Boolean(currentUser && isFoundingOwnerPhone(currentUser.phone));
-  const isPartner = Boolean(currentUser && (currentUser.isPartner || (!isFounding && currentUser.role === 'super_admin')));
-  const isAdmin = isStaff;
+  const isAdmin = currentUser?.role === 'admin';
 
   // Handle ESC key to dismiss drawer
   useEffect(() => {
@@ -151,29 +147,13 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold ${
-                  isFounding
-                    ? 'bg-gradient-to-br from-amber-100 to-amber-200 text-amber-900 border border-amber-300 ring-2 ring-amber-400/30'
-                    : isPartner
-                    ? 'bg-gradient-to-br from-purple-100 to-amber-100 text-purple-900 border border-purple-300 shadow-2xs ring-2 ring-purple-300/40'
-                    : isAdmin 
-                    ? 'bg-[#FDF8ED] text-[#D6A84F] border border-[#D6A84F]/40' 
-                    : 'bg-[#EAF3EF] text-[#124C46] border border-[#DCECE7]'
+                  isAdmin ? 'bg-[#FDF8ED] text-[#D6A84F] border border-[#D6A84F]/40' : 'bg-[#EAF3EF] text-[#124C46] border border-[#DCECE7]'
                 }`}>
-                  {isFounding ? (
-                    <Crown className="w-5 h-5 text-amber-700 fill-amber-400" />
-                  ) : isPartner ? (
-                    <Crown className="w-5 h-5 text-purple-700 fill-purple-300" />
-                  ) : isAdmin ? (
-                    <ShieldCheck className="w-5 h-5 text-[#D6A84F]" />
-                  ) : (
-                    <User className="w-5 h-5 text-[#124C46]" />
-                  )}
+                  {isAdmin ? <ShieldCheck className="w-5 h-5 text-[#D6A84F]" /> : <User className="w-5 h-5 text-[#124C46]" />}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-extrabold text-[#24313D] truncate flex items-center gap-1">
-                    <span>{rawName}</span>
-                    {isFounding && <span className="text-amber-500 text-[11px]">👑</span>}
-                    {isPartner && <span className="text-purple-600 text-[11px]">🤝</span>}
+                  <div className="text-xs font-extrabold text-[#24313D] truncate">
+                    {rawName}
                   </div>
                   <div className="text-[10px] text-[#5D6B78] flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#1F7A5C] animate-pulse" />
@@ -182,26 +162,13 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Status Badge */}
-              {isFounding ? (
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 border bg-gradient-to-r from-amber-100 to-amber-200 text-amber-900 border-amber-400 shadow-2xs flex items-center gap-1">
-                  <Crown className="w-2.5 h-2.5 text-amber-700 fill-amber-500" />
-                  <span>مالك مؤسس</span>
-                </span>
-              ) : isPartner ? (
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 border bg-gradient-to-r from-purple-100 to-amber-50 text-purple-900 border-purple-300 shadow-2xs flex items-center gap-1">
-                  <Sparkles className="w-2.5 h-2.5 text-purple-600" />
-                  <span>مالك شريك 🤝</span>
-                </span>
-              ) : isAdmin ? (
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 border bg-[#FDF8ED] text-[#9A7328] border-[#D6A84F]/50">
-                  {currentUser?.role === 'reviewer' ? 'مراجع معتمد' : currentUser?.role === 'support' ? 'دعم فني' : 'مشرف عام'}
-                </span>
-              ) : (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border bg-[#EAF3EF] text-[#124C46] border-[#DCECE7]">
-                  مستخدم
-                </span>
-              )}
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border ${
+                isAdmin 
+                  ? 'bg-[#FDF8ED] text-[#9A7328] border-[#D6A84F]/50 font-extrabold' 
+                  : 'bg-[#EAF3EF] text-[#124C46] border-[#DCECE7]'
+              }`}>
+                {isAdmin ? 'مدير المنظومة' : 'مستخدم'}
+              </span>
             </div>
           </div>
         </div>
@@ -366,7 +333,7 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
                 </button>
               )}
 
-              {/* 7. محول الاسكرينات الذكي (متاح لجميع المستخدمين) */}
+              {/* 7. محول الاسكرينات والمنشورات (متاح لجميع المستخدمين) */}
               {onOpenScreenshotConverter && (
                 <button
                   type="button"
@@ -374,22 +341,19 @@ export const AppSideDrawer: React.FC<AppSideDrawerProps> = ({
                     onOpenScreenshotConverter();
                     onClose();
                   }}
-                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50/60 hover:from-amber-100/70 hover:to-orange-100/70 text-slate-800 flex items-center justify-between transition-all cursor-pointer shadow-xs border border-amber-300/80 group"
-                  title="تحويل لقطات شاشة فيسبوك لبطاقة عقارية فوراً"
+                  className="w-full py-2.5 px-3 rounded-xl bg-white border border-[#D6DEE5] text-[#24313D] hover:bg-[#F5F9F8] flex items-center justify-between transition-all cursor-pointer group hover:border-[#124C46]/40 shadow-2xs"
+                  title="المحول الذكي لإسكرينات الفيسبوك والمنشورات إلى إعلانات وطلبات"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                      <Sparkles className="w-4 h-4" />
+                    <div className="w-8 h-8 rounded-lg bg-[#FFF2D6] text-[#A96F0B] flex items-center justify-center shrink-0 border border-[#FFE2A4] group-hover:scale-105 transition-transform">
+                      <Sparkles className="w-4 h-4 text-[#A96F0B]" />
                     </div>
                     <div className="text-right">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs sm:text-sm font-black text-slate-900 block">محول الاسكرينات الذكي</span>
-                        <span className="text-[9px] bg-amber-200/80 text-amber-900 font-bold px-1.5 py-0.2 rounded-full">AI</span>
-                      </div>
-                      <span className="text-[10px] text-slate-600 block font-medium">استخراج بيانات البوستات واللقطات</span>
+                      <span className="text-xs sm:text-sm font-bold block text-[#24313D]">محول الاسكرينات والمنشورات</span>
+                      <span className="text-[10px] text-[#5D6B78] block">تحويل لقطات الشاشة لعروض وطلبات فورية</span>
                     </div>
                   </div>
-                  <ChevronLeft className="w-4 h-4 text-amber-700 shrink-0" />
+                  <ChevronLeft className="w-4 h-4 text-[#788593] group-hover:-translate-x-0.5 transition-transform" />
                 </button>
               )}
 

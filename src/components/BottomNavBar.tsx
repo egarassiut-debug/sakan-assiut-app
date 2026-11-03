@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { RealEstateAgent, Assignment, AdminPanelSettings, Add } from './FlutterIcons';
 import { Layers, Flame, Zap } from 'lucide-react';
 import { isStaffRole } from '../utils/adminManager';
@@ -9,10 +9,10 @@ export type NavTabIndex = 0 | 1 | 2 | 3 | 4;
 interface BottomNavBarProps {
   currentIndex: number;
   onSelectIndex: (index: number) => void;
-  onDoubleTap?: (index: number) => void;
+  onDoubleTapIndex?: (index: number) => void;
   onOpenAddModal: () => void;
   userRole: GranularRole | 'admin' | 'user' | string;
-  pendingModerationCount?: number;
+  pendingInspectionsCount?: number;
   tenantRequestsCount?: number;
   myAdsCount?: number;
 }
@@ -20,33 +20,36 @@ interface BottomNavBarProps {
 /**
  * Bottom Navigation Bar:
  * Clean white background with petroleum (#124C46) active state and border (#D6DEE5).
+ * Supports Double-Tap on tabs to scroll to top and rapidly refresh data.
  */
 export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   currentIndex,
   onSelectIndex,
-  onDoubleTap,
+  onDoubleTapIndex,
   onOpenAddModal,
   userRole,
-  pendingModerationCount = 0,
+  pendingInspectionsCount = 0,
   tenantRequestsCount = 0,
   myAdsCount = 0,
 }) => {
   const isAdmin = isStaffRole(userRole);
-  const lastTapRef = useRef<Record<number, number>>({});
+  const lastTapRef = React.useRef<{ index: number; time: number }>({ index: -1, time: 0 });
 
   const handleTabClick = (index: number) => {
     const now = Date.now();
-    const lastTap = lastTapRef.current[index] || 0;
-    if (now - lastTap < 380) {
-      // Double tap detected!
-      if (onDoubleTap) {
-        onDoubleTap(index);
+    const isDoubleTap = lastTapRef.current.index === index && (now - lastTapRef.current.time) < 380;
+
+    if (isDoubleTap) {
+      if (onDoubleTapIndex) {
+        onDoubleTapIndex(index);
       }
-      lastTapRef.current[index] = 0;
-    } else {
-      lastTapRef.current[index] = now;
-      onSelectIndex(index);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      lastTapRef.current = { index: -1, time: 0 };
+      return;
     }
+
+    lastTapRef.current = { index, time: now };
+    onSelectIndex(index);
   };
 
   if (!isAdmin) {
@@ -60,7 +63,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
               currentIndex === 0 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
             }`}
-            title="عروض الإيجار والبيع"
+            title="عروض الإيجار والبيع (انقر مرتين للتحديث والرجوع للأعلى)"
           >
             <div className="relative">
               <RealEstateAgent className={`w-5 h-5 transition-transform ${currentIndex === 0 ? 'stroke-[2.5]' : 'stroke-2'}`} />
@@ -79,7 +82,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
               currentIndex === 1 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
             }`}
-            title="طلبات الإيجار"
+            title="طلبات الإيجار (انقر مرتين للتحديث والرجوع للأعلى)"
           >
             <div className="relative">
               <Assignment className={`w-5 h-5 transition-transform ${currentIndex === 1 ? 'stroke-[2.5]' : 'stroke-2'}`} />
@@ -118,7 +121,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
               currentIndex === 4 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
             }`}
-            title="ترند ويوميات سكن أسيوط"
+            title="ترند ويوميات سكن أسيوط (انقر مرتين للتحديث والرجوع للأعلى)"
           >
             <div className="relative">
               <Zap className={`w-5 h-5 transition-transform ${currentIndex === 4 ? 'text-amber-500 fill-amber-500 stroke-[2.5]' : 'stroke-2 text-amber-600 group-hover:text-amber-500'}`} />
@@ -171,7 +174,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
             currentIndex === 0 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
           }`}
-          title="عروض الإيجار والبيع"
+          title="عروض الإيجار والبيع (انقر مرتين للتحديث والرجوع للأعلى)"
         >
           <div className="relative">
             <RealEstateAgent className={`w-5 h-5 transition-transform ${currentIndex === 0 ? 'stroke-[2.5]' : 'stroke-2'}`} />
@@ -190,7 +193,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
             (currentIndex === 1 || currentIndex === 2) ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
           }`}
-          title="طلبات الإيجار"
+          title="طلبات الإيجار (انقر مرتين للتحديث والرجوع للأعلى)"
         >
           <div className="relative">
             <Assignment className={`w-5 h-5 transition-transform ${(currentIndex === 1 || currentIndex === 2) ? 'stroke-[2.5]' : 'stroke-2'}`} />
@@ -229,7 +232,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer group ${
             currentIndex === 4 ? 'text-[#124C46] font-bold scale-105' : 'text-[#788593] hover:text-[#24313D]'
           }`}
-          title="ترند ويوميات سكن أسيوط"
+          title="ترند ويوميات سكن أسيوط (انقر مرتين للتحديث والرجوع للأعلى)"
         >
           <div className="relative">
             <Zap className={`w-5 h-5 transition-transform ${currentIndex === 4 ? 'text-amber-500 fill-amber-500 stroke-[2.5]' : 'stroke-2 text-amber-600 group-hover:text-amber-500'}`} />
@@ -253,9 +256,9 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         >
           <div className="relative">
             <AdminPanelSettings className={`w-5 h-5 transition-transform ${currentIndex === 3 ? 'stroke-[2.5]' : 'stroke-2'}`} />
-            {pendingModerationCount > 0 && (
+            {pendingInspectionsCount > 0 && (
               <span className="absolute -top-1.5 -right-2 bg-[#C9364F] text-white text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center shadow-xs">
-                {pendingModerationCount}
+                {pendingInspectionsCount}
               </span>
             )}
           </div>

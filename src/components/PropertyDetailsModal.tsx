@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import QRCode from 'qrcode';
-import { Property } from '../types/property';
+import { Property, AppUser } from '../types/property';
 import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
 import { useBackLayer } from '../utils/navigationHistory';
+import { canUserEditProperty } from '../utils/permissionManager';
 import { 
   X, Copy, Check, MapPin, Zap, Droplets, Flame, ArrowUpDown, 
   MessageSquare, MessageCircle, Calendar, ShieldCheck, Edit3, Heart, Star, AlertTriangle, Share2,
@@ -13,6 +14,7 @@ interface PropertyDetailsModalProps {
   property: Property | null;
   onClose: () => void;
   onEdit?: (property: Property) => void;
+  currentUser?: AppUser | null;
   isAdmin?: boolean;
   isFavorite?: boolean;
   onToggleFavorite?: (propertyId: string) => void;
@@ -24,6 +26,7 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
   property,
   onClose,
   onEdit,
+  currentUser,
   isAdmin = false,
   isFavorite = false,
   onToggleFavorite,
@@ -31,6 +34,7 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
   onOpenRatingModal,
 }) => {
   const [copied, setCopied] = useState(false);
+  const isEditable = Boolean(onEdit && property && canUserEditProperty(currentUser, property));
   const [shared, setShared] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
@@ -252,12 +256,12 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
               </button>
             )}
 
-            {onEdit && (
+            {isEditable && (
               <button
                 type="button"
                 onClick={() => {
                   onClose();
-                  onEdit(property);
+                  onEdit?.(property);
                 }}
                 className="px-3 py-1 rounded-xl bg-white hover:bg-slate-100 text-[#24313D] border border-[#D6DEE5] font-bold text-xs flex items-center gap-1 transition-colors shadow-xs cursor-pointer"
                 title="تعديل هذا العقار"

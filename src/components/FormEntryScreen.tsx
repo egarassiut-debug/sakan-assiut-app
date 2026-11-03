@@ -151,22 +151,11 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     ''
   );
   const [contactPhone, setContactPhone] = useState(
-    editingProperty?.contactPhone || 
     editingProperty?.ownerPhone || 
     editingTenantRequest?.tenantPhone || 
     initialDraft?.contactPhone || 
     currentUser?.phone || 
     ''
-  );
-  const [whatsappPhone, setWhatsappPhone] = useState(
-    editingProperty?.whatsappPhone || 
-    initialDraft?.whatsappPhone || 
-    editingProperty?.ownerPhone || 
-    currentUser?.phone || 
-    ''
-  );
-  const [isMediationRequested, setIsMediationRequested] = useState<boolean>(
-    editingProperty?.isMediationRequested ?? false
   );
   const [uploadedImages, setUploadedImages] = useState<string[]>(editingProperty?.images || []);
   const [hasAgreedDeclaration, setHasAgreedDeclaration] = useState(Boolean(editingProperty || editingTenantRequest));
@@ -342,6 +331,10 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const maxArea = editingTenantRequest?.maxArea ?? '';
   const urgency = editingTenantRequest?.urgency || 'within_month';
 
+  // Admin-specific state for 3rd-party coordination
+  const [fee, setFee] = useState<number | ''>(editingProperty?.fee ?? '');
+  const [inspectionDate, setInspectionDate] = useState<string>(editingProperty?.inspectionDate ?? '');
+
   // Land detection
   const isLand = propertyType.includes('أرض') || propertyType.includes('فضاء');
 
@@ -377,6 +370,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     setDistrict('');
     setLegalStatus('');
     setSelectedPaymentMethods([]);
+    setFee('');
   };
 
   // تأثير الحفظ التلقائي عند كتابة أو تعديل أي بيان داخل النموذج
@@ -429,6 +423,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           selectedUtilities,
           minPrice,
           maxPrice,
+          fee,
+          inspectionDate,
           savedAt: timeStr,
         };
         safeSaveDraft(draftStorageKey, draftObj);
@@ -466,6 +462,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     selectedUtilities,
     minPrice,
     maxPrice,
+    fee,
+    inspectionDate,
     currentUser,
   ]);
 
@@ -523,46 +521,45 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const startVoice = async () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setErrorMsg('المتصفح لا يدعم التسجيل الصوتي المباشر، يمكنك الكتابة في الحقول.');
+      setErrorMsg('المتصفح لا يدعم التسجيل الصوتي المباشر، يمكنك الكتابة في الحقول أو استخدام متصفح Chrome.');
       return;
     }
 
-    if (navigator?.mediaDevices?.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((track) => track.stop());
-      } catch (err: any) {
-        console.warn('Microphone permission check in form:', err);
-        setVoiceStatus('يرجى السماح باستخدام الميكروفون من إعدادات المتصفح لبدء التحدث.');
-        setIsRecording(false);
-        return;
-      }
-    }
-
     try {
-      if (recognitionRef.current) {
+      // Explicitly request microphone stream to guarantee browser permission prompt on mobile devices
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
-          recognitionRef.current.abort();
-        } catch {
-          // ignore
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          // Stop stream tracks immediately after permission check
+          stream.getTracks().forEach((track) => track.stop());
+        } catch (permErr: any) {
+          if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
+            setVoiceStatus('يرجى السماح بإذن استخدام الميكروفون من إعدادات المتصفح.');
+            return;
+          }
         }
+      }
+
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
       }
 
       const recognition = new SpeechRecognition();
       recognition.lang = 'ar-EG';
       recognition.continuous = true;
       recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
         setIsRecording(true);
         setVoiceSeconds(0);
-        setVoiceStatus('جاري الاستماع... تحدث بوضوح عن تفاصيل العقار');
+        setVoiceStatus('جاري الاستماع... تحدث بوضوح عن تفاصيل العقار أو طلبك');
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = window.setInterval(() => {
           setVoiceSeconds((prev) => {
-            if (prev >= 120) {
+            if (prev >= 90) {
               stopVoice();
-              return 120;
+              return 90;
             }
             return prev + 1;
           });
@@ -605,21 +602,23 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             setTitle(`${parsed.propertyType} ${parsed.purpose === 'rent' ? 'للإيجار' : 'للبيع'} في ${parsed.district}`);
           }
 
-          setVoiceStatus(`تم التعرف بوضوح: "${fullRecordedTranscript.substring(0, 50)}..." وتم تعبئة الحقول!`);
+          setVoiceStatus(`تم التعرف بوضوح: "${fullRecordedTranscript.substring(0, 45)}..." وتم تعبئة الحقول!`);
         }
       };
 
       recognition.onerror = (e: any) => {
-        // Ignore minor noise/no-speech events without killing session prematurely
         if (e.error === 'no-speech') {
-          setVoiceStatus('في انتظار صوتك... تحدث بوضوح بالقرب من الميكروفون');
-          return;
+          return; // Ignore silence
         }
-        stopVoice();
-        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        if (e.error === 'not-allowed') {
           setVoiceStatus('تم رفض إذن الميكروفون. يرجى تفعيله من إعدادات المتصفح.');
+          stopVoice();
+        } else if (e.error === 'network') {
+          setVoiceStatus('حدث خطأ في شبكة التعرف الصوتي، يمكنك إعادة المحاولة.');
+          stopVoice();
         } else {
-          setVoiceStatus('انتهى التسجيل الصوتي.');
+          setVoiceStatus('انتهت جلسة التسجيل الصوتي.');
+          stopVoice();
         }
       };
 
@@ -633,8 +632,10 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
       recognitionRef.current = recognition;
       recognition.start();
-    } catch {
-      setErrorMsg('تعذر تشغيل الميكروفون.');
+    } catch (err) {
+      console.warn('Speech recognition start error:', err);
+      setErrorMsg('تعذر تشغيل الميكروفون. يرجى التأكد من صلاحيات المتصفح.');
+      setIsRecording(false);
     }
   };
 
@@ -758,12 +759,11 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         paymentMethods: isLand ? ['كاش فوري (للبيع)'] : selectedPaymentMethods,
         ownerName: contactName.trim() || 'مالك العقار',
         ownerPhone: cleanContactPhone,
-        contactPhone: cleanContactPhone,
-        whatsappPhone: whatsappPhone ? normalizeEgyptianPhone(whatsappPhone) : cleanContactPhone,
-        isMediationRequested: isMediationRequested,
         source: isAdmin ? 'إدارة المنظومة (نشر مباشر)' : 'مالك مباشر',
         images: uploadedImages.length > 0 ? uploadedImages : [DEFAULT_SAKAN_PLACEHOLDER],
         createdByAdmin: isAdmin,
+        fee: isAdmin && fee ? Number(fee) : undefined,
+        inspectionDate: isAdmin && inspectionDate ? inspectionDate : undefined,
         createdAt: todayDate,
         viewsCount: 1,
       };
@@ -1098,6 +1098,48 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               كلما أضفت بيانات اختيارية أكثر، زادت فرصة قبول وثقة الإعلان لدى الإدارة والمشترين.
             </p>
           </div>
+        </div>
+
+        {/* بطاقة المسجل الصوتي الذكي لتعبئة الإعلان بالصوت */}
+        <div className="bg-gradient-to-r from-[#124C46] to-[#0D3D38] text-white p-4 rounded-2xl shadow-xs border border-[#124C46]/20 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={toggleRecording}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 border-2 shrink-0 ${
+                isRecording 
+                  ? 'bg-rose-500 border-white text-white animate-pulse' 
+                  : 'bg-white/15 hover:bg-white/25 border-white/20 text-[#D6A84F]'
+              }`}
+              title={isRecording ? 'إيقاف الاستماع' : 'ابدأ التحدث لتعبئة الإعلان بصوتك'}
+            >
+              {isRecording ? <MicOff className="w-6 h-6 animate-bounce" /> : <Mic className="w-6 h-6" />}
+            </button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-white">المسجل الصوتي الذكي</h4>
+                {isRecording && (
+                  <span className="text-[10px] bg-rose-500 text-white font-bold px-2 py-0.5 rounded-full animate-pulse shrink-0">
+                    تسجيل ({voiceSeconds}ث)
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-[#DCECE7] mt-0.5 truncate">
+                {voiceStatus || 'اضغط وتحدث بصوتك لتعبئة الحقول آلياً (مثل: شقة للإيجار 120م بالهلالي)'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={toggleRecording}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer border ${
+              isRecording 
+                ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-300' 
+                : 'bg-[#D6A84F] hover:bg-[#c29643] text-[#24313D] border-[#D6A84F]'
+            }`}
+          >
+            {isRecording ? 'إيقاف' : 'تحدث الآن 🎙️'}
+          </button>
         </div>
 
         {/* Top Error Alert */}
@@ -1767,11 +1809,11 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                  <span>رقم الهاتف للاتصال المباشر*</span>
+                  <span>رقم الهاتف (واتساب / اتصال)*</span>
                   <FieldInfoTooltip
                     fieldKey="contactPhone"
                     title="رقم الهاتف"
-                    hint="رقم الهاتف الأساسي لتلقي المكالمات المباشرة من المهتمين بالعقار فور اعتماده ونشره مجاناً."
+                    hint="رقم الهاتف الصحيح والمفعل بالواتساب يضمن استقبال إشعارات المطابقة الذكية ومواعيد المعاينات فور اعتماد إعلانك."
                   />
                 </label>
                 <div className="relative">
@@ -1783,12 +1825,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     value={contactPhone}
                     onChange={(e) => {
                       const norm = normalizeEgyptianPhone(e.target.value);
-                      if (norm.length <= 11) {
-                        setContactPhone(norm);
-                        if (!whatsappPhone || whatsappPhone === contactPhone) {
-                          setWhatsappPhone(norm);
-                        }
-                      }
+                      if (norm.length <= 11) setContactPhone(norm);
                       if (invalidField === 'phone') setInvalidField(null);
                     }}
                     placeholder="01012345678"
@@ -1821,38 +1858,6 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               </div>
             </div>
 
-            {/* رقم واتساب المباشر وخيار الوساطة الاختيارية */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">رقم واتساب للتواصل المباشر</label>
-                <input
-                  type="tel"
-                  dir="ltr"
-                  value={whatsappPhone}
-                  onChange={(e) => {
-                    const norm = normalizeEgyptianPhone(e.target.value);
-                    if (norm.length <= 11) setWhatsappPhone(norm);
-                  }}
-                  placeholder="01012345678 (واتساب)"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-bold text-slate-800 text-right focus:ring-1 focus:ring-[#124C46]"
-                />
-              </div>
-
-              {isOffer && (
-                <div className="flex items-center">
-                  <label className="flex items-center gap-2 p-2.5 rounded-xl border border-[#D6DEE5] bg-[#F5F9F8] hover:bg-[#EAF3EF] cursor-pointer text-xs font-semibold text-[#124C46] transition-colors w-full select-none">
-                    <input
-                      type="checkbox"
-                      checked={isMediationRequested}
-                      onChange={(e) => setIsMediationRequested(e.target.checked)}
-                      className="w-4 h-4 rounded text-[#124C46] focus:ring-[#124C46] accent-[#124C46]"
-                    />
-                    <span>أرغب في مساعدة إدارة سكن أسيوط في التواصل (اختياري)</span>
-                  </label>
-                </div>
-              )}
-            </div>
-
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
                 <span>ملاحظات وتفاصيل إضافية</span>
@@ -1883,7 +1888,41 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               </div>
             )}
 
-
+            {/* Admin Financial & Inspection Coordination */}
+            {isAdmin && (
+              <div className="bg-amber-50/80 p-4 rounded-2xl border-2 border-amber-300 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                    بيانات المعاينة الميدانية والرسوم (إدارة المنظومة)
+                  </span>
+                  <span className="text-[10px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded-full shadow-2xs">
+                    نشر مباشر ومعتمد فوراً
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 mb-1">رسوم المعاينة (ج.م)</label>
+                    <input
+                      type="number"
+                      value={fee}
+                      onChange={(e) => setFee(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="200"
+                      className="w-full p-2.5 text-xs bg-white rounded-xl border border-amber-300 font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 mb-1">تاريخ المعاينة الميدانية</label>
+                    <input
+                      type="date"
+                      value={inspectionDate}
+                      onChange={(e) => setInspectionDate(e.target.value)}
+                      className="w-full p-2.5 text-xs bg-white rounded-xl border border-amber-300 font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Legal Declaration (إقرار الملكية والصحة) */}
             {isOffer && (

@@ -7,7 +7,7 @@ import {
   Trash2, Copy, Check, Building2, MapPin, DollarSign, Maximize2, 
   SlidersHorizontal, RefreshCw, Send, FileText, ArrowRight, Share2, 
   ExternalLink, Layers, Eye, Info, UserCheck, ShieldCheck, Flame, Zap,
-  Scissors, Crop, CheckCheck
+  Scissors, Crop, CheckCheck, X
 } from 'lucide-react';
 import { logAdminActivity } from '../utils/adminManager';
 import { safeStorageGetItem } from '../utils/storageManager';
@@ -45,6 +45,8 @@ interface ScreenshotConverterProps {
   onPublishTenantRequest: (request: TenantRequest) => void;
   adminName?: string;
   adminPhone?: string;
+  isAdmin?: boolean;
+  currentUser?: any;
   onClose?: () => void;
 }
 
@@ -172,6 +174,8 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
   onPublishTenantRequest,
   adminName = 'مدير النظام',
   adminPhone = '01002345678',
+  isAdmin = true,
+  currentUser,
   onClose,
 }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -186,7 +190,7 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
   const [publishedType, setPublishedType] = useState<'property' | 'request' | null>(null);
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'card' | 'edit' | 'raw'>('card');
-  const [isInstantApproved, setIsInstantApproved] = useState(true);
+  const [isInstantApproved, setIsInstantApproved] = useState(isAdmin);
 
   // Smart Cropping Engine (القص الذكي على Canvas)
   // Extracts the specific real estate ad card, trimming mobile status bars, nav bars, and external Facebook clutter
@@ -595,16 +599,28 @@ export const ScreenshotConverter: React.FC<ScreenshotConverterProps> = ({
             </div>
           </div>
 
-          {selectedImage && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-200 cursor-pointer shrink-0 shadow-2xs"
-            >
-              <RefreshCw className="w-4 h-4 text-amber-600" />
-              <span>تحويل سكرين شوت جديد</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {selectedImage && (
+              <button
+                type="button"
+                onClick={handleReset}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-200 cursor-pointer shrink-0 shadow-2xs"
+              >
+                <RefreshCw className="w-4 h-4 text-amber-600" />
+                <span>تحويل سكرين شوت جديد</span>
+              </button>
+            )}
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                title="إغلاق"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

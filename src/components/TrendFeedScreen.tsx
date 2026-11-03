@@ -28,12 +28,15 @@ import {
   Check,
   Ban
 } from 'lucide-react';
+import { PullToRefreshWrapper } from './PullToRefreshWrapper';
 
 interface TrendFeedScreenProps {
   currentUser: AppUser | null;
   isAdmin: boolean;
   onOpenLogin?: () => void;
   onAddToast?: (toast: { type: 'success' | 'error' | 'info' | 'warning'; title: string; message: string }) => void;
+  refreshTrigger?: number;
+  onRefresh?: () => Promise<void> | void;
 }
 
 /**
@@ -75,6 +78,8 @@ export const TrendFeedScreen: React.FC<TrendFeedScreenProps> = ({
   isAdmin,
   onOpenLogin,
   onAddToast,
+  refreshTrigger,
+  onRefresh,
 }) => {
   // 1. Settings State (Admin-controlled post retention)
   const [trendSettings, setTrendSettings] = useState<TrendSettings>(() => {
@@ -93,6 +98,34 @@ export const TrendFeedScreen: React.FC<TrendFeedScreenProps> = ({
       status: (p.status || 'approved') as any,
     }));
   });
+
+  // Reload posts when external refresh trigger fires
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      const saved = safeStorageGetItem<TrendPost[] | null>('asuit_trend_posts', null);
+      if (saved && Array.isArray(saved) && saved.length > 0) {
+        setPosts(saved);
+      }
+    }
+  }, [refreshTrigger]);
+
+  const handlePullRefresh = async () => {
+    if (onRefresh) {
+      await onRefresh();
+    } else {
+      const saved = safeStorageGetItem<TrendPost[] | null>('asuit_trend_posts', null);
+      if (saved && Array.isArray(saved) && saved.length > 0) {
+        setPosts(saved);
+      }
+      if (onAddToast) {
+        onAddToast({
+          type: 'success',
+          title: 'تم تحديث ترند أسيوط ⚡',
+          message: 'تم تحديث أحدث اليوميات والمنشورات بنجاح.',
+        });
+      }
+    }
+  };
 
   // Filter posts based on expiration and approval permissions:
   // - Approved posts: visible to everyone
@@ -500,7 +533,8 @@ export const TrendFeedScreen: React.FC<TrendFeedScreenProps> = ({
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 space-y-4 pb-28 font-['Cairo']">
+    <PullToRefreshWrapper onRefresh={handlePullRefresh}>
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 space-y-4 pb-28 font-['Cairo']">
       
       {/* 1. Header Banner with Spark Icon ⚡ */}
       <div className="bg-gradient-to-r from-[#124C46] via-[#103D38] to-[#0A2925] text-white rounded-3xl p-4 sm:p-5 shadow-sm border border-emerald-900/40 relative overflow-hidden">
@@ -547,17 +581,25 @@ export const TrendFeedScreen: React.FC<TrendFeedScreenProps> = ({
       </div>
 
       {/* 2. Instructional Guidance & Policy Banner (شروط ورسالة الترند الإرشادية المحدثة) */}
-      <div className="bg-gradient-to-l from-amber-50 to-orange-50 border border-amber-200/90 rounded-2xl p-3.5 sm:p-4 text-xs text-amber-950 flex items-start gap-3 shadow-2xs">
-        <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+      <div className="bg-gradient-to-l from-[#EAF3EF] via-white to-amber-50/60 border border-[#124C46]/20 rounded-2xl p-3.5 sm:p-4 text-xs text-slate-800 flex items-start gap-3 shadow-2xs">
+        <div className="w-8 h-8 rounded-xl bg-[#124C46] text-[#D6A84F] flex items-center justify-center shrink-0 shadow-xs mt-0.5">
           <Zap className="w-4 h-4 fill-current" />
         </div>
-        <div className="space-y-1">
-          <p className="font-bold leading-relaxed text-slate-900">
-            يمكنك نشر طلبك أو عرضك العقاري كتابةً بشكل مباشر وبسيط، أو مشاركة لقطات الشاشة (الاسكرينات) والمنشورات المنقولة من وسائل التواصل.
+        <div className="space-y-1.5 flex-1">
+          <p className="font-bold leading-relaxed text-[#124C46] text-xs sm:text-[13px]">
+            لوحة إرشادات ترند ويوميات سكن أسيوط:
           </p>
-          <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
-            <span className="font-bold text-amber-950">ملاحظة هامة:</span> يُتاح النشر النصي المباشر للجميع لسهولة التعبير، وتخضع المنشورات للمراجعة والاعتماد السريع للحفاظ على جودة المحتوى.
-          </p>
+          <div className="text-[11px] sm:text-xs text-[#24313D] leading-relaxed space-y-1">
+            <p>
+              • <strong className="text-[#124C46]">نشر الطلب أو العرض كتابةً مباشرة:</strong> متاح ومرحب به لجميع أهالي أسيوط (يمكنك كتابة طلبك أو عرضك كنص بسيط وسريع دون الحاجة لصور).
+            </p>
+            <p>
+              • <strong className="text-amber-700">لقطات الشاشة والمنشورات المنقولة:</strong> يمكنك أيضاً رفع ونقل لقطات الشاشة والفرص من الفيسبوك وتطبيقات التواصل لمشاركتها فوراً.
+            </p>
+            <p className="text-[10px] text-[#5D6B78] pt-0.5">
+              ⚡ تتم مراجعة المنشورات واعتمادها سريعاً من إدارة المنظومة لضمان الجدية والأمان وحماية الجميع.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -577,7 +619,7 @@ export const TrendFeedScreen: React.FC<TrendFeedScreenProps> = ({
 
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#124C46] border border-emerald-200 text-[10px] font-bold">
             <ShieldCheck className="w-3 h-3 text-[#124C46]" />
-            <span>نشر نصي مباشر / اسكرينات</span>
+            <span>تعبئة تلقائية موثقة</span>
           </span>
         </div>
 
@@ -588,7 +630,7 @@ export const TrendFeedScreen: React.FC<TrendFeedScreenProps> = ({
               rows={2}
               value={content}
               onChange={(e) => setContent(e.target.value.slice(0, charLimit))}
-              placeholder="اكتب طلبك أو عرضك العقاري هنا كتابةً في سطرين (أو شارك فرصة منقولة مع سكرين شوت)..."
+              placeholder="اكتب طلبك أو عرضك العقاري كتابةً هنا مباشرة (أو الصق البوست/الاسكرين شوت المنقول)..."
               className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50/70 text-slate-900 text-xs sm:text-sm font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46] focus:bg-white resize-none transition-all placeholder:text-slate-400"
             />
             <span className={`absolute bottom-2 left-3 text-[10px] font-bold ${
@@ -1038,6 +1080,7 @@ export const TrendFeedScreen: React.FC<TrendFeedScreenProps> = ({
         </div>
       )}
 
-    </div>
+      </div>
+    </PullToRefreshWrapper>
   );
 };

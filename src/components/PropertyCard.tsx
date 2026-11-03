@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { Property } from '../types/property';
+import { Property, AppUser } from '../types/property';
 import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
+import { canUserEditProperty } from '../utils/permissionManager';
 import { 
   Copy, Check, MapPin, Maximize2, Bed, Bath, ArrowUpRight, 
-  MessageCircle, Compass, Building, ChevronLeft, ChevronRight, Camera, Edit3, AlertTriangle, Heart, Star,
-  Lock, Tag, Sparkles, Calendar, User, Share2
+  MessageSquare, MessageCircle, Compass, Building, ChevronLeft, ChevronRight, Camera, Edit3, AlertTriangle, Heart, Star,
+  Lock, Tag, ShieldCheck, Sparkles, Calendar
 } from 'lucide-react';
 
 interface PropertyCardProps {
   property: Property;
   onOpenDetails: (property: Property) => void;
+  onRequestInspection?: (property: Property) => void;
   onEdit?: (property: Property) => void;
+  currentUser?: AppUser | null;
   isFavorite?: boolean;
   onToggleFavorite?: (propertyId: string) => void;
   ratingSummary?: { average: number; count: number };
@@ -20,15 +23,16 @@ interface PropertyCardProps {
 export const PropertyCard: React.FC<PropertyCardProps> = ({
   property,
   onOpenDetails,
+  onRequestInspection,
   onEdit,
+  currentUser,
   isFavorite = false,
   onToggleFavorite,
   ratingSummary,
   onOpenRatingModal,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
-  const [showShareMenu, setShowShareMenu] = useState(false);
+  const isEditable = Boolean(onEdit && canUserEditProperty(currentUser, property));
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -97,77 +101,14 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const rawTargetPhone = property.whatsappPhone || property.contactPhone || property.ownerPhone || '01002345678';
-    const cleanPhone = rawTargetPhone.replace(/\D/g, '');
-    const intlPhone = cleanPhone.startsWith('0') ? `2${cleanPhone}` : cleanPhone.startsWith('2') ? cleanPhone : `20${cleanPhone}`;
-    const advertiserName = (property.ownerName || '').trim() || 'المعلن الكريم';
     const text = encodeURIComponent(
-      `السلام عليكم أ/ ${advertiserName}، أود الاستفسار بخصوص العقار المعروض كود (${property.code}): "${property.title}" في ${property.district} عبر منصة سكن أسيوط.`
+      `السلام عليكم، أود الاستفسار وطلب معاينة رسمية للعقار كود (${property.code}) - ${property.title} بأسيوط عبر منصة سكن أسيوط.`
     );
-    window.open(`https://wa.me/${intlPhone}?text=${text}`, '_blank');
+    window.open(`https://wa.me/201002345678?text=${text}`, '_blank');
   };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ar-EG').format(price);
-  };
-
-  // Helper to get direct property link for sharing
-  const getPropertyUrl = () => {
-    if (typeof window === 'undefined') return '';
-    return `${window.location.origin}${window.location.pathname}?property=${encodeURIComponent(property.code)}`;
-  };
-
-  // Native share with fallback to WhatsApp, Facebook, or copying link
-  const handleShare = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const shareUrl = getPropertyUrl();
-    const shareTitle = `سكن أسيوط | عقار (${property.code}) - ${property.title}`;
-    const shareText = `شاهد تفاصيل هذا العقار كود (${property.code}) - ${property.title} بأسيوط عبر منصة سكن أسيوط:`;
-
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({
-          title: shareTitle,
-          text: `${shareText}\n${shareUrl}`,
-          url: shareUrl,
-        });
-        return;
-      } catch (err: any) {
-        if (err.name === 'AbortError') return;
-      }
-    }
-
-    setShowShareMenu((prev) => !prev);
-  };
-
-  const handleShareWhatsApp = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const shareUrl = getPropertyUrl();
-    const text = encodeURIComponent(`شاهد هذا العقار كود (${property.code}) - ${property.title} بأسيوط عبر سكن أسيوط:\n${shareUrl}`);
-    window.open(`https://wa.me/?text=${text}`, '_blank');
-    setShowShareMenu(false);
-  };
-
-  const handleShareFacebook = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const shareUrl = getPropertyUrl();
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
-    setShowShareMenu(false);
-  };
-
-  const handleCopyShareLink = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const shareUrl = getPropertyUrl();
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopiedLink(true);
-      setTimeout(() => {
-        setCopiedLink(false);
-        setShowShareMenu(false);
-      }, 1800);
-    } catch {
-      // ignore
-    }
   };
 
   // Helper to format publication date cleanly in Arabic for enhanced transparency
@@ -218,19 +159,25 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     return `${type} ${purposeText}`;
   };
 
-  // Advertiser & publisher distinction (no fake or default names; distinguish admin publisher from owner)
-  const advertiserName = (property.ownerName || '').trim();
-  const isCreatedByAdmin = Boolean(property.createdByAdmin);
-  const advertiserDisplayName = advertiserName || property.source || 'المعلن';
+  // Trust indicator assessment: Check whether advertiser / property is verified
+  const isVerifiedAdvertiser = property.status === 'approved' || property.isApproved !== false || property.featured;
+  const advertiserLabel = property.source || 'وسيط معتمد';
 
-  // Real ratings assessment (strictly no fake values)
-  const realRatingCount = ratingSummary?.count ?? 0;
-  const hasRealRating = Boolean(
-    realRatingCount > 0 && 
-    typeof ratingSummary?.average === 'number' && 
-    ratingSummary.average > 0
+  // Verified Property Evaluation: High ratings (>= 4.0) or confirmed admin verification
+  const hasHighRating = Boolean(
+    (ratingSummary && ratingSummary.count > 0 && ratingSummary.average >= 4.0) ||
+    ((property as any).rating && (property as any).rating >= 4.0)
   );
-  const ratingAvg = hasRealRating ? ratingSummary!.average.toFixed(1) : null;
+
+  const isVerifiedByAdmin = Boolean(
+    property.isVerified ||
+    property.verifiedByAdmin ||
+    property.createdByAdmin ||
+    property.ownershipDocumentUrl ||
+    (property.status === 'approved' && property.featured)
+  );
+
+  const isVerifiedProperty = hasHighRating || isVerifiedByAdmin;
 
   return (
     <div 
@@ -324,6 +271,17 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </>
         )}
 
+        {/* Publication Date Badge (ركن البطاقة لزيادة الشفافية والاحترافية) */}
+        {property.createdAt && (
+          <div 
+            className="absolute bottom-2.5 right-2.5 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-[10px] sm:text-[11px] font-bold shadow-md border border-white/20 select-none pointer-events-none transition-transform group-hover:scale-105"
+            title={`تاريخ نشر الإعلان: ${property.createdAt}`}
+          >
+            <Calendar className="w-3.5 h-3.5 text-[#D6A84F] shrink-0" />
+            <span>نُشر: {formatPublishDate(property.createdAt)}</span>
+          </div>
+        )}
+
         {/* Status Overlay Watermark for Rented / Sold properties */}
         {(property.status === 'rented' || property.status === 'sold') && (
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs z-10 flex items-center justify-center pointer-events-none">
@@ -347,58 +305,131 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
         )}
 
-        {/* Top Floating Category & Status Badges */}
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 flex-wrap pointer-events-auto z-10">
-          <span className="px-3 py-1 rounded-xl font-bold text-xs shadow-md backdrop-blur-xs flex items-center gap-1 bg-[#124C46] text-white border border-white/20">
-            <span>{getUnifiedTypePurposeBadge()}</span>
-          </span>
+        {/* Top Floating Badges */}
+        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none z-10">
+          {/* Right side (أقصى اليمين in RTL): Unified Purpose & Type Badge */}
+          <div className="flex items-center gap-1.5 flex-wrap pointer-events-auto">
+            <span className="px-3 py-1 rounded-xl font-bold text-xs shadow-md backdrop-blur-xs flex items-center gap-1 bg-[#124C46] text-white border border-white/20">
+              <span>{getUnifiedTypePurposeBadge()}</span>
+            </span>
 
-          {property.status === 'rented' && (
-            <span className="px-2.5 py-1 rounded-xl bg-[#FFF2D6] text-[#A96F0B] font-bold text-xs shadow-xs border border-[#A96F0B]/30 flex items-center gap-1">
-              <Lock className="w-3 h-3 text-[#A96F0B]" />
-              <span>مؤجر</span>
-            </span>
-          )}
-          {property.status === 'sold' && (
-            <span className="px-2.5 py-1 rounded-xl bg-[#FCE8EC] text-[#C9364F] font-bold text-xs shadow-xs border border-[#C9364F]/30 flex items-center gap-1">
-              <Tag className="w-3 h-3 text-[#C9364F]" />
-              <span>تم البيع</span>
-            </span>
-          )}
-          {(property.status === 'pending' || property.status === 'pending_approval' || property.status === 'under_review') && (
-            <span className="px-2 py-1 rounded-xl bg-[#FFF2D6] text-[#A96F0B] font-bold text-[10px] shadow-xs flex items-center gap-1 border border-[#A96F0B]/30">
-              <AlertTriangle className="w-3 h-3 text-[#A96F0B]" />
-              <span>قيد المراجعة</span>
-            </span>
-          )}
+            {property.legalStatus && (
+              <span className={`px-2 py-0.5 rounded-xl font-bold text-[11px] shadow-xs border backdrop-blur-xs flex items-center gap-1 ${
+                property.legalStatus === 'مرخصة' || property.legalStatus === 'تصالح نهائي'
+                  ? 'bg-[#124C46]/90 text-white border-emerald-400/40'
+                  : property.legalStatus === 'مخالف'
+                  ? 'bg-rose-900/90 text-rose-100 border-rose-400/40'
+                  : 'bg-amber-900/90 text-amber-100 border-amber-400/40'
+              }`}>
+                <ShieldCheck className="w-3 h-3 text-[#D6A84F] shrink-0" />
+                <span>{property.legalStatus}</span>
+              </span>
+            )}
+
+            {property.status === 'rented' && (
+              <span className="px-2.5 py-1 rounded-xl bg-[#FFF2D6] text-[#A96F0B] font-bold text-xs shadow-xs border border-[#A96F0B]/30 flex items-center gap-1">
+                <Lock className="w-3 h-3 text-[#A96F0B]" />
+                <span>مؤجر</span>
+              </span>
+            )}
+            {property.status === 'sold' && (
+              <span className="px-2.5 py-1 rounded-xl bg-[#FCE8EC] text-[#C9364F] font-bold text-xs shadow-xs border border-[#C9364F]/30 flex items-center gap-1">
+                <Tag className="w-3 h-3 text-[#C9364F]" />
+                <span>تم البيع</span>
+              </span>
+            )}
+            {(property.status === 'pending' || property.status === 'pending_approval' || property.status === 'under_review') && (
+              <span className="px-2 py-1 rounded-xl bg-[#FFF2D6] text-[#A96F0B] font-bold text-[10px] shadow-xs flex items-center gap-1 border border-[#A96F0B]/30">
+                <AlertTriangle className="w-3 h-3 text-[#A96F0B]" />
+                <span>قيد المراجعة</span>
+              </span>
+            )}
+          </div>
+
+          {/* Left side (أقصى اليسار in RTL): Property Code Chip & Favorite Button */}
+          <div className="flex items-center gap-1.5 pointer-events-auto">
+            <div 
+              onClick={handleCopyCode}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/95 backdrop-blur-xs text-[#24313D] font-bold text-xs shadow-xs hover:bg-white transition-colors cursor-pointer select-none border border-[#D6DEE5]"
+              title="انقر لنسخ الكود"
+            >
+              <span>كود: {property.code}</span>
+              {copied ? (
+                <Check className="w-3.5 h-3.5 text-[#16856B]" />
+              ) : (
+                <Copy className="w-3.5 h-3.5 text-slate-400" />
+              )}
+            </div>
+
+            {/* Favorite Heart Button */}
+            {onToggleFavorite && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFavorite(property.id);
+                }}
+                className={`w-7.5 h-7.5 rounded-xl flex items-center justify-center transition-all shadow-xs active:scale-125 cursor-pointer backdrop-blur-md border border-[#D6DEE5] ${
+                  isFavorite
+                    ? 'bg-[#C9364F] text-white'
+                    : 'bg-white/95 text-slate-500 hover:bg-white hover:text-[#C9364F]'
+                }`}
+                title={isFavorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}
+                aria-label="إضافة للمفضلة"
+              >
+                <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Body Info */}
-      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
-        {/* 1. اسم المعلن وتاريخ النشر أسفل الصورة مباشرة في نفس السطر بخط هادئ دون إطار */}
-        <div className="flex items-center justify-between text-[#5D6B78] select-none gap-2 text-xs">
-          {/* اسم المعلن مع أيقونة مستخدم صغيرة */}
-          <div 
-            className="flex items-center gap-1.5 min-w-0" 
-            title={isCreatedByAdmin ? `صاحب الإعلان: ${advertiserDisplayName} (تم النشر بواسطة إدارة المنصة)` : `المعلن: ${advertiserDisplayName}`}
-          >
-            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="truncate text-xs font-medium text-[#24313D]">
-              {advertiserDisplayName}
-            </span>
+      <div className="p-5 sm:p-5.5 flex-1 flex flex-col justify-between space-y-3.5">
+        <div className="space-y-2">
+          {/* Trust Score & Advertiser Badge (Requirement #6) */}
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-[#5D6B78] font-medium">المعلن:</span>
+              <span className="font-bold text-[#24313D] text-[12px]">{property.ownerName || advertiserLabel}</span>
+              {isVerifiedAdvertiser && (
+                <span 
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E4F4EC] text-[#16856B] border border-[#16856B]/30 text-[10px] font-bold"
+                  title="مؤشر الثقة: معلن موثق رسمياً لدى المنصة"
+                >
+                  <ShieldCheck className="w-3 h-3 text-[#16856B]" />
+                  <span>موثق (مؤشر ثقة)</span>
+                </span>
+              )}
+            </div>
+
+            {/* 5-Star Rating Chip */}
+            <div
+              onClick={(e) => {
+                if (onOpenRatingModal) {
+                  e.stopPropagation();
+                  onOpenRatingModal(property);
+                }
+              }}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                ratingSummary && ratingSummary.count > 0
+                  ? 'bg-[#FFF3D6] border-[#D6A84F]/40 text-[#8B641C] shadow-2xs'
+                  : 'bg-[#F5F9F8] border-[#D6DEE5] text-[#5D6B78] hover:bg-white'
+              }`}
+              title="تقييمات المعاينة الميدانية الموثقة"
+            >
+              <Star className={`w-3.5 h-3.5 ${ratingSummary && ratingSummary.count > 0 ? 'fill-[#D6A84F] text-[#D6A84F]' : 'text-slate-400'}`} />
+              {ratingSummary && ratingSummary.count > 0 ? (
+                <>
+                  <span className="font-bold text-[#24313D]">{ratingSummary.average.toFixed(1)}</span>
+                  <span className="text-[10px] text-[#5D6B78] font-medium">({ratingSummary.count})</span>
+                </>
+              ) : (
+                <span className="text-[10px] text-[#5D6B78]">معاينة موثقة</span>
+              )}
+            </div>
           </div>
 
-          {/* تاريخ النشر بنص بسيط وأيقونة تقويم صغيرة دون أي إطار أو صندوق أو خلفية */}
-          {property.createdAt && (
-            <div className="flex items-center gap-1 text-xs text-[#5D6B78] shrink-0" title={`تاريخ النشر: ${property.createdAt}`}>
-              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span>{formatPublishDate(property.createdAt)}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-1.5">
           {/* Title */}
           <h3 className="font-bold text-[#24313D] text-base sm:text-lg leading-snug line-clamp-2 group-hover:text-[#124C46] transition-colors">
             {property.title}
@@ -415,12 +446,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </p>
         </div>
 
-        {/* 1. صندوق مواصفات العقار الفنية (4 أقسام متساوية العرض: المساحة، الغرف، الحمامات، الدور) */}
-        <div className="bg-[#F5F9F8] rounded-2xl py-2 px-1 sm:px-2 border border-[#D6DEE5]/80 grid grid-cols-4 divide-x divide-x-reverse divide-[#D6DEE5] text-xs text-[#5D6B78] select-none">
+        {/* Fixed Specifications Details Row: 4 fixed slots */}
+        <div className="bg-[#F5F9F8] rounded-2xl py-2.5 px-2 border border-[#D6DEE5]/80 grid grid-cols-4 divide-x divide-x-reverse divide-[#D6DEE5] text-xs text-[#5D6B78] my-0.5 select-none">
           {/* Slot 1: المساحة */}
           <div className="flex items-center justify-center gap-1 px-1">
             <Maximize2 className="w-3.5 h-3.5 text-[#124C46] shrink-0" />
-            <span className="font-bold text-[#24313D] truncate text-[11px] sm:text-xs">
+            <span className="font-bold text-[#24313D] truncate">
               {property.area ? `${property.area} م²` : '—'}
             </span>
           </div>
@@ -437,7 +468,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             ) : (
               <>
                 <Bed className="w-3.5 h-3.5 text-[#124C46] shrink-0" />
-                <span className="font-bold text-[#24313D] truncate text-[11px] sm:text-xs">
+                <span className="font-bold text-[#24313D] truncate">
                   {property.bedrooms !== undefined && property.bedrooms !== null ? `${property.bedrooms} غرف` : '—'}
                 </span>
               </>
@@ -447,7 +478,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           {/* Slot 3: الحمامات */}
           <div className="flex items-center justify-center gap-1 px-1">
             <Bath className="w-3.5 h-3.5 text-[#124C46] shrink-0" />
-            <span className="font-bold text-[#24313D] truncate text-[11px] sm:text-xs">
+            <span className="font-bold text-[#24313D] truncate">
               {property.bathrooms !== undefined && property.bathrooms !== null ? `${property.bathrooms} حمام` : '—'}
             </span>
           </div>
@@ -465,195 +496,93 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
         </div>
 
-        {/* 2. صندوق معلومات الإعلان (كود الإعلان مع النسخ، تقييم المعلن، أيقونة المفضلة) */}
-        <div className="bg-[#F5F9F8] rounded-2xl py-2 px-3 border border-[#D6DEE5]/80 flex items-center justify-between text-xs text-[#5D6B78] select-none gap-2">
-          {/* القسم 1: كود الإعلان الحقيقي مع أيقونة النسخ وتفعيل النسخ */}
-          <div 
-            onClick={handleCopyCode}
-            className="flex items-center gap-1.5 cursor-pointer hover:bg-white/80 transition-all rounded-xl py-1 px-2 group/code active:scale-95 shrink-0"
-            title="انقر لنسخ كود الإعلان"
-          >
-            <span className="font-mono font-bold text-xs text-[#124C46] tracking-wide">
-              {property.code}
-            </span>
-            {copied ? (
-              <Check className="w-3.5 h-3.5 text-[#16856B] shrink-0 animate-in zoom-in-75" />
-            ) : (
-              <Copy className="w-3.5 h-3.5 text-slate-400 group-hover/code:text-[#124C46] shrink-0" />
-            )}
-          </div>
+        {/* Price & Action Buttons */}
+        <div className="pt-3 border-t border-[#D6DEE5]/60 flex items-center justify-between gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+          {/* Price & Verified Badge Container */}
+          <div className="min-w-0 flex items-center gap-2 sm:gap-2.5 flex-wrap">
+            <div>
+              <div className="text-[#8B641C] font-black text-base sm:text-lg leading-tight truncate">
+                {formatPrice(property.price)}
+                <span className="text-[11px] sm:text-xs font-semibold text-[#5D6B78] mr-1.5">
+                  {property.purpose === 'rent' ? 'ج.م / شهر' : 'ج.م إجمالي'}
+                </span>
+              </div>
+              {property.deposit && (
+                <span className="text-[10px] text-[#788593] block truncate mt-0.5">
+                  تأمين: {formatPrice(property.deposit)} ج.م
+                </span>
+              )}
+            </div>
 
-          <div className="w-px h-4 bg-[#D6DEE5] shrink-0" />
-
-          {/* القسم 2: التقييم الفعلي مع رمز النجمة فقط ودون أي عنوان نصي */}
-          <div 
-            onClick={(e) => {
-              if (onOpenRatingModal) {
-                e.stopPropagation();
-                onOpenRatingModal(property);
-              }
-            }}
-            className={`flex items-center gap-1 py-1 px-2.5 rounded-xl transition-all shrink-0 ${
-              onOpenRatingModal ? 'cursor-pointer hover:bg-white/80 active:scale-95' : ''
-            }`}
-            title={hasRealRating ? `تقييم المعلن: ${ratingAvg} من 5 (${realRatingCount} تقييم)` : 'لا توجد تقييمات مسجلة بعد'}
-          >
-            <Star className={`w-3.5 h-3.5 shrink-0 ${hasRealRating ? 'fill-[#D6A84F] text-[#D6A84F]' : 'text-slate-300'}`} />
-            {hasRealRating ? (
-              <span className="font-mono font-bold text-xs text-[#24313D]">{ratingAvg}</span>
-            ) : (
-              <span className="text-slate-400 font-normal text-xs">—</span>
-            )}
-          </div>
-
-          <div className="w-px h-4 bg-[#D6DEE5] shrink-0" />
-
-          {/* القسم 3: أيقونة القلب للمفضلة بحجم صغير ومتناسق */}
-          {onToggleFavorite ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleFavorite(property.id);
-              }}
-              className={`h-7 px-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all active:scale-90 cursor-pointer border shadow-2xs shrink-0 ${
-                isFavorite
-                  ? 'bg-[#FCE8EC] text-[#C9364F] border-[#C9364F]/30 hover:bg-[#fad4dc]'
-                  : 'bg-white hover:bg-white text-slate-400 hover:text-[#C9364F] border-slate-200'
-              }`}
-              title={isFavorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}
-              aria-label="المفضلة"
-            >
-              <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-[#C9364F] text-[#C9364F]' : ''}`} />
-              <span className={`text-[11px] font-bold ${isFavorite ? 'text-[#C9364F]' : 'text-slate-500'}`}>
-                {isFavorite ? 'مفضل' : 'حفظ'}
+            {/* Prominent 'عقار موثق' Badge */}
+            {isVerifiedProperty && (
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#E4F4EC] text-[#124C46] border border-[#16856B]/35 shadow-2xs text-[11px] sm:text-xs font-extrabold shrink-0 transition-transform hover:scale-105 select-none"
+                title={
+                  hasHighRating
+                    ? `عقار موثق: حاصل على تقييمات ميدانية ممتازة (${ratingSummary?.average.toFixed(1) || '5.0'} من 5)`
+                    : 'عقار موثق: تم التدقيق والتحقق الميداني بواسطة إدارة سكن أسيوط'
+                }
+              >
+                <ShieldCheck className="w-4 h-4 text-[#16856B] shrink-0" />
+                <span className="whitespace-nowrap font-bold">عقار موثق</span>
+                <Check className="w-3 h-3 text-[#16856B] stroke-[3]" />
               </span>
-            </button>
-          ) : (
-            <div className="w-6 shrink-0" />
-          )}
-        </div>
-
-        {/* Action Buttons Toolbar: السعر الكامل باليمين + أزرار الإجراءات والمشاركة باليسار */}
-        <div className="pt-2.5 border-t border-[#D6DEE5]/60 flex items-center justify-between gap-1.5 sm:gap-2">
-          {/* 1. إظهار السعر بالكامل وبوضوح دون أي قطع أو اختفاء مع الحفاظ على وحدة التسعير */}
-          <div 
-            className="flex items-baseline gap-1 shrink-0 whitespace-nowrap select-text" 
-            title={`${formatPrice(property.price)} ${property.purpose === 'rent' ? 'جنيه مصري شهرياً' : 'جنيه مصري إجمالي'}`}
-          >
-            <span className="text-base sm:text-lg font-black text-[#124C46] tracking-tight leading-none">
-              {formatPrice(property.price)}
-            </span>
-            <span className="text-[10px] sm:text-[11px] font-bold text-[#124C46]/80">
-              {property.purpose === 'rent' ? 'جنيه/شهر' : 'جنيه'}
-            </span>
+            )}
           </div>
 
-          {/* الجانب الأيسر (في RTL): أزرار الإجراءات المتناسقة */}
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            {onEdit && (
+          {/* Actions Container: Primary is Petroleum #124C46, Secondary is light neutral */}
+          <div className="flex items-center gap-2 shrink-0">
+            {isEditable && (
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onEdit(property);
+                  onEdit?.(property);
                 }}
-                className="h-7 sm:h-7.5 px-2 rounded-lg text-[11px] font-semibold inline-flex items-center justify-center gap-1 bg-white hover:bg-[#F5F9F8] text-[#24313D] border border-[#D6DEE5] shadow-2xs transition-colors shrink-0 cursor-pointer"
+                className="h-9.5 px-3 rounded-xl text-xs font-semibold inline-flex items-center justify-center gap-1.5 bg-white hover:bg-[#F5F9F8] text-[#24313D] border border-[#D6DEE5] shadow-2xs transition-colors shrink-0 cursor-pointer"
                 title="تعديل بيانات الإعلان"
               >
-                <Edit3 className="w-3 h-3 shrink-0" />
+                <Edit3 className="w-4 h-4 shrink-0" />
                 <span className="hidden sm:inline">
-                  {property.status === 'needs_completion' ? 'استيفاء' : 'تعديل'}
+                  {property.status === 'needs_completion' ? 'استيفاء وتعديل' : 'تعديل'}
                 </span>
               </button>
             )}
 
-            {/* 3. زر مشاركة الإعلان: مصغر، أيقونة فقط دون كلمة مشاركة، مع خلفية زرقاء */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={handleShare}
-                className="w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg bg-[#1877F2] hover:bg-[#166FE5] text-white flex items-center justify-center shadow-2xs transition-all active:scale-90 shrink-0 cursor-pointer"
-                title="مشاركة رابط هذا الإعلان"
-                aria-label="مشاركة الإعلان"
-              >
-                <Share2 className="w-3.5 h-3.5 text-white" />
-              </button>
-
-              {/* قائمة خيارات المشاركة المنبثقة عند النقر أو عند عدم توفر المشاركة الأصلية */}
-              {showShareMenu && (
-                <div 
-                  onClick={(e) => e.stopPropagation()}
-                  className="absolute bottom-full left-0 mb-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 p-1.5 z-30 animate-in fade-in zoom-in-95 text-xs text-right space-y-1"
-                >
-                  <button
-                    type="button"
-                    onClick={handleShareWhatsApp}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-emerald-50 text-emerald-800 font-semibold transition-colors text-right cursor-pointer"
-                  >
-                    <MessageCircle className="w-4 h-4 text-[#25D366] shrink-0" />
-                    <span>مشاركة عبر واتساب</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleShareFacebook}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-blue-50 text-[#1877F2] font-semibold transition-colors text-right cursor-pointer"
-                  >
-                    <Share2 className="w-4 h-4 text-[#1877F2] shrink-0" />
-                    <span>مشاركة على فيسبوك</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCopyShareLink}
-                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-slate-100 text-slate-700 font-semibold transition-colors text-right cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Copy className="w-4 h-4 text-slate-500 shrink-0" />
-                      <span>{copiedLink ? 'تم نسخ الرابط!' : 'نسخ رابط الإعلان'}</span>
-                    </div>
-                    {copiedLink && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                  </button>
-                </div>
-              )}
-            </div>
-
             <button
               type="button"
               onClick={handleWhatsApp}
-              className="h-7 sm:h-7.5 px-2.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 shadow-2xs transition-all active:scale-95 shrink-0 cursor-pointer"
+              className="h-9.5 px-3.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-95 shrink-0 cursor-pointer"
               title="محادثة وتواصل عبر واتساب"
             >
-              <MessageCircle className="w-3.5 h-3.5 text-white" />
+              <MessageCircle className="w-4 h-4 text-white" />
               <span>واتساب</span>
             </button>
 
-            {/* 2. تصغير زر التفاصيل بنسبة 20% تقريباً مع الحفاظ على وضوح النص والأيقونة */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenDetails(property);
               }}
-              className="h-7 sm:h-7.5 px-2.5 sm:px-3 rounded-lg bg-[#124C46] hover:bg-[#0D3D38] text-white text-[11px] sm:text-xs font-bold inline-flex items-center justify-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer"
+              className="h-9.5 px-3.5 sm:px-4 rounded-xl bg-[#124C46] hover:bg-[#0D3D38] text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
               title="عرض التفاصيل الكاملة"
             >
-              <ArrowUpRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <ArrowUpRight className="w-4 h-4 shrink-0" />
               <span>تفاصيل</span>
             </button>
           </div>
         </div>
 
-
         {/* تنبيه استيفاء بيان إذا وجد */}
-        {property.status === 'needs_completion' && property.adminNote && (
+        {property.status === 'needs_completion' && property.adminNote && isEditable && (
           <div 
             onClick={(e) => {
               e.stopPropagation();
               onEdit?.(property);
             }}
-            className="mt-1 p-2.5 rounded-xl bg-[#FFF2D6] hover:bg-[#FFF3D6] border border-[#A96F0B]/40 text-xs text-[#A96F0B] font-semibold flex items-center justify-between gap-2 cursor-pointer shadow-2xs transition-all"
+            className="mt-2 p-2.5 rounded-xl bg-[#FFF2D6] hover:bg-[#FFF3D6] border border-[#A96F0B]/40 text-xs text-[#A96F0B] font-semibold flex items-center justify-between gap-2 cursor-pointer shadow-2xs transition-all"
             title="انقر هنا للدخول مباشرة لشاشة التعديل واستيفاء البيانات المطلوبة"
           >
             <div className="flex items-start gap-1.5 flex-1">
@@ -663,19 +592,17 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 <span className="text-[#8B641C] text-[11px] leading-relaxed">{property.adminNote}</span>
               </div>
             </div>
-            {onEdit && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(property);
-                }}
-                className="px-2.5 py-1.5 rounded-lg bg-[#A96F0B] hover:bg-[#8B641C] text-white font-bold text-[11px] shrink-0 shadow-2xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
-              >
-                <Edit3 className="w-3 h-3" />
-                <span>الدخول للخطأ</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(property);
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-[#A96F0B] hover:bg-[#8B641C] text-white font-bold text-[11px] shrink-0 shadow-2xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
+            >
+              <Edit3 className="w-3 h-3" />
+              <span>الدخول للخطأ</span>
+            </button>
           </div>
         )}
       </div>

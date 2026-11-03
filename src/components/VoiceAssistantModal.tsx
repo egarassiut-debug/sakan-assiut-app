@@ -93,30 +93,26 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
 
     if (!SpeechRecognition) {
       setSpeechSupported(false);
-      setFeedbackMsg('المتصفح لا يدعم ميزة التعرف الصوتي. يرجى استخدام متصفح Chrome أو كتابة طلبك في المربع أدناه.');
+      setFeedbackMsg('المتصفح لا يدعم ميزة التعرف الصوتي. يرجى استخدام متصفح Chrome أو كتابة طلبك.');
       return;
     }
 
-    // Explicitly request microphone stream first to activate hardware and trigger native permission dialog reliably
-    if (navigator?.mediaDevices?.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((track) => track.stop());
-      } catch (err: any) {
-        console.warn('Microphone permission check warning:', err);
-        setFeedbackMsg('يرجى السماح باستخدام الميكروفون من إعدادات المتصفح لبدء التحدث.');
-        setIsListening(false);
-        return;
-      }
-    }
-
     try {
-      if (recognitionRef.current) {
+      // Trigger native browser permission prompt cleanly on mobile devices
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
-          recognitionRef.current.abort();
-        } catch {
-          // ignore
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach((track) => track.stop());
+        } catch (permErr: any) {
+          if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
+            setFeedbackMsg('تم رفض إذن استخدام الميكروفون. يرجى السماح به من إعدادات المتصفح.');
+            return;
+          }
         }
+      }
+
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
       }
 
       const recognition = new SpeechRecognition();
@@ -128,16 +124,16 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
       recognition.onstart = () => {
         setIsListening(true);
         setVoiceSeconds(0);
-        setFeedbackMsg('جاري الاستماع... تحدث الآن بوضوح عن طلبك أو عقارك');
+        setFeedbackMsg('جاري الاستماع... تحدث بوضوح عن طلبك أو عقارك');
         setInterimTranscript('');
 
         // Timer limit to prevent infinite listening
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = setInterval(() => {
           setVoiceSeconds((prev) => {
-            if (prev >= 30) {
+            if (prev >= 15) {
               stopListening();
-              return 30;
+              return 15;
             }
             return prev + 1;
           });
@@ -168,20 +164,15 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
       };
 
       recognition.onerror = (event: any) => {
-        console.warn('Speech recognition status:', event.error);
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          setFeedbackMsg('تم رفض إذن استخدام الميكروفون. يرجى تفعيله من إعدادات المتصفح.');
-          stopListening();
+        console.warn('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          setFeedbackMsg('تم رفض إذن استخدام الميكروفون. يرجى السماح به من إعدادات المتصفح.');
         } else if (event.error === 'no-speech') {
-          // Do NOT terminate on momentary pause; keep session alive
-          setFeedbackMsg('في انتظار صوتك... تحدث بوضوح بالقرب من الميكروفون');
-        } else if (event.error === 'audio-capture') {
-          setFeedbackMsg('تعذر التقاط الصوت، يرجى التأكد من توصيل الميكروفون.');
-          stopListening();
+          setFeedbackMsg('لم يتم التقاط صوت واضح. حاول التحدث بالقرب من الميكروفون.');
         } else {
           setFeedbackMsg('انتهت جلسة الاستماع.');
-          stopListening();
         }
+        stopListening();
       };
 
       recognition.onend = () => {

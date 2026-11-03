@@ -213,10 +213,85 @@ VALUES
     ('20261101_001', 'add_legal_status', 'sha256_001_legal_status', false, 'applied'),
     ('20261101_002', 'complete_property_ratings', 'sha256_002_ratings', false, 'applied'),
     ('20261101_003', 'create_feature_tables', 'sha256_003_feature_tables', false, 'applied'),
-    ('20261101_004', 'create_migrations_and_rpc', 'sha256_004_migrations', false, 'applied')
+    ('20261101_004', 'create_migrations_and_rpc', 'sha256_004_migrations', false, 'applied'),
+    ('20261102_005', 'enforce_property_ownership_rls', 'sha256_005_ownership_rls', false, 'applied')
 ON CONFLICT (version) DO UPDATE SET status = 'applied';
 
 -- ============================================================================
--- 7. إنعاش كاش PostgREST فورياً
+-- 7. تشديد سياسات RLS لملكية الإعلانات والطلبات
+-- ============================================================================
+CREATE OR REPLACE FUNCTION public.normalize_phone(p TEXT)
+RETURNS TEXT AS $$
+DECLARE
+  digits TEXT;
+BEGIN
+  IF p IS NULL OR p = '' THEN
+    RETURN '';
+  END IF;
+  digits := regexp_replace(p, '[^0-9]', '', 'g');
+  IF starts_with(digits, '20') AND length(digits) >= 12 THEN
+    digits := substr(digits, 3);
+  END IF;
+  IF starts_with(digits, '0') AND length(digits) >= 11 THEN
+    digits := substr(digits, 2);
+  END IF;
+  RETURN digits;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION public.get_caller_phone()
+RETURNS TEXT AS $$
+BEGIN
+  RETURN coalesce(
+    (current_setting('request.jwt.claims', true)::jsonb ->> 'phone'),
+    (current_setting('request.jwt.claims', true)::jsonb -> 'user_metadata' ->> 'phone'),
+    ''
+  );
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+DROP POLICY IF EXISTS "Enterprise update on properties" ON public.properties;
+CREATE POLICY "Enterprise update on properties" ON public.properties
+    FOR UPDATE USING (
+        public.is_reviewer() = true
+        OR (
+            public.get_caller_phone() <> '' 
+            AND public.normalize_phone(owner_phone) = public.normalize_phone(public.get_caller_phone())
+        )
+    );
+
+DROP POLICY IF EXISTS "Enterprise delete on properties" ON public.properties;
+CREATE POLICY "Enterprise delete on properties" ON public.properties
+    FOR DELETE USING (
+        public.is_admin_or_super() = true
+        OR (
+            public.get_caller_phone() <> '' 
+            AND public.normalize_phone(owner_phone) = public.normalize_phone(public.get_caller_phone())
+        )
+    );
+
+DROP POLICY IF EXISTS "Enterprise update on tenant_requests" ON public.tenant_requests;
+CREATE POLICY "Enterprise update on tenant_requests" ON public.tenant_requests
+    FOR UPDATE USING (
+        public.is_reviewer() = true
+        OR (
+            public.get_caller_phone() <> '' 
+            AND public.normalize_phone(tenant_phone) = public.normalize_phone(public.get_caller_phone())
+        )
+    );
+
+DROP POLICY IF EXISTS "Enterprise delete on tenant_requests" ON public.tenant_requests;
+CREATE POLICY "Enterprise delete on tenant_requests" ON public.tenant_requests
+    FOR DELETE USING (
+        public.is_admin_or_super() = true
+        OR (
+            public.get_caller_phone() <> '' 
+            AND public.normalize_phone(tenant_phone) = public.normalize_phone(public.get_caller_phone())
+        )
+    );
+
+-- ============================================================================
+-- 8. إنعاش كاش PostgREST فورياً
 -- ============================================================================
 NOTIFY pgrst, 'reload schema';
+

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { TenantRequest } from '../types/property';
+import { TenantRequest, AppUser } from '../types/property';
 import { DEFAULT_SAKAN_PLACEHOLDER } from '../utils/constants';
+import { canUserEditTenantRequest } from '../utils/permissionManager';
 import { 
   X, Copy, Check, MapPin, Building, 
   MessageCircle, ShieldCheck, CheckCircle2, 
@@ -11,6 +12,7 @@ interface TenantRequestDetailsModalProps {
   request: TenantRequest | null;
   onClose: () => void;
   onEdit?: (request: TenantRequest) => void;
+  currentUser?: AppUser | null;
   isAdmin?: boolean;
 }
 
@@ -18,9 +20,11 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
   request,
   onClose,
   onEdit,
+  currentUser,
   isAdmin = false,
 }) => {
   const [copied, setCopied] = useState(false);
+  const isEditable = Boolean(onEdit && request && canUserEditTenantRequest(currentUser, request));
 
   if (!request) return null;
 
@@ -208,11 +212,11 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
 
         {/* Footer Actions */}
         <div className="p-4 bg-[#F5F7F9] border-t border-[#D6DEE5] flex items-center justify-between gap-2.5">
-          {onEdit && (
+          {isEditable && (
             <button
               onClick={() => {
                 onClose();
-                onEdit(request);
+                onEdit?.(request);
               }}
               className="py-2.5 px-4 rounded-xl bg-white hover:bg-[#F5F9F8] border border-[#D6DEE5] text-[#24313D] font-bold text-xs transition-colors cursor-pointer"
             >
