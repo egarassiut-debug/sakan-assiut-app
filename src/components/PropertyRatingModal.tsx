@@ -12,6 +12,8 @@ interface PropertyRatingModalProps {
   onClose: () => void;
   currentUser: AppUser | null;
   propertyRatings: PropertyRating[];
+  inspections?: any[];
+  onRequestInspection?: (property: Property) => void;
   onSubmitRating: (ratingData: {
     propertyId: string;
     propertyCode: string;

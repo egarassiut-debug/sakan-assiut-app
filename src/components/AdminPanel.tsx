@@ -62,6 +62,8 @@ interface AdminPanelProps {
   onToggleDrawer?: (open?: boolean) => void;
   onCloseDrawer?: () => void;
   onAddToast?: (toast: any) => void;
+  inspections?: any[];
+  onUpdateInspectionStatus?: (id: string, status: any, feePaid?: boolean) => void;
 }
 
 /**

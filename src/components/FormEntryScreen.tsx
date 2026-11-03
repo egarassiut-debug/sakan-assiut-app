@@ -29,31 +29,31 @@ import {
   Clock,
   Target,
   ArrowUp,
-  AlertTriangle,
   Info,
   X,
-  ShieldCheck
+  ShieldCheck,
+  Home,
+  Store,
+  Warehouse,
+  Truck,
+  Check,
+  Tag,
+  HelpCircle,
+  Layers
 } from 'lucide-react';
 import { RealEstateAgent, Assignment, HourglassTopRounded } from './FlutterIcons';
 import { validatePropertyPayload, validateTenantRequestPayload, dbUpsertProfile } from '../lib/supabase';
 import { safeStorageGetItem, safeSaveDraft, safeStorageRemoveItem } from '../utils/storageManager';
-
-// Flutter-specified unit types defined statically at module level
-const FLUTTER_UNIT_TYPES = [
-  'شقة سكنية',
-  'استوديو',
-  'دوبلكس',
-  'محل تجاري',
-  'مقر إداري / مكتب',
-  'سكن طلابي (ذكور)',
-  'غرفة طلابات مشتركة',
-  'غرفة عمال مشتركة',
-  'روف سكنى',
-  'مخزن / بدروم',
-  'شاليه',
-  'قطعة أرض فضاء',
-  'عيادة طبية مجهزة'
-] as const;
+import {
+  INITIAL_PROPERTY_GROUPS,
+  INITIAL_PROPERTY_TYPES,
+  FINISHING_OPTIONS,
+  PAYMENT_FREQUENCIES,
+  ASSIUT_DISTRICTS_LIST,
+  UTILITIES_BY_GROUP,
+  getGroupForPropertyType,
+} from '../data/formConfig';
+import { PropertyGroupId } from '../types/formConfig';
 
 interface FormEntryScreenProps {
   isOffer: boolean; // true = عرض عقار (متاح), false = طلب عقار (مطلوب)
@@ -87,35 +87,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const isEditing = Boolean(editingProperty || editingTenantRequest);
   const isOffer = editingProperty ? true : editingTenantRequest ? false : propIsOffer;
 
-  // Extract active options dynamically from parent state, ensuring flutter items are included
-  const activePropertyTypes = useMemo(() => {
-    const fromCategories = (dropdownCategories?.propertyTypes?.items || [])
-      .filter((i) => i.isActive)
-      .map((i) => i.name);
-    const combined: string[] = [...FLUTTER_UNIT_TYPES];
-    for (const item of fromCategories) {
-      if (!combined.includes(item)) {
-        combined.push(item);
-      }
-    }
-    return combined;
-  }, [dropdownCategories]);
-
-  const activeDistricts = (dropdownCategories?.districts?.items || [])
-    .filter((i) => i.isActive)
-    .map((i) => i.name);
-  const activePaymentMethods = (dropdownCategories?.paymentMethods?.items || [])
-    .filter((i) => i.isActive)
-    .map((i) => i.name);
-  const activeLegalStatusOptions = useMemo(() => {
-    const fromCategories = (dropdownCategories?.legalStatuses?.items || [])
-      .filter((i) => i.isActive)
-      .map((i) => i.name);
-    if (fromCategories.length > 0) return fromCategories;
-    return ['مرخصة', 'بعد الرخصة', 'تصالح نهائي', 'جاري التصالح', 'مخالف'];
-  }, [dropdownCategories]);
-
-  const draftStorageKey = isOffer ? 'asuit_property_form_draft_offer' : 'asuit_property_form_draft_request';
+  const draftStorageKey = isOffer ? 'asuit_property_form_draft_offer_v2' : 'asuit_property_form_draft_request_v2';
 
   // 1. Read saved draft with safe storage manager if not in editing mode
   const initialDraft = useMemo(() => {
@@ -123,48 +95,158 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     return safeStorageGetItem<any>(draftStorageKey, null);
   }, [isEditing, draftStorageKey]);
 
-  // Common Form State - empty by default on fresh entry
-  const [propertyType, setPropertyType] = useState<string>(
-    editingProperty?.propertyType || editingTenantRequest?.propertyType || ''
-  );
+  // Initial group calculation
+  const initialGroupId = useMemo<PropertyGroupId>(() => {
+    if (editingProperty?.propertyGroup) return editingProperty.propertyGroup as PropertyGroupId;
+    if (editingTenantRequest?.propertyGroup) return editingTenantRequest.propertyGroup as PropertyGroupId;
+    if (editingProperty?.propertyType) return getGroupForPropertyType(editingProperty.propertyType);
+    if (editingTenantRequest?.propertyType) return getGroupForPropertyType(editingTenantRequest.propertyType);
+    if (initialDraft?.selectedGroup) return initialDraft.selectedGroup;
+    return 'residential';
+  }, [editingProperty, editingTenantRequest, initialDraft]);
+
+  // Group selection state
+  const [selectedGroup, setSelectedGroup] = useState<PropertyGroupId>(initialGroupId);
+
+  // Property sub-types available for current group
+  const availableSubTypes = useMemo(() => {
+    return INITIAL_PROPERTY_TYPES.filter((t) => t.groupId === selectedGroup && t.isActive);
+  }, [selectedGroup]);
+
+  // Initial type
+  const initialPropertyType = useMemo(() => {
+    const editType = editingProperty?.propertyType || editingTenantRequest?.propertyType || initialDraft?.propertyType;
+    if (editType) return editType;
+    return availableSubTypes[0]?.name || 'شقة سكنية';
+  }, [editingProperty, editingTenantRequest, initialDraft, availableSubTypes]);
+
+  // Common Form State
+  const [propertyType, setPropertyType] = useState<string>(initialPropertyType);
   const [purpose, setPurpose] = useState<PropertyPurpose>(
-    editingProperty?.purpose || editingTenantRequest?.purpose || 'rent'
+    editingProperty?.purpose || editingTenantRequest?.purpose || (selectedGroup === 'lands' ? 'sale' : 'rent')
   );
+
+  // Location State
   const [district, setDistrict] = useState<string>(
-    editingProperty?.district || editingTenantRequest?.preferredDistrict || ''
+    editingProperty?.district || editingTenantRequest?.preferredDistrict || initialDraft?.district || ASSIUT_DISTRICTS_LIST[0]
   );
+  const [customDistrict, setCustomDistrict] = useState<string>(
+    editingProperty?.customDistrict || editingTenantRequest?.customDistrict || initialDraft?.customDistrict || ''
+  );
+  // For Request form: Multi-district support
+  const [preferredDistricts, setPreferredDistricts] = useState<string[]>(() => {
+    if (editingTenantRequest?.preferredDistricts && editingTenantRequest.preferredDistricts.length > 0) {
+      return editingTenantRequest.preferredDistricts;
+    }
+    if (editingTenantRequest?.preferredDistrict) {
+      return [editingTenantRequest.preferredDistrict];
+    }
+    if (initialDraft?.preferredDistricts) {
+      return initialDraft.preferredDistricts;
+    }
+    return [ASSIUT_DISTRICTS_LIST[0]];
+  });
+
+  const [address, setAddress] = useState(editingProperty?.address || initialDraft?.address || '');
+  const [facade, setFacade] = useState(editingProperty?.facade || initialDraft?.facade || '');
   const [legalStatus, setLegalStatus] = useState<string>(
-    editingProperty?.legalStatus || editingTenantRequest?.legalStatus || initialDraft?.legalStatus || ''
+    editingProperty?.legalStatus || editingTenantRequest?.legalStatus || initialDraft?.legalStatus || 'مرخصة'
   );
-  const [address, setAddress] = useState(editingProperty?.address || '');
-  const [facade, setFacade] = useState(editingProperty?.facade || '');
+
+  // Price & Budget State
+  const [price, setPrice] = useState<number | ''>(editingProperty ? editingProperty.price : (initialDraft?.price ?? ''));
+  const [isNegotiable, setIsNegotiable] = useState<boolean>(editingProperty?.isNegotiable ?? initialDraft?.isNegotiable ?? true);
+  const [paymentFrequency, setPaymentFrequency] = useState<string>(
+    editingProperty?.paymentFrequency || editingTenantRequest?.paymentFrequency || initialDraft?.paymentFrequency || 'شهرياً'
+  );
+  const [deposit, setDeposit] = useState<number | ''>(editingProperty?.deposit ?? (initialDraft?.deposit ?? ''));
+  const [rentDurationMonths, setRentDurationMonths] = useState<number | ''>(editingProperty?.rentDurationMonths ?? (initialDraft?.rentDurationMonths ?? ''));
+
+  // Request-specific budget range
+  const [minPrice, setMinPrice] = useState<number | ''>(editingTenantRequest?.minPrice ?? (initialDraft?.minPrice ?? ''));
+  const [maxPrice, setMaxPrice] = useState<number | ''>(editingTenantRequest?.maxPrice ?? (initialDraft?.maxPrice ?? ''));
+
+  // Area State
   const [area, setArea] = useState<number | ''>(
-    editingProperty ? editingProperty.area : (editingTenantRequest?.maxArea || editingTenantRequest?.minArea || '')
+    editingProperty ? editingProperty.area : (editingTenantRequest?.maxArea || editingTenantRequest?.minArea || initialDraft?.area || '')
   );
-  const [notes, setNotes] = useState(editingProperty?.description || editingTenantRequest?.notes || '');
-  // Automatic pulling of registered contact info from currentUser (القاعدة العامة لبيانات التواصل)
+  const [minArea, setMinArea] = useState<number | ''>(editingTenantRequest?.minArea ?? (initialDraft?.minArea ?? ''));
+  const [maxArea, setMaxArea] = useState<number | ''>(editingTenantRequest?.maxArea ?? (initialDraft?.maxArea ?? ''));
+
+  // Specialized Contextual Attributes
+  const [bedrooms, setBedrooms] = useState<number | ''>(
+    editingProperty?.bedrooms ?? (editingTenantRequest?.bedrooms ?? (initialDraft?.bedrooms ?? ''))
+  );
+  const [bathrooms, setBathrooms] = useState<number | ''>(
+    editingProperty?.bathrooms ?? (editingTenantRequest?.bathrooms ?? (initialDraft?.bathrooms ?? ''))
+  );
+  const [floorLevel, setFloorLevel] = useState<number | ''>(editingProperty?.floorLevel ?? (initialDraft?.floorLevel ?? ''));
+  const [totalFloors, setTotalFloors] = useState<number | ''>(editingProperty?.totalFloors ?? (initialDraft?.totalFloors ?? ''));
+  const [hasElevator, setHasElevator] = useState<boolean>(editingProperty?.hasElevator ?? (initialDraft?.hasElevator ?? false));
+  const [finishingStatus, setFinishingStatus] = useState<string>(
+    editingProperty?.finishingStatus || (editingTenantRequest as any)?.furnishingStatus || initialDraft?.finishingStatus || 'مشطبة'
+  );
+  const [streetWidth, setStreetWidth] = useState<number | ''>(
+    editingProperty?.streetWidth ?? (editingTenantRequest?.streetWidth ?? (initialDraft?.streetWidth ?? ''))
+  );
+  const [ceilingHeight, setCeilingHeight] = useState<number | ''>(
+    editingProperty?.ceilingHeight ?? (editingTenantRequest?.ceilingHeight ?? (initialDraft?.ceilingHeight ?? ''))
+  );
+  const [truckAccess, setTruckAccess] = useState<boolean>(
+    editingProperty?.truckAccess ?? (editingTenantRequest?.truckAccess ?? (initialDraft?.truckAccess ?? true))
+  );
+  const [suitableActivity, setSuitableActivity] = useState<string>(
+    editingProperty?.suitableActivity || (editingTenantRequest?.suitableActivity || (initialDraft?.suitableActivity ?? ''))
+  );
+
+  // Group utilities selection
+  const [selectedGroupUtilities, setSelectedGroupUtilities] = useState<string[]>(() => {
+    if (initialDraft?.selectedGroupUtilities) return initialDraft.selectedGroupUtilities;
+    return ['electricity', 'water'];
+  });
+
+  // Description / Title / Notes
+  const [title, setTitle] = useState(editingProperty?.title || initialDraft?.title || '');
+  const [notes, setNotes] = useState(editingProperty?.description || editingTenantRequest?.notes || initialDraft?.notes || '');
+
+  // Contact Info (Pre-filled from currentUser)
   const [contactName, setContactName] = useState(
-    editingProperty?.ownerName || 
-    editingTenantRequest?.tenantName || 
-    initialDraft?.contactName || 
-    currentUser?.name || 
+    editingProperty?.ownerName ||
+    editingTenantRequest?.tenantName ||
+    initialDraft?.contactName ||
+    currentUser?.name ||
     ''
   );
   const [contactPhone, setContactPhone] = useState(
-    editingProperty?.ownerPhone || 
-    editingTenantRequest?.tenantPhone || 
-    initialDraft?.contactPhone || 
-    currentUser?.phone || 
+    editingProperty?.ownerPhone ||
+    editingTenantRequest?.tenantPhone ||
+    initialDraft?.contactPhone ||
+    currentUser?.phone ||
     ''
   );
-  const [uploadedImages, setUploadedImages] = useState<string[]>(editingProperty?.images || []);
-  const [hasAgreedDeclaration, setHasAgreedDeclaration] = useState(Boolean(editingProperty || editingTenantRequest));
+
+  const [uploadedImages, setUploadedImages] = useState<string[]>(editingProperty?.images || (editingTenantRequest?.images || []));
+  const [hasAgreedDeclaration, setHasAgreedDeclaration] = useState(Boolean(editingProperty || isEditing));
+
+  // Admin coordination fields
+  const [fee, setFee] = useState<number | ''>(editingProperty?.fee ?? '');
+  const [inspectionDate, setInspectionDate] = useState<string>(editingProperty?.inspectionDate ?? '');
+
+  // UI / Feedback States
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [invalidField, setInvalidField] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [submittedListingId, setSubmittedListingId] = useState('');
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [lastSavedNotice, setLastSavedNotice] = useState<string | null>(null);
+
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceSeconds, setVoiceSeconds] = useState(0);
+  const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const timerRef = useRef<number | null>(null);
 
   // Validation Refs for Smooth Auto-Scroll
   const propertyTypeRef = useRef<HTMLSelectElement | null>(null);
@@ -174,10 +256,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const priceInputRef = useRef<HTMLInputElement | null>(null);
   const maxPriceInputRef = useRef<HTMLInputElement | null>(null);
   const phoneInputRef = useRef<HTMLInputElement | null>(null);
-  const contactNameInputRef = useRef<HTMLInputElement | null>(null);
   const declarationRef = useRef<HTMLLabelElement | null>(null);
-  const floorLevelRef = useRef<HTMLInputElement | null>(null);
-  const imagesSectionRef = useRef<HTMLDivElement | null>(null);
   const bottomErrorRef = useRef<HTMLDivElement | null>(null);
   const topErrorRef = useRef<HTMLDivElement | null>(null);
 
@@ -192,26 +271,31 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     }
   }, [toastMsg]);
 
-  const scrollToError = (targetRef: React.RefObject<HTMLElement | null>, fieldName?: string) => {
-    if (fieldName) {
-      setInvalidField(fieldName);
+  // When group changes, ensure propertyType belongs to the group
+  const handleGroupSelect = (newGroupId: PropertyGroupId) => {
+    setSelectedGroup(newGroupId);
+    const groupTypes = INITIAL_PROPERTY_TYPES.filter((t) => t.groupId === newGroupId && t.isActive);
+    if (!groupTypes.some((t) => t.name === propertyType)) {
+      if (groupTypes.length > 0) {
+        setPropertyType(groupTypes[0].name);
+      }
     }
+    if (newGroupId === 'lands') {
+      setPurpose('sale');
+    }
+  };
+
+  // Toast / error autoscroll
+  const scrollToError = (targetRef: React.RefObject<HTMLElement | null>, fieldName?: string) => {
+    if (fieldName) setInvalidField(fieldName);
     setTimeout(() => {
       if (targetRef && targetRef.current) {
         targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Add animated visual pulse ring to distinctly highlight the field for the user
         const el = targetRef.current;
         el.classList.add('ring-4', 'ring-rose-500', 'ring-offset-2', 'transition-all');
-        setTimeout(() => {
-          el.classList.remove('ring-4', 'ring-rose-500', 'ring-offset-2');
-        }, 3000);
-
+        setTimeout(() => el.classList.remove('ring-4', 'ring-rose-500', 'ring-offset-2'), 3000);
         if ('focus' in el && typeof (el as HTMLElement).focus === 'function') {
-          try {
-            (el as HTMLElement).focus({ preventScroll: true });
-          } catch {
-            // ignore
-          }
+          try { (el as HTMLElement).focus({ preventScroll: true }); } catch {}
         }
       } else if (bottomErrorRef.current) {
         bottomErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -219,177 +303,33 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     }, 60);
   };
 
-  // Direct Jump to the exact error field when user clicks 'الدخول للخطأ' or the error banner
   const jumpToCurrentError = () => {
-    if (invalidField === 'phone') {
-      scrollToError(phoneInputRef, 'phone');
-    } else if (invalidField === 'area') {
-      scrollToError(areaInputRef, 'area');
-    } else if (invalidField === 'price') {
-      scrollToError(priceInputRef, 'price');
-    } else if (invalidField === 'legalStatus') {
-      scrollToError(legalStatusRef, 'legalStatus');
-    } else if (invalidField === 'maxPrice') {
-      scrollToError(maxPriceInputRef, 'maxPrice');
-    } else if (invalidField === 'district') {
-      scrollToError(districtRef, 'district');
-    } else if (invalidField === 'propertyType') {
-      scrollToError(propertyTypeRef, 'propertyType');
-    } else if (invalidField === 'declaration') {
-      scrollToError(declarationRef, 'declaration');
-    } else {
-      // Intelligently check whichever field is missing or invalid
-      if (!contactPhone || !isValidEgyptianPhone(contactPhone)) {
-        scrollToError(phoneInputRef, 'phone');
-      } else if (!area || Number(area) <= 0) {
-        scrollToError(areaInputRef, 'area');
-      } else if (isOffer && (!price || Number(price) <= 0)) {
-        scrollToError(priceInputRef, 'price');
-      } else if (!legalStatus || !legalStatus.trim()) {
-        scrollToError(legalStatusRef, 'legalStatus');
-      } else if (!isOffer && (!maxPrice || Number(maxPrice) <= 0)) {
-        scrollToError(maxPriceInputRef, 'maxPrice');
-      } else if (!district) {
-        scrollToError(districtRef, 'district');
-      } else if (!propertyType) {
-        scrollToError(propertyTypeRef, 'propertyType');
-      } else if (topErrorRef.current) {
-        topErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+    if (invalidField === 'phone') scrollToError(phoneInputRef, 'phone');
+    else if (invalidField === 'area') scrollToError(areaInputRef, 'area');
+    else if (invalidField === 'price') scrollToError(priceInputRef, 'price');
+    else if (invalidField === 'maxPrice') scrollToError(maxPriceInputRef, 'maxPrice');
+    else if (invalidField === 'legalStatus') scrollToError(legalStatusRef, 'legalStatus');
+    else if (invalidField === 'declaration') scrollToError(declarationRef, 'declaration');
+    else {
+      if (!contactPhone || !isValidEgyptianPhone(contactPhone)) scrollToError(phoneInputRef, 'phone');
+      else if (isOffer && (!price || Number(price) <= 0)) scrollToError(priceInputRef, 'price');
+      else if (!isOffer && (!maxPrice || Number(maxPrice) <= 0)) scrollToError(maxPriceInputRef, 'maxPrice');
+      else if (isOffer && (!area || Number(area) <= 0)) scrollToError(areaInputRef, 'area');
+      else if (topErrorRef.current) topErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
-  // Direct Jump to the field specified in the admin note (e.g. photos, floor, price, etc.)
-  const jumpToAdminNoteTarget = () => {
-    const note = (editingProperty?.adminNote || editingTenantRequest?.adminNote || '').toLowerCase();
-    if (note.includes('صور') || note.includes('واجهة') || note.includes('صورة') || note.includes('مدخل')) {
-      if (imagesSectionRef.current) {
-        imagesSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        imagesSectionRef.current.classList.add('ring-4', 'ring-amber-500', 'ring-offset-2', 'transition-all');
-        setTimeout(() => imagesSectionRef.current?.classList.remove('ring-4', 'ring-amber-500', 'ring-offset-2'), 3000);
-      }
-    } else if (note.includes('دور') || note.includes('طابق')) {
-      if (floorLevelRef.current) {
-        floorLevelRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        floorLevelRef.current.classList.add('ring-4', 'ring-amber-500', 'ring-offset-2', 'transition-all');
-        setTimeout(() => floorLevelRef.current?.classList.remove('ring-4', 'ring-amber-500', 'ring-offset-2'), 3000);
-        floorLevelRef.current.focus?.({ preventScroll: true });
-      }
-    } else if (note.includes('سعر') || note.includes('إيجار') || note.includes('مبلغ') || note.includes('قيمة')) {
-      scrollToError(priceInputRef, 'price');
-    } else if (note.includes('مساحة')) {
-      scrollToError(areaInputRef, 'area');
-    } else if (note.includes('هاتف') || note.includes('رقم')) {
-      scrollToError(phoneInputRef, 'phone');
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
-  // When opening an ad that needs completion, automatically focus on the note / target field
-  useEffect(() => {
-    if (editingProperty?.status === 'needs_completion' || editingTenantRequest?.status === 'needs_completion') {
-      const timer = setTimeout(() => {
-        jumpToAdminNoteTarget();
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, [editingProperty?.id, editingTenantRequest?.id]);
-
-  // Draft auto-save indicator state
-  const [hasRestoredDraft, setHasRestoredDraft] = useState<boolean>(() => Boolean(initialDraft && (initialDraft.title || initialDraft.address || initialDraft.area || initialDraft.price || initialDraft.notes || initialDraft.maxPrice)));
-  const [lastSavedNotice, setLastSavedNotice] = useState<string | null>(() => initialDraft?.savedAt ? `تم استرجاع مسودة من ${initialDraft.savedAt}` : null);
-
-  // Offer-specific state (عرض عقار) - empty by default on fresh entry
-  const [title, setTitle] = useState(editingProperty?.title || '');
-  const [price, setPrice] = useState<number | ''>(editingProperty ? editingProperty.price : '');
-  const [deposit, setDeposit] = useState<number | ''>(editingProperty?.deposit ?? '');
-  const [rentDurationMonths, setRentDurationMonths] = useState<number | ''>(editingProperty?.rentDurationMonths ?? '');
-  const [bedrooms, setBedrooms] = useState<number | ''>(editingProperty?.bedrooms ?? (editingTenantRequest?.bedrooms ?? ''));
-  const [bathrooms, setBathrooms] = useState<number | ''>(editingProperty?.bathrooms ?? (editingTenantRequest?.bathrooms ?? ''));
-  const [totalFloors, setTotalFloors] = useState<number | ''>(editingProperty?.totalFloors ?? '');
-  const [floorLevel, setFloorLevel] = useState<number | ''>(editingProperty?.floorLevel ?? '');
-  const [hasElevator, setHasElevator] = useState(editingProperty?.hasElevator ?? false);
-  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>(
-    editingProperty?.paymentMethods?.length ? editingProperty.paymentMethods : []
-  );
-  const [utilities] = useState<PropertyUtilities>(() => {
-    if (editingProperty?.utilities) return editingProperty.utilities;
-    return {
-      electricity: { available: true, type: utilityDefinitions.find((u) => u.key === 'electricity')?.statusOptions[0] || 'عداد قديم' },
-      water: { available: true, type: utilityDefinitions.find((u) => u.key === 'water')?.statusOptions[0] || 'عداد مياه مستقل' },
-      gas: { available: true, type: utilityDefinitions.find((u) => u.key === 'gas')?.statusOptions[0] || 'غاز طبيعي فاتورة' },
-      internet: { available: true, type: utilityDefinitions.find((u) => u.key === 'internet')?.statusOptions[0] || 'خط أرضي فايبر' },
-      elevator: { available: true, type: utilityDefinitions.find((u) => u.key === 'elevator')?.statusOptions[0] || 'أسانسير شغال' },
-    };
-  });
-
-  // Request-specific state (طلب عقار) - empty by default on fresh entry
-  const [minPrice, setMinPrice] = useState<number | ''>(editingTenantRequest?.minPrice ?? '');
-  const [maxPrice, setMaxPrice] = useState<number | ''>(editingTenantRequest?.maxPrice ?? '');
-  const minArea = editingTenantRequest?.minArea ?? '';
-  const maxArea = editingTenantRequest?.maxArea ?? '';
-  const urgency = editingTenantRequest?.urgency || 'within_month';
-
-  // Admin-specific state for 3rd-party coordination
-  const [fee, setFee] = useState<number | ''>(editingProperty?.fee ?? '');
-  const [inspectionDate, setInspectionDate] = useState<string>(editingProperty?.inspectionDate ?? '');
-
-  // Land detection
-  const isLand = propertyType.includes('أرض') || propertyType.includes('فضاء');
-
-  // خريطة لحفظ اختيارات المستخدم بناءً على معرف المرفق من لوحة التحكم
-  const [selectedUtilities, setSelectedUtilities] = useState<Record<string, string>>({});
-
-  // دالة مسح المسودة والبدء من جديد
-  const handleClearDraft = () => {
-    safeStorageRemoveItem(draftStorageKey);
-    setHasRestoredDraft(false);
-    setLastSavedNotice(null);
-    setTitle('');
-    setPrice('');
-    setDeposit('');
-    setRentDurationMonths('');
-    setAddress('');
-    setFacade('');
-    setArea('');
-    setNotes('');
-    setContactName(currentUser?.name || '');
-    setContactPhone(currentUser?.phone || '');
-    setUploadedImages([]);
-    setHasAgreedDeclaration(false);
-    setSelectedUtilities({});
-    setMinPrice('');
-    setMaxPrice('');
-    setBedrooms('');
-    setBathrooms('');
-    setTotalFloors('');
-    setFloorLevel('');
-    setHasElevator(true);
-    setPropertyType('');
-    setDistrict('');
-    setLegalStatus('');
-    setSelectedPaymentMethods([]);
-    setFee('');
-  };
-
-  // تأثير الحفظ التلقائي عند كتابة أو تعديل أي بيان داخل النموذج
+  // Auto-save draft
   useEffect(() => {
     if (isEditing) return;
 
     const hasContent = Boolean(
-      title?.trim() ||
-      address?.trim() ||
-      facade?.trim() ||
-      notes?.trim() ||
-      legalStatus?.trim() ||
+      propertyType ||
       (area !== '' && Number(area) > 0) ||
       (price !== '' && Number(price) > 0) ||
-      (minPrice !== '' && Number(minPrice) > 0) ||
-      (uploadedImages && uploadedImages.length > 0) ||
-      (contactName && contactName !== (currentUser?.name || '')) ||
+      (maxPrice !== '' && Number(maxPrice) > 0) ||
       (contactPhone && contactPhone !== (currentUser?.phone || '')) ||
-      (selectedUtilities && Object.keys(selectedUtilities).length > 0)
+      notes?.trim()
     );
 
     if (!hasContent) return;
@@ -398,145 +338,159 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
       try {
         const timeStr = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
         const draftObj = {
+          selectedGroup,
           propertyType,
           purpose,
           district,
-          legalStatus,
+          customDistrict,
+          preferredDistricts,
           address,
           facade,
+          legalStatus,
+          price,
+          isNegotiable,
+          paymentFrequency,
+          deposit,
+          rentDurationMonths,
+          minPrice,
+          maxPrice,
           area,
+          minArea,
+          maxArea,
+          bedrooms,
+          bathrooms,
+          floorLevel,
+          totalFloors,
+          hasElevator,
+          finishingStatus,
+          streetWidth,
+          ceilingHeight,
+          truckAccess,
+          suitableActivity,
+          selectedGroupUtilities,
+          title,
           notes,
           contactName,
           contactPhone,
-          uploadedImages,
-          hasAgreedDeclaration,
-          title,
-          price,
-          deposit,
-          rentDurationMonths,
-          bedrooms,
-          bathrooms,
-          totalFloors,
-          floorLevel,
-          hasElevator,
-          selectedPaymentMethods,
-          selectedUtilities,
-          minPrice,
-          maxPrice,
-          fee,
-          inspectionDate,
           savedAt: timeStr,
         };
         safeSaveDraft(draftStorageKey, draftObj);
         setLastSavedNotice(`محفوظ تلقائياً في ${timeStr}`);
       } catch (err) {
-        console.warn('Error auto-saving draft to storage', err);
+        console.warn('Draft save error:', err);
       }
-    }, 450);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [
     isEditing,
     draftStorageKey,
+    selectedGroup,
     propertyType,
     purpose,
     district,
+    customDistrict,
+    preferredDistricts,
     address,
     facade,
+    legalStatus,
+    price,
+    isNegotiable,
+    paymentFrequency,
+    deposit,
+    rentDurationMonths,
+    minPrice,
+    maxPrice,
     area,
+    minArea,
+    maxArea,
+    bedrooms,
+    bathrooms,
+    floorLevel,
+    totalFloors,
+    hasElevator,
+    finishingStatus,
+    streetWidth,
+    ceilingHeight,
+    truckAccess,
+    suitableActivity,
+    selectedGroupUtilities,
+    title,
     notes,
     contactName,
     contactPhone,
-    uploadedImages,
-    hasAgreedDeclaration,
-    title,
-    price,
-    deposit,
-    rentDurationMonths,
-    bedrooms,
-    bathrooms,
-    totalFloors,
-    floorLevel,
-    hasElevator,
-    selectedPaymentMethods,
-    selectedUtilities,
-    minPrice,
-    maxPrice,
-    fee,
-    inspectionDate,
     currentUser,
   ]);
 
-  // حساب نسبة اكتمال البيانات - Flutter DynamicFormEntryScreen calculateCompletionPercentage
+  // Clear draft
+  const handleClearDraft = () => {
+    safeStorageRemoveItem(draftStorageKey);
+    setLastSavedNotice(null);
+    setPropertyType(availableSubTypes[0]?.name || 'شقة سكنية');
+    setPrice('');
+    setMinPrice('');
+    setMaxPrice('');
+    setArea('');
+    setMinArea('');
+    setMaxArea('');
+    setNotes('');
+    setTitle('');
+    setCustomDistrict('');
+    setBedrooms('');
+    setBathrooms('');
+    setFloorLevel('');
+    setTotalFloors('');
+    setHasElevator(false);
+    setStreetWidth('');
+    setCeilingHeight('');
+    setSuitableActivity('');
+    setUploadedImages([]);
+    setContactName(currentUser?.name || '');
+    setContactPhone(currentUser?.phone || '');
+  };
+
+  // Completion calculation
   const calculateCompletionPercentage = () => {
-    const totalFields = 11;
-    let filledFields = 0;
+    let filled = 0;
+    const total = isOffer ? 9 : 7;
 
-    // الحقول الإجبارية الأساسية
-    if (propertyType && propertyType.trim()) filledFields++;
-    if (purpose && purpose.trim()) filledFields++;
-    if (district && district.trim()) filledFields++;
-    if (isOffer ? (price !== '' && Number(price) > 0) : (maxPrice !== '' && Number(maxPrice) > 0)) filledFields++;
-    if (area !== '' && Number(area) > 0) filledFields++;
-    if (contactName && contactName.trim()) filledFields++;
-    if (contactPhone && contactPhone.trim()) filledFields++;
-    if (hasAgreedDeclaration) filledFields++;
+    if (propertyType) filled++;
+    if (purpose) filled++;
+    if (district || preferredDistricts.length > 0) filled++;
+    if (isOffer ? (price !== '' && Number(price) > 0) : (maxPrice !== '' && Number(maxPrice) > 0)) filled++;
+    if (isOffer ? (area !== '' && Number(area) > 0) : (area !== '' || maxArea !== '')) filled++;
+    if (contactPhone && isValidEgyptianPhone(contactPhone)) filled++;
+    if (isOffer && hasAgreedDeclaration) filled++;
+    if (selectedGroupUtilities.length > 0) filled++;
+    if (notes.trim().length > 5 || uploadedImages.length > 0) filled++;
 
-    // الحقول الاختيارية (المرافق والتجهيزات المربوطة بالأدمن)
-    if (selectedUtilities['electricity']) filledFields++;
-    if (selectedUtilities['gas']) filledFields++;
-    if (selectedUtilities['water'] || (!isLand && hasElevator)) filledFields++;
-
-    const ratio = filledFields / totalFields;
-    return Math.min(Math.max(ratio, 0.0), 1.0);
+    return Math.min(Math.max(filled / total, 0.0), 1.0);
   };
 
   const progress = calculateCompletionPercentage();
   const progressPercent = Math.round(progress * 100);
 
-  // Voice recording state
-  const [isRecording, setIsRecording] = useState(false);
-  const [voiceSeconds, setVoiceSeconds] = useState(0);
-  const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const timerRef = useRef<number | null>(null);
-
-  // Property type handler
-  const handleTypeChange = (newType: string) => {
-    setPropertyType(newType);
-    if (newType.includes('أرض') || newType.includes('فضاء')) {
-      setPurpose('sale');
-    }
-  };
-
-  // Toggle voice recognition
+  // Voice recording toggle
   const toggleRecording = () => {
-    if (isRecording) {
-      stopVoice();
-    } else {
-      startVoice();
-    }
+    if (isRecording) stopVoice();
+    else startVoice();
   };
 
   const startVoice = async () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setErrorMsg('المتصفح لا يدعم التسجيل الصوتي المباشر، يمكنك الكتابة في الحقول أو استخدام متصفح Chrome.');
+      setErrorMsg('المتصفح لا يدعم التسجيل الصوتي المباشر، يمكنك تعبئة الحقول يدوياً.');
       return;
     }
 
     try {
-      // Explicitly request microphone stream to guarantee browser permission prompt on mobile devices
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          // Stop stream tracks immediately after permission check
           stream.getTracks().forEach((track) => track.stop());
-        } catch (permErr: any) {
-          if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
-            setVoiceStatus('يرجى السماح بإذن استخدام الميكروفون من إعدادات المتصفح.');
-            return;
-          }
+        } catch {
+          setVoiceStatus('يرجى السماح بإذن استخدام الميكروفون من إعدادات المتصفح.');
+          return;
         }
       }
 
@@ -548,41 +502,41 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
       recognition.lang = 'ar-EG';
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
         setIsRecording(true);
         setVoiceSeconds(0);
-        setVoiceStatus('جاري الاستماع... تحدث بوضوح عن تفاصيل العقار أو طلبك');
+        setVoiceStatus('جاري الاستماع... تحدث بوضوح عن نوع العقار والحي والسعر');
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = window.setInterval(() => {
           setVoiceSeconds((prev) => {
-            if (prev >= 90) {
+            if (prev >= 60) {
               stopVoice();
-              return 90;
+              return 60;
             }
             return prev + 1;
           });
         }, 1000);
       };
 
-      let fullRecordedTranscript = '';
-
       recognition.onresult = (event: any) => {
         let currentTranscript = '';
         for (let i = 0; i < event.results.length; ++i) {
           currentTranscript += event.results[i][0].transcript + ' ';
         }
-        fullRecordedTranscript = currentTranscript.trim();
-
-        if (fullRecordedTranscript) {
+        const text = currentTranscript.trim();
+        if (text) {
           const parsed = parseArabicVoiceTranscript(
-            fullRecordedTranscript,
-            activePropertyTypes,
-            activeDistricts,
+            text,
+            INITIAL_PROPERTY_TYPES.map((t) => t.name),
+            ASSIUT_DISTRICTS_LIST,
             utilityDefinitions
           );
-          if (parsed.propertyType) handleTypeChange(parsed.propertyType);
+          if (parsed.propertyType) {
+            setPropertyType(parsed.propertyType);
+            const foundGrp = getGroupForPropertyType(parsed.propertyType);
+            setSelectedGroup(foundGrp);
+          }
           if (parsed.purpose) setPurpose(parsed.purpose);
           if (parsed.district) setDistrict(parsed.district);
           if (parsed.area) setArea(Number(parsed.area));
@@ -592,173 +546,146 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           }
           if (parsed.bedrooms !== undefined && parsed.bedrooms !== '') setBedrooms(Number(parsed.bedrooms));
           if (parsed.bathrooms !== undefined && parsed.bathrooms !== '') setBathrooms(Number(parsed.bathrooms));
-          if (parsed.floorLevel !== undefined && parsed.floorLevel !== '') setFloorLevel(Number(parsed.floorLevel));
-          if (parsed.hasElevator !== undefined) setHasElevator(parsed.hasElevator);
-          if (parsed.ownerPhone && parsed.ownerPhone !== '01000000000') setContactPhone(parsed.ownerPhone);
-          if (parsed.address) setAddress(parsed.address);
-          if (parsed.facade) setFacade(parsed.facade);
+          if (parsed.ownerPhone && isValidEgyptianPhone(parsed.ownerPhone)) setContactPhone(parsed.ownerPhone);
           if (parsed.description) setNotes(parsed.description);
-          if (isOffer) {
-            setTitle(`${parsed.propertyType} ${parsed.purpose === 'rent' ? 'للإيجار' : 'للبيع'} في ${parsed.district}`);
-          }
-
-          setVoiceStatus(`تم التعرف بوضوح: "${fullRecordedTranscript.substring(0, 45)}..." وتم تعبئة الحقول!`);
+          setVoiceStatus(`تم التعرف: "${text.substring(0, 40)}..."`);
         }
       };
 
-      recognition.onerror = (e: any) => {
-        if (e.error === 'no-speech') {
-          return; // Ignore silence
-        }
-        if (e.error === 'not-allowed') {
-          setVoiceStatus('تم رفض إذن الميكروفون. يرجى تفعيله من إعدادات المتصفح.');
-          stopVoice();
-        } else if (e.error === 'network') {
-          setVoiceStatus('حدث خطأ في شبكة التعرف الصوتي، يمكنك إعادة المحاولة.');
-          stopVoice();
-        } else {
-          setVoiceStatus('انتهت جلسة التسجيل الصوتي.');
-          stopVoice();
-        }
-      };
-
+      recognition.onerror = () => stopVoice();
       recognition.onend = () => {
         setIsRecording(false);
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
+        if (timerRef.current) clearInterval(timerRef.current);
       };
 
       recognitionRef.current = recognition;
       recognition.start();
-    } catch (err) {
-      console.warn('Speech recognition start error:', err);
-      setErrorMsg('تعذر تشغيل الميكروفون. يرجى التأكد من صلاحيات المتصفح.');
+    } catch {
+      setErrorMsg('تعذر تشغيل الميكروفون.');
       setIsRecording(false);
     }
   };
 
   const stopVoice = () => {
     if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {
-        // ignore
-      }
+      try { recognitionRef.current.stop(); } catch {}
     }
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
+    if (timerRef.current) clearInterval(timerRef.current);
     setIsRecording(false);
   };
 
-  // Flutter submitForm logic: تجهيز الكائن بحالة غير معتمدة لانتظار السداد والموافقة
+  // Form submission logic
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setInvalidField(null);
 
-    // 1. Strict Egyptian Mobile Validation (11 digits, 010/011/012/015)
+    // 1. Phone validation
     const phoneError = validateEgyptianPhone(contactPhone, 'رقم الهاتف للتواصل');
     if (phoneError) {
       setErrorMsg(`تنبيه: ${phoneError}`);
       setInvalidField('phone');
-      triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
-      scrollToError(phoneInputRef);
+      triggerValidationToast('يرجى كتابة رقم هاتف مصري صحيح يبدأ بـ 010 أو 011 أو 012 أو 015');
+      scrollToError(phoneInputRef, 'phone');
       return;
     }
-
     const cleanContactPhone = normalizeEgyptianPhone(contactPhone);
 
-    // 2. Area validation
-    if (!area || Number(area) <= 0) {
-      setErrorMsg('تنبيه: يرجى تحديد المساحة الإجمالية بالمتر المربع بشكل صحيح (أكبر من 0).');
-      setInvalidField('area');
-      triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
-      scrollToError(areaInputRef);
-      return;
-    }
+    // Determine primary district
+    const primaryDistrict = district === 'غير ذلك' ? (customDistrict.trim() || 'أسيوط') : district;
 
-    // 3. Legal status validation (إلزامي لجميع العقارات - مرخصة، بعد الرخصة، تصالح نهائي، جاري التصالح، مخالف)
-    if (!legalStatus || !legalStatus.trim()) {
-      setErrorMsg('تنبيه: يرجى تحديد الموقف القانوني للعقار (مرخصة، بعد الرخصة، تصالح نهائي، جاري التصالح، مخالف).');
-      setInvalidField('legalStatus');
-      triggerValidationToast('يرجى اختيار الموقف القانوني للعقار أولاً');
-      scrollToError(legalStatusRef, 'legalStatus');
-      return;
-    }
-
-    // 1. تجهيز الكود المعرف بنمط 'ASY-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}'
+    // Generated ID
     const generatedListingId = `ASY-${Date.now().toString().substring(7)}`;
     const todayDate = new Date().toISOString().split('T')[0];
 
     if (isOffer) {
+      // 2. Offer Area validation
+      if (!area || Number(area) <= 0) {
+        setErrorMsg('تنبيه: يرجى تحديد المساحة الإجمالية بالمتر المربع بشكل صحيح (أكبر من 0).');
+        setInvalidField('area');
+        triggerValidationToast('يرجى تحديد المساحة بالمتر المربع أولاً');
+        scrollToError(areaInputRef, 'area');
+        return;
+      }
+
+      // 3. Offer Price validation
       if (!price || Number(price) <= 0) {
-        setErrorMsg(
-          isLand || purpose === 'sale'
-            ? 'تنبيه: يرجى تحديد سعر البيع الإجمالي للعقار بالجنيه المصري.'
-            : 'تنبيه: يرجى تحديد القيمة الإيجارية الشهرية للعقار بالجنيه المصري.'
-        );
+        setErrorMsg(purpose === 'sale' ? 'تنبيه: يرجى تحديد سعر البيع الإجمالي للعقار.' : 'تنبيه: يرجى تحديد القيمة الإيجارية للعقار.');
         setInvalidField('price');
-        triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
-        scrollToError(priceInputRef);
+        triggerValidationToast('يرجى تحديد السعر أولاً');
+        scrollToError(priceInputRef, 'price');
         return;
       }
 
+      // 4. Offer Legal status validation
+      if (!legalStatus || !legalStatus.trim()) {
+        setErrorMsg('تنبيه: يرجى تحديد الموقف القانوني للعقار.');
+        setInvalidField('legalStatus');
+        triggerValidationToast('يرجى اختيار الموقف القانوني للعقار');
+        scrollToError(legalStatusRef, 'legalStatus');
+        return;
+      }
+
+      // 5. Declaration validation
       if (!hasAgreedDeclaration) {
-        setErrorMsg('تنبيه: يجب تفعيل خيار الموافقة على إقرار صحة البيانات والملكية للمتابعة.');
+        setErrorMsg('تنبيه: يجب تأكيد الإقرار بصحة البيانات والملكية للمتابعة.');
         setInvalidField('declaration');
-        triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
-        scrollToError(declarationRef);
+        triggerValidationToast('يرجى تفعيل خيار إقرار صحة البيانات');
+        scrollToError(declarationRef, 'declaration');
         return;
       }
 
-      // 1. تجهيز الكائن بحالة غير معتمدة لانتظار السداد والموافقة
+      // Auto title
+      const finalTitle = title.trim() || `${propertyType} ${purpose === 'rent' ? 'للإيجار' : 'للبيع'} ${area} م² في ${primaryDistrict}`;
+
       const newListing: Property = {
         id: generatedListingId,
         code: generatedListingId,
         type: 'عرض',
         status: isAdmin ? 'approved' : 'pending_approval',
         isApproved: isAdmin,
-        title: title.trim() || (isLand ? `أرض فضاء ${area} م² في ${district}` : `${propertyType} بمساحة ${area} م² في ${district}`),
-        description: notes.trim() || (isLand ? `قطعة أرض فضاء ممتازة بمساحة ${area} م² في أسيوط - ${district}` : `${propertyType} للـ${purpose === 'rent' ? 'إيجار' : 'بيع'} في ${district}`),
+        title: finalTitle,
+        description: notes.trim() || `${propertyType} مميزة لل${purpose === 'rent' ? 'إيجار' : 'بيع'} في أسيوط - ${primaryDistrict} بمساحة ${area} م².`,
         propertyType,
-        purpose: isLand ? 'sale' : purpose,
+        propertyGroup: selectedGroup,
+        purpose,
         price: Number(price),
-        deposit: !isLand && purpose === 'rent' && deposit ? Number(deposit) : undefined,
-        rentDurationMonths: !isLand && purpose === 'rent' && rentDurationMonths ? Number(rentDurationMonths) : undefined,
+        isNegotiable,
+        paymentFrequency: purpose === 'rent' ? paymentFrequency : undefined,
+        deposit: purpose === 'rent' && deposit ? Number(deposit) : undefined,
+        rentDurationMonths: purpose === 'rent' && rentDurationMonths ? Number(rentDurationMonths) : undefined,
         city: 'أسيوط',
-        district,
-        address: address.trim() || district,
+        district: primaryDistrict,
+        customDistrict: district === 'غير ذلك' ? customDistrict.trim() : undefined,
+        address: address.trim() || primaryDistrict,
         facade: facade.trim() || undefined,
         area: Number(area),
         legalStatus: (legalStatus.trim() as any) || 'مرخصة',
-        bedrooms: !isLand && bedrooms !== '' ? Number(bedrooms) : undefined,
-        bathrooms: !isLand && bathrooms !== '' ? Number(bathrooms) : undefined,
-        totalFloors: !isLand && totalFloors !== '' ? Number(totalFloors) : undefined,
-        floorLevel: !isLand && floorLevel !== '' ? Number(floorLevel) : undefined,
-        hasElevator: !isLand ? hasElevator : false,
-        utilities: isLand
-          ? {
-              electricity: { available: false, type: 'غير متوفر' },
-              water: { available: false, type: 'غير متوفر' },
-              gas: { available: false, type: 'غير متوفر' },
-              internet: { available: false, type: 'غير متوفر' },
-              elevator: { available: false, type: 'بدون أسانسير' },
-            }
-          : {
-              ...utilities,
-              ...(selectedUtilities['electricity'] ? { electricity: { available: true, type: selectedUtilities['electricity'] } } : {}),
-              ...(selectedUtilities['water'] ? { water: { available: true, type: selectedUtilities['water'] } } : {}),
-              ...(selectedUtilities['gas'] ? { gas: { available: true, type: selectedUtilities['gas'] } } : {}),
-              ...(selectedUtilities['internet'] ? { internet: { available: true, type: selectedUtilities['internet'] } } : {}),
-              ...(selectedUtilities['elevator'] ? { elevator: { available: true, type: selectedUtilities['elevator'] } } : {}),
-            },
-        paymentMethods: isLand ? ['كاش فوري (للبيع)'] : selectedPaymentMethods,
-        ownerName: contactName.trim() || 'مالك العقار',
+        bedrooms: selectedGroup !== 'lands' && bedrooms !== '' ? Number(bedrooms) : undefined,
+        bathrooms: selectedGroup !== 'lands' && bathrooms !== '' ? Number(bathrooms) : undefined,
+        totalFloors: selectedGroup === 'residential' && totalFloors !== '' ? Number(totalFloors) : undefined,
+        floorLevel: selectedGroup !== 'lands' && floorLevel !== '' ? Number(floorLevel) : undefined,
+        hasElevator: selectedGroup !== 'lands' ? hasElevator : false,
+        finishingStatus: selectedGroup !== 'lands' ? finishingStatus : undefined,
+        streetWidth: streetWidth ? Number(streetWidth) : undefined,
+        ceilingHeight: selectedGroup === 'industrial_storage' && ceilingHeight ? Number(ceilingHeight) : undefined,
+        truckAccess: selectedGroup === 'industrial_storage' ? truckAccess : undefined,
+        suitableActivity: suitableActivity.trim() || undefined,
+        specifications: {
+          groupUtilities: selectedGroupUtilities,
+          selectedGroup,
+        },
+        utilities: {
+          electricity: { available: selectedGroupUtilities.includes('electricity') || selectedGroupUtilities.includes('high_voltage'), type: 'متوفر' },
+          water: { available: selectedGroupUtilities.includes('water') || selectedGroupUtilities.includes('water_grid'), type: 'متوفر' },
+          gas: { available: selectedGroupUtilities.includes('gas'), type: 'متوفر' },
+          internet: { available: selectedGroupUtilities.includes('internet'), type: 'متوفر' },
+          elevator: { available: hasElevator, type: hasElevator ? 'يوجد أسانسير' : 'بدون أسانسير' },
+        },
+        paymentMethods: purpose === 'rent' ? [paymentFrequency] : ['كاش فوري'],
+        ownerName: contactName.trim() || 'معلن العقار',
         ownerPhone: cleanContactPhone,
+        contactPhone: cleanContactPhone,
         source: isAdmin ? 'إدارة المنظومة (نشر مباشر)' : 'مالك مباشر',
         images: uploadedImages.length > 0 ? uploadedImages : [DEFAULT_SAKAN_PLACEHOLDER],
         createdByAdmin: isAdmin,
@@ -780,35 +707,19 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           }
         : newListing;
 
-      // 3. Pre-flight schema validation before sending to database
       const propValidation = validatePropertyPayload(propertyPayloadToSave);
       if (!propValidation.isValid) {
         setErrorMsg(propValidation.errorMessage || 'تنبيه: يرجى التحقق من استيفاء جميع بيانات العقار بدقة.');
         if (propValidation.field) setInvalidField(propValidation.field);
         triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
-
-        if (propValidation.field === 'phone') {
-          scrollToError(phoneInputRef);
-        } else if (propValidation.field === 'area') {
-          scrollToError(areaInputRef);
-        } else if (propValidation.field === 'price') {
-          scrollToError(priceInputRef);
-        } else if (propValidation.field === 'district') {
-          scrollToError(districtRef);
-        } else if (propValidation.field === 'propertyType') {
-          scrollToError(propertyTypeRef);
-        } else {
-          scrollToError(bottomErrorRef);
-        }
         return;
       }
 
-      // Auto-save property owner to profiles table as 'صاحب عقار'
       dbUpsertProfile({
         fullName: propertyPayloadToSave.ownerName,
         phone: propertyPayloadToSave.ownerPhone,
         role: 'صاحب عقار',
-      }).catch((e) => console.warn('Auto-save owner profile in form error:', e));
+      }).catch((e) => console.warn('Auto-save owner profile notice:', e));
 
       if (editingProperty && onUpdateProperty) {
         onUpdateProperty(propertyPayloadToSave);
@@ -816,19 +727,23 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         setShowSuccessDialog(true);
       } else {
         if (onAddProperty) onAddProperty(propertyPayloadToSave);
+        safeStorageRemoveItem(draftStorageKey);
         onBack();
       }
     } else {
-      // Add Tenant Request (طلب عقار)
+      // Tenant Request submission (طلب عقار سريع)
       if (!maxPrice || Number(maxPrice) <= 0) {
         setErrorMsg('تنبيه: يرجى تحديد أقصى ميزانية مقبولة لطلبك بالجنيه المصري.');
         setInvalidField('maxPrice');
-        triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
-        scrollToError(maxPriceInputRef);
+        triggerValidationToast('يرجى تحديد أقصى ميزانية مقبولة');
+        scrollToError(maxPriceInputRef, 'maxPrice');
         return;
       }
 
-      // 1. تجهيز الكائن بحالة معتمدة مباشرة لو أدمن، أو قيد المراجعة لو مستخدم عادي
+      const activePreferredDistricts = preferredDistricts.length > 0
+        ? preferredDistricts
+        : [primaryDistrict];
+
       const newListing: TenantRequest = {
         id: generatedListingId,
         requestCode: generatedListingId,
@@ -838,17 +753,31 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         tenantName: contactName.trim() || 'مواطن باحث عن عقار',
         tenantPhone: cleanContactPhone,
         propertyType,
-        purpose: isLand ? 'sale' : purpose,
-        preferredDistrict: district,
+        propertyGroup: selectedGroup,
+        purpose,
+        preferredDistrict: activePreferredDistricts[0] || primaryDistrict,
+        preferredDistricts: activePreferredDistricts,
+        customDistrict: customDistrict.trim() || undefined,
+        paymentFrequency: purpose === 'rent' ? paymentFrequency : undefined,
         minPrice: minPrice ? Number(minPrice) : undefined,
         maxPrice: Number(maxPrice),
-        minArea: minArea ? Number(minArea) : undefined,
-        maxArea: maxArea ? Number(maxArea) : Number(area) || undefined,
-        bedrooms: !isLand && bedrooms !== '' ? Number(bedrooms) : undefined,
-        bathrooms: !isLand && bathrooms !== '' ? Number(bathrooms) : undefined,
-        urgency,
+        minArea: minArea ? Number(minArea) : (area ? Number(area) : undefined),
+        maxArea: maxArea ? Number(maxArea) : (area ? Number(area) : undefined),
+        bedrooms: selectedGroup !== 'lands' && bedrooms !== '' ? Number(bedrooms) : undefined,
+        bathrooms: selectedGroup !== 'lands' && bathrooms !== '' ? Number(bathrooms) : undefined,
+        furnishingStatus: selectedGroup !== 'lands' ? finishingStatus : undefined,
+        streetWidth: streetWidth ? Number(streetWidth) : undefined,
+        ceilingHeight: selectedGroup === 'industrial_storage' && ceilingHeight ? Number(ceilingHeight) : undefined,
+        truckAccess: selectedGroup === 'industrial_storage' ? truckAccess : undefined,
+        suitableActivity: suitableActivity.trim() || undefined,
+        specifications: {
+          groupUtilities: selectedGroupUtilities,
+          selectedGroup,
+          hasElevator,
+        },
         legalStatus: legalStatus.trim() || undefined,
         notes: notes.trim(),
+        images: uploadedImages,
         createdAt: todayDate,
       };
 
@@ -864,33 +793,19 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
           }
         : newListing;
 
-      // Pre-flight schema validation before sending to database
       const reqValidation = validateTenantRequestPayload(requestPayloadToSave);
       if (!reqValidation.isValid) {
         setErrorMsg(reqValidation.errorMessage || 'تنبيه: يرجى استيفاء جميع بيانات طلب العقار بشكل صحيح.');
         if (reqValidation.field) setInvalidField(reqValidation.field);
         triggerValidationToast('يرجى استيفاء البيانات المطلوبة أولاً');
-
-        if (reqValidation.field === 'phone') {
-          scrollToError(phoneInputRef);
-        } else if (reqValidation.field === 'maxPrice') {
-          scrollToError(maxPriceInputRef);
-        } else if (reqValidation.field === 'district') {
-          scrollToError(districtRef);
-        } else if (reqValidation.field === 'propertyType') {
-          scrollToError(propertyTypeRef);
-        } else {
-          scrollToError(bottomErrorRef);
-        }
         return;
       }
 
-      // Auto-save tenant to profiles table as 'مستأجر'
       dbUpsertProfile({
         fullName: requestPayloadToSave.tenantName,
         phone: requestPayloadToSave.tenantPhone,
         role: 'مستأجر',
-      }).catch((e) => console.warn('Auto-save tenant profile in form error:', e));
+      }).catch((e) => console.warn('Auto-save tenant profile notice:', e));
 
       if (editingTenantRequest && onUpdateTenantRequest) {
         onUpdateTenantRequest(requestPayloadToSave);
@@ -898,19 +813,19 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         setShowSuccessDialog(true);
       } else {
         if (onAddTenantRequest) onAddTenantRequest(requestPayloadToSave);
+        safeStorageRemoveItem(draftStorageKey);
         onBack();
       }
     }
   };
 
-  // Reusable Info Tooltip Component for Form Fields (المطابقة الذكية)
-  const FieldInfoTooltip: React.FC<{
-    fieldKey: string;
-    title: string;
-    hint: string;
-  }> = ({ fieldKey, title, hint }) => {
+  // Field Info Tooltip Component
+  const FieldInfoTooltip: React.FC<{ fieldKey: string; title: string; hint: string }> = ({
+    fieldKey,
+    title,
+    hint,
+  }) => {
     const isOpen = activeTooltip === fieldKey;
-
     return (
       <span className="relative inline-flex items-center align-middle mx-1">
         <button
@@ -921,57 +836,30 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             setActiveTooltip(isOpen ? null : fieldKey);
           }}
           className={`w-4 h-4 rounded-full inline-flex items-center justify-center transition-all cursor-pointer ${
-            isOpen
-              ? 'bg-amber-500 text-white shadow-xs scale-110 ring-2 ring-amber-300/60'
-              : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+            isOpen ? 'bg-amber-500 text-white shadow-xs scale-110' : 'text-slate-400 hover:text-amber-600'
           }`}
-          title={`معلومات حقل (${title}) للمطابقة الذكية (اضغط للتوضيح)`}
-          aria-label={`توضيح أهمية حقل ${title} للمطابقة الذكية`}
+          title={`توضيح ${title}`}
         >
           <Info className="w-3 h-3 shrink-0" />
         </button>
 
         {isOpen && (
           <>
-            {/* Backdrop to dismiss when clicking anywhere */}
+            <div className="fixed inset-0 z-40" onClick={() => setActiveTooltip(null)} />
             <div
-              className="fixed inset-0 z-40"
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveTooltip(null);
-              }}
-            />
-            {/* Tooltip Popover Box */}
-            <div
-              className="absolute z-50 right-0 top-full mt-2 w-64 sm:w-72 p-3 bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-amber-400/40 text-[11px] leading-relaxed animate-in fade-in zoom-in-95 duration-150 text-right select-none"
+              className="absolute z-50 right-0 top-full mt-2 w-64 p-3 bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-amber-400/40 text-[11px] leading-relaxed text-right select-none animate-in fade-in zoom-in-95"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-1.5">
                 <span className="font-bold text-amber-300 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>أهمية دقة {title}</span>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>أهمية {title}</span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setActiveTooltip(null)}
-                  className="text-slate-400 hover:text-white p-0.5 rounded-full cursor-pointer transition-colors"
-                  title="إغلاق"
-                >
+                <button type="button" onClick={() => setActiveTooltip(null)} className="text-slate-400 hover:text-white">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-
-              <p className="text-slate-200 leading-normal font-normal">
-                {hint}
-              </p>
-
-              <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between text-[10px] text-amber-400 font-semibold">
-                <span className="flex items-center gap-1">
-                  <span>🎯</span>
-                  <span>يزيد فرص المطابقة الذكية</span>
-                </span>
-                <span className="text-slate-400 font-normal">سكن أسيوط</span>
-              </div>
+              <p className="text-slate-200">{hint}</p>
             </div>
           </>
         )}
@@ -979,9 +867,27 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     );
   };
 
+  // Group Icon helper
+  const renderGroupIcon = (groupId: PropertyGroupId, className = 'w-5 h-5') => {
+    switch (groupId) {
+      case 'residential':
+        return <Home className={className} />;
+      case 'commercial':
+        return <Store className={className} />;
+      case 'admin_medical':
+        return <Building2 className={className} />;
+      case 'lands':
+        return <MapPin className={className} />;
+      case 'industrial_storage':
+        return <Warehouse className={className} />;
+      default:
+        return <Building2 className={className} />;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#E8EDF1] pb-24 text-[#24313D] animate-in fade-in duration-150">
-      {/* Flutter Style AppBar */}
+    <div className="min-h-screen bg-[#E8EDF1] pb-28 text-[#24313D] animate-in fade-in duration-150">
+      {/* AppBar */}
       <header className="sticky top-0 z-30 bg-[#124C46] text-white shadow-md">
         <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
           <button
@@ -989,7 +895,6 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             onClick={onBack}
             className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors text-white cursor-pointer"
             title="رجوع"
-            aria-label="رجوع"
           >
             <ArrowRight className="w-6 h-6" />
           </button>
@@ -998,24 +903,16 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             <h1 className="text-base sm:text-lg font-bold text-white tracking-wide">
               {isEditing
                 ? editingProperty
-                  ? `تعديل واستيفاء عرض العقار (${editingProperty.code})`
-                  : `تعديل واستيفاء طلب العقار (${editingTenantRequest?.requestCode || editingTenantRequest?.id})`
-                : isAdmin
-                ? isOffer
-                  ? 'إضافة عرض عقار (إدارة المنظومة)'
-                  : 'إضافة طلب عقار (إدارة المنظومة)'
+                  ? `تعديل عرض العقار (${editingProperty.code})`
+                  : `تعديل طلب العقار (${editingTenantRequest?.requestCode || editingTenantRequest?.id})`
                 : isOffer
                 ? 'إضافة عرض عقار (متاح)'
                 : 'إضافة طلب عقار (مطلوب)'}
             </h1>
             <p className="text-[11px] text-[#D6A84F] font-semibold">
-              {isEditing
-                ? 'تحديث البيانات وإعادة الإرسال لمراجعة الإدارة'
-                : isAdmin
-                ? 'نشر فوري ومباشر معتمد مع تحديد الرسوم وتاريخ المعاينة'
-                : isOffer
-                ? 'للمالك أو الوسيط العقاري'
-                : 'للباحث عن سكن أو شراء'}
+              {isOffer
+                ? 'استمارة عرض تسويقي متكامل لملاك ووسطاء العقارات'
+                : 'استمارة سريعة للمشترين والمستأجرين (في أقل من دقيقة)'}
             </p>
           </div>
 
@@ -1029,126 +926,100 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         </div>
       </header>
 
-      {/* Main Content Form */}
+      {/* Main Container */}
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
-        {/* ملاحظة الإدارة لاستيفاء البيان عند التعديل */}
+        {/* Admin note banner if editing */}
         {(editingProperty?.adminNote || editingTenantRequest?.adminNote) && (
-          <div className="bg-amber-50 border-2 border-amber-400 p-4 rounded-2xl text-amber-900 font-semibold space-y-2 shadow-xs animate-in fade-in">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 font-black text-sm text-amber-950">
-                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-                <span>مطلوب استيفاء بيانات من إدارة التطبيق:</span>
-              </div>
-              <button
-                type="button"
-                onClick={jumpToAdminNoteTarget}
-                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs inline-flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 cursor-pointer"
-              >
-                <Target className="w-3.5 h-3.5" />
-                <span>مكان الخطأ / المطلوب</span>
-              </button>
+          <div className="bg-amber-50 border-2 border-amber-400 p-4 rounded-2xl text-amber-900 font-semibold space-y-1 shadow-xs">
+            <div className="flex items-center gap-2 font-black text-sm text-amber-950">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+              <span>ملاحظة إدارة التطبيق لاستيفاء الإعلان:</span>
             </div>
-            <p className="text-xs text-amber-900 pr-7 font-bold">
+            <p className="text-xs text-amber-900 font-bold pr-7">
               "{editingProperty?.adminNote || editingTenantRequest?.adminNote}"
-            </p>
-            <p className="text-[11px] text-amber-700 pr-7">
-              برجاء تعديل البيانات الناقصة أو توضيحها في النموذج، ثم الضغط على حفظ أسفل الصفحة لإعادة الإرسال للإدارة للمراجعة والاعتماد.
             </p>
           </div>
         )}
 
-        {/* ------------------------------------------------------------- */}
-        {/* دائرِة نسبة اكتمال ملء البيانات - Flutter Completion Card */}
-        {/* ------------------------------------------------------------- */}
-        <div className="bg-[#124C46] text-white p-4 sm:p-5 rounded-2xl shadow-xs flex items-center gap-4 border border-[#124C46]/20">
-          <div className="relative w-[55px] h-[55px] shrink-0 flex items-center justify-center">
-            {/* SVG Circular Progress Indicator */}
-            <svg className="w-[55px] h-[55px] -rotate-90" viewBox="0 0 55 55">
-              <circle
-                cx="27.5"
-                cy="27.5"
-                r="22"
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.2)"
-                strokeWidth="5"
-              />
-              <circle
-                cx="27.5"
-                cy="27.5"
-                r="22"
-                fill="none"
-                stroke="#D6A84F"
-                strokeWidth="5"
-                strokeDasharray={2 * Math.PI * 22}
-                strokeDashoffset={2 * Math.PI * 22 * (1 - progress)}
-                strokeLinecap="round"
-                className="transition-all duration-300"
-              />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-xs sm:text-[13px] font-bold text-white">
-              {progressPercent}%
-            </span>
+        {/* Progress & Auto-save card */}
+        <div className="bg-[#124C46] text-white p-4 rounded-2xl shadow-xs flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="relative w-12 h-12 shrink-0 flex items-center justify-center">
+              <svg className="w-12 h-12 -rotate-90" viewBox="0 0 55 55">
+                <circle cx="27.5" cy="27.5" r="22" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="5" />
+                <circle
+                  cx="27.5"
+                  cy="27.5"
+                  r="22"
+                  fill="none"
+                  stroke="#D6A84F"
+                  strokeWidth="5"
+                  strokeDasharray={2 * Math.PI * 22}
+                  strokeDashoffset={2 * Math.PI * 22 * (1 - progress)}
+                  strokeLinecap="round"
+                  className="transition-all duration-300"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">
+                {progressPercent}%
+              </span>
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-bold text-white">
+                {isOffer ? 'اكتمال بيانات العرض' : 'اكتمال بيانات الطلب السريع'}
+              </h4>
+              <p className="text-[10px] text-white/70">
+                {lastSavedNotice || (isOffer ? 'كلما زادت التفاصيل زادت سرعة المطابقة' : 'تسجيل مبسط لا يتجاوز دقيقة')}
+              </p>
+            </div>
           </div>
 
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm sm:text-base font-bold text-white">
-              نسبة اكتمال الإعلان
-            </h4>
-            <p className="text-[11px] text-white/80 mt-1 leading-relaxed">
-              كلما أضفت بيانات اختيارية أكثر، زادت فرصة قبول وثقة الإعلان لدى الإدارة والمشترين.
-            </p>
-          </div>
+          {!isEditing && (
+            <button
+              type="button"
+              onClick={handleClearDraft}
+              className="text-[11px] text-[#D6A84F] hover:text-white px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 transition-all font-semibold"
+            >
+              مسح والبدء من جديد
+            </button>
+          )}
         </div>
 
-        {/* بطاقة المسجل الصوتي الذكي لتعبئة الإعلان بالصوت */}
-        <div className="bg-gradient-to-r from-[#124C46] to-[#0D3D38] text-white p-4 rounded-2xl shadow-xs border border-[#124C46]/20 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+        {/* Smart Voice Input Bar */}
+        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
               onClick={toggleRecording}
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 border-2 shrink-0 ${
-                isRecording 
-                  ? 'bg-rose-500 border-white text-white animate-pulse' 
-                  : 'bg-white/15 hover:bg-white/25 border-white/20 text-[#D6A84F]'
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                isRecording ? 'bg-rose-500 text-white animate-pulse' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
               }`}
-              title={isRecording ? 'إيقاف الاستماع' : 'ابدأ التحدث لتعبئة الإعلان بصوتك'}
+              title="تحدث لتعبئة النموذج صوتياً"
             >
-              {isRecording ? <MicOff className="w-6 h-6 animate-bounce" /> : <Mic className="w-6 h-6" />}
+              {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5 text-[#124C46]" />}
             </button>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-white">المسجل الصوتي الذكي</h4>
-                {isRecording && (
-                  <span className="text-[10px] bg-rose-500 text-white font-bold px-2 py-0.5 rounded-full animate-pulse shrink-0">
-                    تسجيل ({voiceSeconds}ث)
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-[#DCECE7] mt-0.5 truncate">
-                {voiceStatus || 'اضغط وتحدث بصوتك لتعبئة الحقول آلياً (مثل: شقة للإيجار 120م بالهلالي)'}
+              <span className="text-xs font-bold text-slate-800 block">المساعد الصوتي الذكي</span>
+              <p className="text-[11px] text-slate-500 truncate">
+                {voiceStatus || 'اضغط وتحدث بصوتك (مثال: شقة للإيجار 120م بالهلالي)'}
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={toggleRecording}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer border ${
-              isRecording 
-                ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-300' 
-                : 'bg-[#D6A84F] hover:bg-[#c29643] text-[#24313D] border-[#D6A84F]'
-            }`}
+            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-[#124C46] text-white hover:bg-[#0D3D38] shrink-0"
           >
-            {isRecording ? 'إيقاف' : 'تحدث الآن 🎙️'}
+            {isRecording ? `إيقاف (${voiceSeconds}ث)` : 'تحدث الآن 🎙️'}
           </button>
         </div>
 
         {/* Top Error Alert */}
         {errorMsg && (
-          <div 
+          <div
             ref={topErrorRef}
             onClick={jumpToCurrentError}
-            className="mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-center justify-between gap-2 shadow-xs cursor-pointer hover:bg-rose-100/70 transition-all"
-            title="انقر هنا للانتقال فوراً لمكان الخطأ"
+            className="p-3.5 rounded-2xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-center justify-between gap-2 shadow-xs cursor-pointer hover:bg-rose-100/70"
           >
             <div className="flex items-center gap-2 flex-1">
               <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
@@ -1160,141 +1031,326 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 e.stopPropagation();
                 jumpToCurrentError();
               }}
-              className="px-2.5 py-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-[11px] shrink-0 inline-flex items-center gap-1 cursor-pointer transition-transform active:scale-95 shadow-2xs"
+              className="px-2.5 py-1 rounded-xl bg-rose-600 text-white font-bold text-[11px] inline-flex items-center gap-1"
             >
               <Target className="w-3.5 h-3.5" />
-              <span>الانتقال لمكان الخطأ</span>
+              <span>تصحيح</span>
             </button>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-5">
-          {/* Section 1: نوع العقار والغرض */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
-              <Building2 className="w-4 h-4 text-[#D6A84F]" />
-              <span>البيانات الأساسية للعقار</span>
-            </h3>
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          {/* ============================================================== */}
+          {/* 1. المجموعة العقارية والنوع الفرعي (5 Groups Architecture) */}
+          {/* ============================================================== */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#D6A84F]" />
+                <span>تصنيف ونوع العقار</span>
+              </h3>
+              <span className="text-[10px] bg-emerald-50 text-[#124C46] px-2 py-0.5 rounded-full font-bold border border-emerald-200">
+                5 مجموعات رئيسية
+              </span>
+            </div>
 
-            {/* Property Type Dropdown */}
+            {/* Group Selector Cards */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-2">
+                اختر المجموعة العقارية:
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                {INITIAL_PROPERTY_GROUPS.map((grp) => {
+                  const isSelected = selectedGroup === grp.id;
+                  return (
+                    <button
+                      type="button"
+                      key={grp.id}
+                      onClick={() => handleGroupSelect(grp.id as PropertyGroupId)}
+                      className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-[#124C46] text-white border-[#124C46] shadow-sm ring-2 ring-[#D6A84F]/40 scale-[1.02]'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-white/15 text-[#D6A84F]' : 'bg-white text-[#124C46] shadow-2xs'}`}>
+                        {renderGroupIcon(grp.id as PropertyGroupId, 'w-4 h-4')}
+                      </div>
+                      <span className="text-xs font-bold">{grp.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Sub-Type Dropdown */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                <span>نوع العقار * <span className="text-slate-500 font-normal">(إجباري)</span></span>
+                <span>نوع العقار الفرعي *</span>
                 <FieldInfoTooltip
                   fieldKey="propertyType"
-                  title="نوع العقار"
-                  hint="تحديد نوع الوحدة بدقة (مثل شقة أو مكتب أو أرض) يضمن لنظام المطابقة الذكية ربط إعلانك فوراً مع المهتمين بنفس الفئة وتفادي الطلبات غير المناسبة."
+                  title="النوع الفرعي"
+                  hint="تحديد نوع الوحدة بدقة ضمن المجموعة يضمن دقة المطابقة الذكية بنسبة 100% وتفادي الطلبات غير المتوافقة."
                 />
               </label>
               <select
                 ref={propertyTypeRef}
                 value={propertyType}
-                onChange={(e) => handleTypeChange(e.target.value)}
+                onChange={(e) => setPropertyType(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-[#124C46] transition-all cursor-pointer"
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-[#124C46] focus:outline-hidden focus:ring-1 focus:ring-[#124C46] transition-all cursor-pointer"
               >
-                <option value="" disabled>اختر نوع العقار...</option>
-                {activePropertyTypes.map((type) => (
-                  <option key={type} value={type} className="text-xs">
-                    {type}
+                {availableSubTypes.map((st) => (
+                  <option key={st.id} value={st.name}>
+                    {st.name} — {st.description}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Notice if Land (قطعة أرض فضاء) */}
-            {isLand && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs font-medium space-y-1">
-                <span className="font-bold block text-amber-800">
-                  📍 وضع قطعة أرض فضاء:
-                </span>
-                <p>
-                  تم تلقائياً إخفاء حقول المباني والإيجار والعدادات (الغرف، الحمامات، الطوابق، مدة الإيجار، والأسانسير).
-                  يظهر فقط: المساحة، السعر، الحي، العنوان، والواجهة.
-                </p>
+            {/* Operation Selector (إيجار / بيع / شراء) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center">
+                <span>نوع العملية</span>
+                <FieldInfoTooltip
+                  fieldKey="purpose"
+                  title="نوع العملية"
+                  hint="يحدد النظام ترشيح العروض المتطابقة مع غرضك مباشرة (إيجار أو تمليك)."
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPurpose('rent')}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                    purpose === 'rent'
+                      ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46] shadow-xs'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {isOffer ? 'إيجار' : 'طلب إيجار'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPurpose('sale')}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                    purpose === 'sale'
+                      ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46] shadow-xs'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {isOffer ? 'بيع وتمليك' : 'طلب شراء وتمليك'}
+                </button>
               </div>
-            )}
+            </div>
+          </div>
 
-            {/* Purpose: Sale vs Rent (Only visible if NOT land) */}
-            {!isLand && (
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center">
-                  <span>الغرض من العقار</span>
-                  <FieldInfoTooltip
-                    fieldKey="purpose"
-                    title="الغرض من العقار"
-                    hint="تحديد ما إذا كان العقار للإيجار أو البيع هو المعيار الحاسم في فرز الإعلانات وربط العروض بالطلبات المقابلة تلقائياً."
-                  />
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPurpose('rent')}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
-                      purpose === 'rent'
-                        ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46] shadow-xs'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    إيجار سكني / تجاري
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPurpose('sale')}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
-                      purpose === 'sale'
-                        ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46] shadow-xs'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    بيع وتمليك كاش
-                  </button>
+          {/* ============================================================== */}
+          {/* 2. السعر والميزانية (Offer Single Price vs Request Budget Range) */}
+          {/* ============================================================== */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
+              <DollarSign className="w-4 h-4 text-[#D6A84F]" />
+              <span>{isOffer ? 'السعر والشروط المالية' : 'الميزانية المستهدفة'}</span>
+            </h3>
+
+            {isOffer ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Single Exact Price */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                      <span>{purpose === 'sale' ? 'سعر البيع الإجمالي (ج.م) *' : 'القيمة الإيجارية (ج.م) *'}</span>
+                      <FieldInfoTooltip
+                        fieldKey="price"
+                        title="السعر"
+                        hint="أدخل السعر الإجمالي بالجنيه المصري بدقة، حيث يعتمد محرك الفرز على هذه القيمة."
+                      />
+                    </label>
+                    <div className="relative">
+                      <DollarSign className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        ref={priceInputRef}
+                        type="number"
+                        value={price}
+                        onChange={(e) => {
+                          setPrice(e.target.value ? Number(e.target.value) : '');
+                          if (invalidField === 'price') setInvalidField(null);
+                        }}
+                        placeholder="مثال: 5000"
+                        required
+                        className={`w-full pr-9 pl-3 py-2 rounded-xl border text-xs font-bold text-[#124C46] transition-all ${
+                          invalidField === 'price'
+                            ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
+                            : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#124C46]'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Payment Frequency (if rent) */}
+                  {purpose === 'rent' ? (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">دورية السداد</label>
+                      <select
+                        value={paymentFrequency}
+                        onChange={(e) => setPaymentFrequency(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-800"
+                      >
+                        {PAYMENT_FREQUENCIES.map((freq) => (
+                          <option key={freq.id} value={freq.label}>
+                            {freq.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">طريقة السداد</label>
+                      <div className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-xs text-slate-700 font-semibold">
+                        كاش فوري عند التنازل
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Negotiable Toggle */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <span className="text-xs font-bold text-slate-700">هل السعر قابل للتفاوض؟</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsNegotiable(true)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        isNegotiable ? 'bg-[#124C46] text-[#D6A84F] shadow-xs' : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      قابل للتفاوض
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsNegotiable(false)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        !isNegotiable ? 'bg-[#124C46] text-[#D6A84F] shadow-xs' : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      سعر نهائي
+                    </button>
+                  </div>
+                </div>
+
+                {/* Deposit if rent */}
+                {purpose === 'rent' && (
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">مبلغ التأمين (ج.م) - اختياري</label>
+                      <input
+                        type="number"
+                        value={deposit}
+                        onChange={(e) => setDeposit(e.target.value ? Number(e.target.value) : '')}
+                        placeholder="مثال: 5000"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">مدة الإيجار المقترحة (شهر)</label>
+                      <input
+                        type="number"
+                        value={rentDurationMonths}
+                        onChange={(e) => setRentDurationMonths(e.target.value ? Number(e.target.value) : '')}
+                        placeholder="12 شهر"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Request: Budget Range */
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">الحد الأدنى للميزانية (ج.م) - اختياري</label>
+                    <input
+                      type="number"
+                      value={minPrice}
+                      onChange={(e) => setMinPrice(e.target.value ? Number(e.target.value) : '')}
+                      placeholder="مثال: 3000"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                      <span>أقصى ميزانية مقبولة (ج.م) *</span>
+                      <FieldInfoTooltip
+                        fieldKey="maxPrice"
+                        title="أقصى ميزانية"
+                        hint="سقف الميزانية هو المعيار الرئيسي لعرض العقارات المتوافقة مع إمكانياتك المالية."
+                      />
+                    </label>
+                    <input
+                      ref={maxPriceInputRef}
+                      type="number"
+                      value={maxPrice}
+                      onChange={(e) => {
+                        setMaxPrice(e.target.value ? Number(e.target.value) : '');
+                        if (invalidField === 'maxPrice') setInvalidField(null);
+                      }}
+                      placeholder="مثال: 6000"
+                      required
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-bold text-[#124C46] transition-all ${
+                        invalidField === 'maxPrice'
+                          ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
+                          : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#124C46]'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {purpose === 'rent' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">دورية السداد المفضلة</label>
+                    <div className="flex flex-wrap gap-2">
+                      {PAYMENT_FREQUENCIES.map((freq) => (
+                        <button
+                          type="button"
+                          key={freq.id}
+                          onClick={() => setPaymentFrequency(freq.label)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                            paymentFrequency === freq.label
+                              ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46]'
+                              : 'bg-slate-50 text-slate-600 border-slate-200'
+                          }`}
+                        >
+                          {freq.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Section 2: الموقع والتسعير (إجباري *) */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-            <h3 className="text-[14px] font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
+          {/* ============================================================== */}
+          {/* 3. المساحة والموقع (Exact Area in Offer vs Range in Request) */}
+          {/* ============================================================== */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
               <MapPin className="w-4 h-4 text-[#D6A84F]" />
-              <span>الموقع والتسعير (إجباري *)</span>
+              <span>المساحة والموقع بأسيوط</span>
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* District */}
+            {/* Area Section */}
+            {isOffer ? (
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                  <span>المنطقة / الحي بأسيوط</span>
-                  <FieldInfoTooltip
-                    fieldKey="district"
-                    title="المنطقة والحي"
-                    hint="الموقع الجغرافي هو الركن الأساسي في البحث؛ تحديد الحي بدقة بأسيوط يرفع فرص ظهور إعلانك في نتائج المطابقة الجغرافية بنسبة تفوق 90%."
-                  />
-                </label>
-                <select
-                  ref={districtRef}
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
-                >
-                  <option value="" disabled>اختر المنطقة / الحي...</option>
-                  {activeDistricts.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Area */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                  <span>المساحة الإجمالية (م²) * <span className="text-slate-500 font-normal">(إجباري)</span></span>
+                  <span>المساحة الإجمالية (م²) *</span>
                   <FieldInfoTooltip
                     fieldKey="area"
-                    title="المساحة بالمتر المربع"
-                    hint="المساحة الصحيحة تساعد خوارزمية المطابقة الذكية على حصر الباحثين عن هذه المساحة وتجنب رفض الإعلان أو ضياع المشترين الجادين."
+                    title="المساحة"
+                    hint="أدخل المساحة الفعلية للوحدة بالمتر المربع دون مبالغة لتسهيل المطابقة."
                   />
                 </label>
                 <div className="relative">
@@ -1307,9 +1363,9 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                       setArea(e.target.value ? Number(e.target.value) : '');
                       if (invalidField === 'area') setInvalidField(null);
                     }}
-                    placeholder="مثال: 120"
+                    placeholder="مثال: 125"
                     required
-                    className={`w-full pr-9 pl-3 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden transition-all ${
+                    className={`w-full pr-9 pl-3 py-2 rounded-xl border text-xs font-bold text-[#124C46] transition-all ${
                       invalidField === 'area'
                         ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
                         : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#124C46]'
@@ -1317,258 +1373,236 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   />
                 </div>
               </div>
-            </div>
-
-            {/* Address */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                <span>العنوان بالتفصيل أو الشارع</span>
-                <FieldInfoTooltip
-                  fieldKey="address"
-                  title="العنوان التفصيلي"
-                  hint="ذكر معالم الشارع أو العمارة بدقة يعزز موثوقية إعلانك لدى فريق المراجعة ويسهل ترتيب المعاينات الميدانية الرسمية."
-                />
-              </label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="مثال: شارع الجمهورية المتفرع من شارع المحطة"
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
-              />
-            </div>
-
-            {/* Facade / الواجهة (متاحة للأرض والعقارات) */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                <span>الواجهة (إن وجد)</span>
-                <FieldInfoTooltip
-                  fieldKey="facade"
-                  title="الواجهة والإطلالة"
-                  hint="توضيح اتجاه الواجهة (بحرية، شرقية، أو عرض الشارع) يلبي تفضيلات خاصة لكثير من الباحثين ويزيد سرعة التوفيق."
-                />
-              </label>
-              <div className="relative">
-                <Compass className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={facade}
-                  onChange={(e) => setFacade(e.target.value)}
-                  placeholder="مثال: بحرية على شارع رئيسي بعرض 16 متر"
-                  className="w-full pr-9 pl-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
-                />
-              </div>
-            </div>
-
-            {/* Pricing Section */}
-            {isOffer ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                    <span>{isLand || purpose === 'sale' ? 'السعر الإجمالي (ج.م) * (إجباري)' : 'الإيجار الشهري (ج.م) * (إجباري)'}</span>
-                    <FieldInfoTooltip
-                      fieldKey="price"
-                      title="السعر والإيجار"
-                      hint="تحديد القيمة السعرية الواقعية بدقة يتيح للنظام مطابقة إعلانك فوراً مع ميزانيات الباحثين المتوافقة دون إضاعة الوقت في مفاوضات غير متكافئة."
-                    />
-                  </label>
-                  <div className="relative">
-                    <DollarSign className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      ref={priceInputRef}
-                      type="number"
-                      value={price}
-                      onChange={(e) => {
-                        setPrice(e.target.value ? Number(e.target.value) : '');
-                        if (invalidField === 'price') setInvalidField(null);
-                      }}
-                      placeholder="مثال: 3500"
-                      required
-                      className={`w-full pr-9 pl-3 py-2 rounded-xl border text-xs font-bold text-[#124C46] focus:outline-hidden transition-all ${
-                        invalidField === 'price'
-                          ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
-                          : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#124C46]'
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                {!isLand && purpose === 'rent' && (
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                      <span>مبلغ التأمين (ج.م)</span>
-                      <FieldInfoTooltip
-                        fieldKey="deposit"
-                        title="مبلغ التأمين"
-                        hint="توضيح مبلغ التأمين يمنح المستأجر وضوحاً كاملاً بشأن الالتزامات المالية قبل حجز المعاينة."
-                      />
-                    </label>
-                    <input
-                      type="number"
-                      value={deposit}
-                      onChange={(e) => setDeposit(e.target.value ? Number(e.target.value) : '')}
-                      placeholder="مثال: 3500"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
-                    />
-                  </div>
-                )}
-              </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                    <span>الحد الأدنى للميزانية (ج.م)</span>
-                    <FieldInfoTooltip
-                      fieldKey="minPrice"
-                      title="الحد الأدنى للميزانية"
-                      hint="تحديد الحد الأدنى يمنع ظهور عقارات أقل من المستوى الذي تطمح إليه."
-                    />
-                  </label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">الحد الأدنى للمساحة (م²)</label>
                   <input
                     type="number"
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value ? Number(e.target.value) : '')}
-                    placeholder="مثال: 2000"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
+                    value={minArea}
+                    onChange={(e) => setMinArea(e.target.value ? Number(e.target.value) : '')}
+                    placeholder="مثال: 80"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold"
                   />
                 </div>
                 <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">أقصى مساحة مقبولة (م²)</label>
+                  <input
+                    type="number"
+                    value={maxArea}
+                    onChange={(e) => setMaxArea(e.target.value ? Number(e.target.value) : '')}
+                    placeholder="مثال: 160"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Location Section */}
+            {isOffer ? (
+              <div className="space-y-3">
+                <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                    <span>أقصى ميزانية مقبولة (ج.م) * <span className="text-slate-500 font-normal">(إجباري)</span></span>
+                    <span>المنطقة / الحي بأسيوط *</span>
                     <FieldInfoTooltip
-                      fieldKey="maxPrice"
-                      title="أقصى ميزانية مقبولة"
-                      hint="سقف الميزانية هو أساس ترشيح العروض المتطابقة مع إمكانياتك المالية بدقة تامة."
+                      fieldKey="district"
+                      title="الحي"
+                      hint="اختر أقرب حي من القائمة أو حدد 'غير ذلك' لإدخال اسم المنطقة يدوياً."
                     />
                   </label>
+                  <select
+                    ref={districtRef}
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-800 focus:outline-hidden"
+                  >
+                    {ASSIUT_DISTRICTS_LIST.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                    <option value="غير ذلك">غير ذلك (كتابة اسم المنطقة يدوياً)</option>
+                  </select>
+                </div>
+
+                {district === 'غير ذلك' && (
+                  <div className="animate-in fade-in">
+                    <label className="block text-xs font-bold text-amber-800 mb-1">اسم المنطقة / الحي المحدد:</label>
+                    <input
+                      type="text"
+                      value={customDistrict}
+                      onChange={(e) => setCustomDistrict(e.target.value)}
+                      placeholder="مثال: قرية بني غالب، أو عزبة السجن..."
+                      className="w-full px-3 py-2 rounded-xl border border-amber-300 bg-amber-50/50 text-xs font-bold text-[#124C46]"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">العنوان التفصيلي أو الشارع</label>
                   <input
-                    ref={maxPriceInputRef}
-                    type="number"
-                    value={maxPrice}
-                    onChange={(e) => {
-                      setMaxPrice(e.target.value ? Number(e.target.value) : '');
-                      if (invalidField === 'maxPrice') setInvalidField(null);
-                    }}
-                    placeholder="مثال: 4500"
-                    required
-                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold text-[#124C46] focus:outline-hidden transition-all ${
-                      invalidField === 'maxPrice'
-                        ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
-                        : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#124C46]'
-                    }`}
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="مثال: متفرع من شارع الجمهورية أمام مدرسة..."
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium"
+                  />
+                </div>
+              </div>
+            ) : (
+              /* Request: Multi-district selection */
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                    <span>المناطق المفضلة بأسيوط (اختر واحداً أو أكثر) *</span>
+                    <FieldInfoTooltip
+                      fieldKey="preferredDistricts"
+                      title="المناطق المفضلة"
+                      hint="يمكنك اختيار حي واحد أو عدة أحياء ترغب في السكن أو النشاط فيها."
+                    />
+                  </label>
+
+                  <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200">
+                    {ASSIUT_DISTRICTS_LIST.map((dist) => {
+                      const isSelected = preferredDistricts.includes(dist);
+                      return (
+                        <button
+                          type="button"
+                          key={dist}
+                          onClick={() => {
+                            if (isSelected) {
+                              if (preferredDistricts.length > 1) {
+                                setPreferredDistricts((prev) => prev.filter((d) => d !== dist));
+                              }
+                            } else {
+                              setPreferredDistricts((prev) => [...prev, dist]);
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#124C46] text-[#D6A84F] shadow-2xs'
+                              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 inline-block ml-1" />}
+                          {dist}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={customDistrict}
+                    onChange={(e) => setCustomDistrict(e.target.value)}
+                    placeholder="منطقة أخرى لم تذكر في القائمة (اختياري)..."
+                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium"
                   />
                 </div>
               </div>
             )}
           </div>
 
-          {/* Section 3: تفاصيل الغرف والمباني (مخفية كلياً إذا كان أرض فضاء) */}
-          {!isLand && (
-            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-              <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
-                <Bed className="w-4 h-4 text-[#D6A84F]" />
-                <span>مواصفات وتجهيزات المبنى</span>
-              </h3>
+          {/* ============================================================== */}
+          {/* 4. المواصفات المتخصصة حسب المجموعة (Contextual Fields) */}
+          {/* ============================================================== */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
+              <Tag className="w-4 h-4 text-[#D6A84F]" />
+              <span>
+                مواصفات خاصة بـ ({INITIAL_PROPERTY_GROUPS.find((g) => g.id === selectedGroup)?.name || 'العقار'})
+              </span>
+            </h3>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                    <span>عدد الغرف</span>
-                    <FieldInfoTooltip
-                      fieldKey="bedrooms"
-                      title="عدد الغرف"
-                      hint="عدد الغرف الدقيق يوجه إعلانك مباشرة للعائلات أو الأفراد والطلاب الباحثين عن السعة المناسبة لاحتياجاتهم."
-                    />
-                  </label>
-                  <div className="relative">
-                    <Bed className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
+            {/* 4A. Residential & Admin/Medical */}
+            {(selectedGroup === 'residential' || selectedGroup === 'admin_medical') && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                      <Bed className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{selectedGroup === 'admin_medical' ? 'عدد المكاتب' : 'عدد الغرف'}</span>
+                    </label>
                     <input
                       type="number"
                       value={bedrooms}
                       onChange={(e) => setBedrooms(e.target.value ? Number(e.target.value) : '')}
-                      className="w-full pr-8 pl-2 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold focus:outline-hidden"
+                      placeholder="مثال: 3"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold"
                     />
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                    <span>عدد الحمامات</span>
-                    <FieldInfoTooltip
-                      fieldKey="bathrooms"
-                      title="عدد الحمامات"
-                      hint="بيان عدد الحمامات يكمل تفاصيل الوحدة السكنية ويزيد من جاذبيتها في نتائج المطابقة المتقدمة."
-                    />
-                  </label>
-                  <div className="relative">
-                    <Bath className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                      <Bath className="w-3.5 h-3.5 text-slate-400" />
+                      <span>عدد الحمامات</span>
+                    </label>
                     <input
                       type="number"
                       value={bathrooms}
                       onChange={(e) => setBathrooms(e.target.value ? Number(e.target.value) : '')}
-                      className="w-full pr-8 pl-2 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold focus:outline-hidden"
+                      placeholder="مثال: 1"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold"
                     />
                   </div>
-                </div>
 
-                {isOffer && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                        <span>رقم الطابق</span>
-                        <FieldInfoTooltip
-                          fieldKey="floorLevel"
-                          title="رقم الطابق"
-                          hint="الكثير من العملاء يشترطون أدواراً محددة (مثل الأرضي أو الأدوار الأولى)، ودقة هذا الحقل تمنع المعاينات غير المجدية."
-                        />
-                      </label>
-                      <input
-                        ref={floorLevelRef}
-                        type="number"
-                        value={floorLevel}
-                        onChange={(e) => setFloorLevel(e.target.value ? Number(e.target.value) : '')}
-                        placeholder="3"
-                        className="w-full px-2.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold focus:outline-hidden"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">رقم الطابق</label>
+                    <input
+                      type="number"
+                      value={floorLevel}
+                      onChange={(e) => setFloorLevel(e.target.value ? Number(e.target.value) : '')}
+                      placeholder="مثال: 2"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold"
+                    />
+                  </div>
 
+                  {isOffer && (
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                        <span>إجمالي الأدوار</span>
-                        <FieldInfoTooltip
-                          fieldKey="totalFloors"
-                          title="إجمالي أدوار العمارة"
-                          hint="معرفة ارتفاع المبنى يعطي انطباعاً واضحاً عن طبيعة البرج السكني وعدد الوحدات."
-                        />
-                      </label>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">إجمالي الأدوار</label>
                       <input
                         type="number"
                         value={totalFloors}
                         onChange={(e) => setTotalFloors(e.target.value ? Number(e.target.value) : '')}
-                        placeholder="8"
-                        className="w-full px-2.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold focus:outline-hidden"
+                        placeholder="مثال: 6"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold"
                       />
                     </div>
-                  </>
-                )}
-              </div>
+                  )}
+                </div>
 
-              {isOffer && (
-                <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                  <span className="text-xs font-bold text-slate-700 flex items-center">
-                    <span>توفر مصعد (أسانسير) بالعمارة:</span>
-                    <FieldInfoTooltip
-                      fieldKey="elevator"
-                      title="توفر المصعد"
-                      hint="وجود المصعد من أهم العوامل الحاسمة لدى العائلات وكبار السن، وتحديده يضاعف نسبة التوفيق."
-                    />
-                  </span>
+                {/* Finishing Status (Strictly the 3 requested options: مشطبة، نصف تشطيب، مفروشة) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">حالة التشطيب والفرش</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {FINISHING_OPTIONS.map((fOpt) => (
+                      <button
+                        type="button"
+                        key={fOpt}
+                        onClick={() => setFinishingStatus(fOpt)}
+                        className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                          finishingStatus === fOpt
+                            ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46] shadow-xs'
+                            : 'bg-slate-50 text-slate-600 border-slate-200'
+                        }`}
+                      >
+                        {fOpt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Elevator Toggle */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <span className="text-xs font-bold text-slate-700">توفر مصعد (أسانسير) بالعمارة:</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setHasElevator(true)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                        hasElevator ? 'bg-[#124C46] text-[#D6A84F]' : 'bg-slate-100 text-slate-600'
+                        hasElevator ? 'bg-[#124C46] text-[#D6A84F]' : 'bg-white text-slate-600 border border-slate-200'
                       }`}
                     >
                       يوجد أسانسير
@@ -1577,243 +1611,263 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                       type="button"
                       onClick={() => setHasElevator(false)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                        !hasElevator ? 'bg-[#124C46] text-[#D6A84F]' : 'bg-slate-100 text-slate-600'
+                        !hasElevator ? 'bg-[#124C46] text-[#D6A84F]' : 'bg-white text-slate-600 border border-slate-200'
                       }`}
                     >
                       بدون أسانسير
                     </button>
                   </div>
                 </div>
-              )}
-
-              {/* ------------------------------------------------------------- */}
-              {/* 2. المرافق والتجهيزات (مربوطة ديناميكياً بلوحة التحكم) */}
-              {/* ------------------------------------------------------------- */}
-              <div className="pt-3 border-t border-slate-100 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Zap className="w-4 h-4 text-[#D6A84F]" />
-                    <span>المرافق والتجهيزات (مربوطة ديناميكياً بلوحة التحكم)</span>
-                    <FieldInfoTooltip
-                      fieldKey="utilities"
-                      title="المرافق والعدادات"
-                      hint="توضيح توفر الغاز الطبيعي والعدادات المستقلة والإنترنت يرفع تصنيف الإعلان ويزيد تقييم جودته واكتماله للمطابقة السريعة."
-                    />
-                  </span>
-                  <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-bold">
-                    يزيد اكتمال الإعلان
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {utilityDefinitions.map((utility) => {
-                    const selectedVal = selectedUtilities[utility.key] || selectedUtilities[utility.id] || '';
-                    return (
-                      <div key={utility.id || utility.key}>
-                        <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                          {utility.key === 'electricity' && <Zap className="w-3.5 h-3.5 text-amber-500" />}
-                          {utility.key === 'water' && <Droplets className="w-3.5 h-3.5 text-blue-500" />}
-                          {utility.key === 'gas' && <Flame className="w-3.5 h-3.5 text-orange-500" />}
-                          {utility.key === 'internet' && <Wifi className="w-3.5 h-3.5 text-indigo-500" />}
-                          {utility.key === 'elevator' && <ArrowUpDown className="w-3.5 h-3.5 text-teal-500" />}
-                          <span>{utility.name}</span>
-                        </label>
-                        <select
-                          value={selectedVal}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setSelectedUtilities((prev) => {
-                              const updated = { ...prev };
-                              if (val) {
-                                updated[utility.key] = val;
-                                updated[utility.id] = val;
-                              } else {
-                                delete updated[utility.key];
-                                delete updated[utility.id];
-                              }
-                              return updated;
-                            });
-                          }}
-                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46] text-slate-800"
-                        >
-                          <option value="">-- لم يتم التحديد (اختياري) --</option>
-                          {utility.statusOptions.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Section 4: مدة الإيجار وطرق الدفع والخدمات (مخفية كلياً إذا كان أرض فضاء) */}
-          {!isLand && isOffer && (
-            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-3">
-              <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2 border-b border-slate-100 pb-2">
-                <Clock className="w-4 h-4 text-[#D6A84F]" />
-                <span>مدة الإيجار وطرق السداد</span>
-              </h3>
-
-              {purpose === 'rent' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    مدة عقد الإيجار (بالأشهر)
-                  </label>
-                  <input
-                    type="number"
-                    value={rentDurationMonths}
-                    onChange={(e) => setRentDurationMonths(e.target.value ? Number(e.target.value) : '')}
-                    placeholder="12 شهر"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden"
-                  />
+            {/* 4B. Commercial */}
+            {selectedGroup === 'commercial' && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">عرض واجهة المحل (بالمتر)</label>
+                    <input
+                      type="text"
+                      value={facade}
+                      onChange={(e) => setFacade(e.target.value)}
+                      placeholder="مثال: واجهة 6 متر زجاجية"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">النشاط المناسب أو القائم</label>
+                    <input
+                      type="text"
+                      value={suitableActivity}
+                      onChange={(e) => setSuitableActivity(e.target.value)}
+                      placeholder="مثال: صيدلية، كافيه، مطعم، تجارة ملابس..."
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium"
+                    />
+                  </div>
                 </div>
-              )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  طرق الدفع المفضلة
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {activePaymentMethods.map((method) => {
-                    const isSelected = selectedPaymentMethods.includes(method);
-                    return (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">حالة التجهيز</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {FINISHING_OPTIONS.map((fOpt) => (
                       <button
                         type="button"
-                        key={method}
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedPaymentMethods((prev) => prev.filter((m) => m !== method));
-                          } else {
-                            setSelectedPaymentMethods((prev) => [...prev, method]);
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                          isSelected
+                        key={fOpt}
+                        onClick={() => setFinishingStatus(fOpt)}
+                        className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                          finishingStatus === fOpt
                             ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46]'
                             : 'bg-slate-50 text-slate-600 border-slate-200'
                         }`}
                       >
-                        {method}
+                        {fOpt}
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Section: الموقف القانوني للعقار (مباشرة بعد قسم المرافق وقبل بيانات الاتصال - إلزامي) */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#D6A84F]" />
-                <span>الموقف القانوني للعقار</span>
-              </h3>
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
-                حقل إلزامي *
-              </span>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <span>حالة التراخيص والموقف القانوني *</span>
-                  <span className="text-rose-500 font-bold">(إجباري)</span>
-                </span>
-                <FieldInfoTooltip
-                  fieldKey="legalStatus"
-                  title="الموقف القانوني للعقار"
-                  hint="يضمن الموقف القانوني الشفافية الكاملة ويوضح للعميل وضع الترخيص أو التصالح بدقة وفقاً للأنظمة العقارية المعتمدة بمحافظة أسيوط."
-                />
-              </label>
-
-              <div className="relative">
-                <select
-                  ref={legalStatusRef}
-                  value={legalStatus}
-                  onChange={(e) => {
-                    setLegalStatus(e.target.value);
-                    if (invalidField === 'legalStatus') setInvalidField(null);
-                  }}
-                  required
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold text-[#124C46] bg-slate-50 focus:outline-hidden transition-all ${
-                    invalidField === 'legalStatus'
-                      ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
-                      : 'border-slate-200 focus:ring-1 focus:ring-[#124C46]'
-                  }`}
-                >
-                  <option value="" disabled>-- اختر الموقف القانوني للعقار (إلزامي) --</option>
-                  {activeLegalStatusOptions.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
+            {/* 4C. Lands (Strictly NO rooms, bathrooms, elevator, floors, finishing) */}
+            {selectedGroup === 'lands' && (
+              <div className="space-y-3">
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs">
+                  <strong>مواصفات الأراضي:</strong> تم استبعاد حقول المباني والغرف والتشطيب تلقائياً.
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">عرض الشارع أمام الأرض (متر)</label>
+                    <input
+                      type="number"
+                      value={streetWidth}
+                      onChange={(e) => setStreetWidth(e.target.value ? Number(e.target.value) : '')}
+                      placeholder="مثال: 16 متر"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">واجهة الأرض واتجاهها</label>
+                    <input
+                      type="text"
+                      value={facade}
+                      onChange={(e) => setFacade(e.target.value)}
+                      placeholder="مثال: بحرية واجهة 14م على الشارع"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium"
+                    />
+                  </div>
+                </div>
               </div>
+            )}
 
-              {invalidField === 'legalStatus' ? (
-                <p className="text-[11px] font-bold text-rose-600 mt-1.5 flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>يرجى اختيار الموقف القانوني للعقار من القائمة للمتابعة</span>
-                </p>
-              ) : (
-                <p className="text-[10px] text-slate-500 mt-1">
-                  اختر أحد الخيارات الرسمية: مرخصة، بعد الرخصة، تصالح نهائي، جاري التصالح، مخالف.
-                </p>
-              )}
+            {/* 4D. Industrial & Storage */}
+            {selectedGroup === 'industrial_storage' && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">ارتفاع السقف (صافي بالمتر)</label>
+                    <input
+                      type="number"
+                      value={ceilingHeight}
+                      onChange={(e) => setCeilingHeight(e.target.value ? Number(e.target.value) : '')}
+                      placeholder="مثال: 5.5 متر"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">النشاط المستهدف للمخزن / المنشأة</label>
+                    <input
+                      type="text"
+                      value={suitableActivity}
+                      onChange={(e) => setSuitableActivity(e.target.value)}
+                      placeholder="مثال: تخزين مواد غذائية، ورشة حدادة..."
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Truck className="w-4 h-4 text-slate-500" />
+                    <span>إمكانية دخول وخروج الشاحنات والتريلات:</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTruckAccess(true)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                        truckAccess ? 'bg-[#124C46] text-[#D6A84F]' : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      متاح وسهل
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTruckAccess(false)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                        !truckAccess ? 'bg-[#124C46] text-[#D6A84F]' : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      شارع ضيق / سيارات صغيرة
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Utility Chips tailored to selected group */}
+            <div className="pt-2 border-t border-slate-100">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1">
+                <Zap className="w-3.5 h-3.5 text-[#D6A84F]" />
+                <span>
+                  {isOffer ? 'المرافق والخدمات المتوفرة بالموقع:' : 'المرافق المطلوبة بالضرورة:'}
+                </span>
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {(UTILITIES_BY_GROUP[selectedGroup] || []).map((u) => {
+                  const isChecked = selectedGroupUtilities.includes(u.id);
+                  return (
+                    <button
+                      type="button"
+                      key={u.id}
+                      onClick={() => {
+                        setSelectedGroupUtilities((prev) =>
+                          isChecked ? prev.filter((id) => id !== u.id) : [...prev, u.id]
+                        );
+                      }}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                        isChecked
+                          ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46] shadow-2xs'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {isChecked && <Check className="w-3 h-3" />}
+                      <span>{u.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* Section 5: معلومات التواصل والوصف */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2 flex-wrap gap-2">
+          {/* ============================================================== */}
+          {/* 5. الموقف القانوني للعقار (إلزامي للعرض) */}
+          {/* ============================================================== */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#D6A84F]" />
+                <span>الموقف القانوني والتراخيص</span>
+              </h3>
+              {isOffer && (
+                <span className="text-[10px] bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full font-bold border border-rose-200">
+                  إلزامي للعرض *
+                </span>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                <span>الموقف القانوني {isOffer ? '*' : '(مفضل)'}</span>
+                <FieldInfoTooltip
+                  fieldKey="legalStatus"
+                  title="الموقف القانوني"
+                  hint="يوضح وضع الترخيص أو التصالح لضمان الشفافية القانونية الكاملة وحماية الطرفين."
+                />
+              </label>
+              <select
+                ref={legalStatusRef}
+                value={legalStatus}
+                onChange={(e) => {
+                  setLegalStatus(e.target.value);
+                  if (invalidField === 'legalStatus') setInvalidField(null);
+                }}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-[#124C46] focus:outline-hidden"
+              >
+                <option value="مرخصة">مرخصة (ترخيص بناء رسمي)</option>
+                <option value="بعد الرخصة">بعد الرخصة</option>
+                <option value="تصالح نهائي">تصالح نهائي (نموذج 8 أو 10)</option>
+                <option value="جاري التصالح">جاري التصالح (نموذج 3)</option>
+                <option value="مخالف">مخالف</option>
+              </select>
+            </div>
+          </div>
+
+          {/* ============================================================== */}
+          {/* 6. معلومات التواصل والوصف والصور */}
+          {/* ============================================================== */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2">
                 <User className="w-4 h-4 text-[#D6A84F]" />
-                <span>بيانات الاتصال والتواصل</span>
+                <span>بيانات التواصل والوصف</span>
               </h3>
               {currentUser && (
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#124C46] border border-emerald-200 flex items-center gap-1 shadow-2xs">
-                  <ShieldCheck className="w-3 h-3 text-[#124C46]" />
-                  <span>معبأة تلقائياً من حسابك المعتمد</span>
+                <span className="text-[10px] bg-emerald-50 text-[#124C46] px-2 py-0.5 rounded-full font-bold">
+                  بيانات معبأة تلقائياً
                 </span>
               )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                  <span>الاسم بالكامل</span>
-                  <FieldInfoTooltip
-                    fieldKey="contactName"
-                    title="الاسم بالكامل"
-                    hint="تسجيل الاسم بوضوح يضفي طابعاً احترافياً ويسهل الترحيب بك والتواصل معك أثناء استفسارات المعاينة."
-                  />
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    ref={contactNameInputRef}
-                    type="text"
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    placeholder="مثال: م. أحمد عبد الرحيم"
-                    className="w-full pr-9 pl-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
-                  />
-                </div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">الاسم بالكامل</label>
+                <input
+                  type="text"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="مثال: أحمد عبد الرحيم"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold"
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                  <span>رقم الهاتف (واتساب / اتصال)*</span>
+                  <span>رقم الهاتف (واتساب / اتصال) *</span>
                   <FieldInfoTooltip
-                    fieldKey="contactPhone"
+                    fieldKey="phone"
                     title="رقم الهاتف"
-                    hint="رقم الهاتف الصحيح والمفعل بالواتساب يضمن استقبال إشعارات المطابقة الذكية ومواعيد المعاينات فور اعتماد إعلانك."
+                    hint="رقم مصري صحيح للتواصل مع المعلن وترتيب المعاينات الميدانية."
                   />
                 </label>
                 <div className="relative">
@@ -1830,107 +1884,69 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                     }}
                     placeholder="01012345678"
                     required
-                    className={`w-full pr-9 pl-16 py-2 rounded-xl border text-xs font-bold text-slate-800 focus:outline-hidden text-right transition-all ${
+                    className={`w-full pr-9 pl-3 py-2 rounded-xl border text-xs font-bold text-right transition-all ${
                       invalidField === 'phone'
                         ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200'
                         : 'border-slate-200 bg-slate-50 focus:ring-1 focus:ring-[#124C46]'
                     }`}
                   />
-                  {isValidEgyptianPhone(contactPhone) ? (
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                      صحيح
-                    </span>
-                  ) : contactPhone.length > 0 ? (
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono font-bold">
-                      {contactPhone.length}/11
-                    </span>
-                  ) : null}
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
-                  <span>11 رقماً يبدأ بـ (010، 011، 012، 015)</span>
-                  {contactPhone.length >= 3 && (
-                    <span className={`font-bold ${['010','011','012','015'].includes(contactPhone.substring(0,3)) ? 'text-emerald-700' : 'text-rose-600'}`}>
-                      {contactPhone.startsWith('010') ? 'فودافون' : contactPhone.startsWith('011') ? 'اتصالات' : contactPhone.startsWith('012') ? 'أورنج' : contactPhone.startsWith('015') ? 'وي' : 'بادئة غير صحيحة'}
-                    </span>
-                  )}
-                </div>
+                {isValidEgyptianPhone(contactPhone) && (
+                  <span className="text-[10px] text-emerald-700 font-bold block mt-1">
+                    ✓ رقم مصري معتمد
+                  </span>
+                )}
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
-                <span>ملاحظات وتفاصيل إضافية</span>
-                <FieldInfoTooltip
-                  fieldKey="notes"
-                  title="الملاحظات والمميزات"
-                  hint="الملاحظات الدقيقة حول التشطيب والفرش وطبيعة العقار تبرز المزايا الفريدة وتمنح الباحثين ثقة مضاعفة."
+            {/* Title (for offer only) */}
+            {isOffer && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">عنوان الإعلان التسويقي (اختياري)</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={`تلقائي: ${propertyType} ${purpose === 'rent' ? 'للإيجار' : 'للبيع'} ${area ? area + 'م²' : ''} في ${district}`}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium"
                 />
+              </div>
+            )}
+
+            {/* Notes / Description */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isOffer ? 'الوصف والمميزات الإضافية' : 'ملاحظات وتفضيلات خاصة بالطلب'}
               </label>
               <textarea
-                rows={3}
+                rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="أي مميزات إضافية، شروط خاصة، أو تفاصيل ترغب في توضيحها..."
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-[#124C46]"
+                placeholder={isOffer ? 'أي مميزات، شروط للدفع، أو تفاصيل خاصة بالعقار...' : 'أي شروط ترغب في توافرها بالوحدة...'}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium"
               />
             </div>
 
-            {/* Photos Upload (Optional: Device Camera & Mobile Gallery - up to 4 images, compressed <= 250KB per image) */}
-            {isOffer && (
-              <div ref={imagesSectionRef} className="rounded-2xl transition-all">
-                <ImageUploadField
-                  images={uploadedImages}
-                  onChange={setUploadedImages}
-                  maxImages={4}
-                  maxCompressedSizeKB={250}
-                />
-              </div>
-            )}
+            {/* Photos (up to 4 images) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isOffer ? 'صور العقار (اختياري، حتى 4 صور)' : 'صور مرجعية لما تبحث عنه (اختياري)'}
+              </label>
+              <ImageUploadField
+                images={uploadedImages}
+                onChange={setUploadedImages}
+                maxImages={4}
+                maxCompressedSizeKB={250}
+              />
+            </div>
 
-            {/* Admin Financial & Inspection Coordination */}
-            {isAdmin && (
-              <div className="bg-amber-50/80 p-4 rounded-2xl border-2 border-amber-300 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                    بيانات المعاينة الميدانية والرسوم (إدارة المنظومة)
-                  </span>
-                  <span className="text-[10px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded-full shadow-2xs">
-                    نشر مباشر ومعتمد فوراً
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-black text-slate-700 mb-1">رسوم المعاينة (ج.م)</label>
-                    <input
-                      type="number"
-                      value={fee}
-                      onChange={(e) => setFee(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder="200"
-                      className="w-full p-2.5 text-xs bg-white rounded-xl border border-amber-300 font-mono font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-black text-slate-700 mb-1">تاريخ المعاينة الميدانية</label>
-                    <input
-                      type="date"
-                      value={inspectionDate}
-                      onChange={(e) => setInspectionDate(e.target.value)}
-                      className="w-full p-2.5 text-xs bg-white rounded-xl border border-amber-300 font-bold"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Legal Declaration (إقرار الملكية والصحة) */}
+            {/* Declaration (Mandatory for offer) */}
             {isOffer && (
-              <label 
+              <label
                 ref={declarationRef}
-                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer text-xs select-none transition-all ${
+                className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer text-xs select-none transition-all ${
                   invalidField === 'declaration'
-                    ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-300 shadow-xs'
+                    ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-300'
                     : 'bg-amber-50/70 border-amber-200/80 hover:bg-amber-50'
                 }`}
               >
@@ -1944,39 +1960,30 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   className="mt-0.5 rounded text-[#124C46] focus:ring-[#124C46] w-4 h-4 cursor-pointer"
                 />
                 <span className="text-amber-950 font-medium leading-relaxed">
-                  <strong>إقرار إجباري:</strong> أقر أنا المعلن بأنني المالك أو الوكيل الرسمي المفوض لهذا العقار، وأن جميع البيانات المدخلة صحيحة تماماً ومطابقة للمعاينة على أرض الواقع.
+                  <strong>إقرار إجباري:</strong> أقر أنا المعلن بأنني المالك أو الوكيل الرسمي المفوض لهذا العقار، وأن جميع البيانات المدخلة صحيحة تماماً ومطابقة للمعاينة.
                 </span>
               </label>
             )}
           </div>
 
-          {/* Form Validation Summary Directly Above Submit Button */}
+          {/* Bottom Error Bar */}
           {errorMsg && (
-            <div 
+            <div
               ref={bottomErrorRef}
               onClick={jumpToCurrentError}
-              className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-400 text-rose-900 text-xs sm:text-sm font-bold flex items-start justify-between gap-3 shadow-md animate-in slide-in-from-bottom-2 duration-200 cursor-pointer hover:bg-rose-100/80 transition-all"
-              title="انقر هنا للانتقال فوراً لمكان الخطأ في النموذج"
+              className="p-3.5 rounded-2xl bg-rose-50 border-2 border-rose-400 text-rose-900 text-xs font-bold flex items-center justify-between gap-3 shadow-md cursor-pointer hover:bg-rose-100"
             >
-              <div className="flex items-start gap-3 flex-1">
-                <div className="w-8 h-8 rounded-xl bg-rose-100 border border-rose-300 flex items-center justify-center shrink-0 text-rose-600 mt-0.5">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <div className="flex-1 space-y-1 text-right">
-                  <span className="font-black text-rose-950 block text-xs sm:text-sm">
-                    تنبيه بالبيانات الناقصة أو غير المستوفاة:
-                  </span>
-                  <p className="text-rose-700 font-semibold leading-relaxed text-xs sm:text-sm">{errorMsg}</p>
-                </div>
+              <div className="flex items-center gap-2 flex-1">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                <span>{errorMsg}</span>
               </div>
-
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   jumpToCurrentError();
                 }}
-                className="mt-0.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shrink-0 inline-flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-rose-600 text-white font-bold text-xs inline-flex items-center gap-1"
               >
                 <ArrowUp className="w-3.5 h-3.5" />
                 <span>مكان الخطأ</span>
@@ -1984,8 +1991,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
             </div>
           )}
 
-          {/* Submit Action Button */}
-          <div className="pt-2">
+          {/* Submit Button */}
+          <div>
             <button
               type="submit"
               className="w-full py-3.5 px-6 rounded-2xl bg-[#124C46] hover:bg-[#0D3D38] text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all active:scale-[0.99] cursor-pointer"
@@ -1993,62 +2000,49 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               <CheckCircle2 className="w-5 h-5 text-[#D6A84F]" />
               <span>
                 {isEditing
-                  ? 'حفظ واستيفاء البيانات وإعادة الإرسال للمراجعة'
+                  ? 'حفظ التعديلات'
                   : isAdmin
-                  ? 'نشر الإعلان مباشرة (معتمد فوراً من الإدارة)'
+                  ? 'نشر فوري معتمد من الإدارة'
                   : isOffer
-                  ? 'نشر عرض العقار الآن (متاح)'
-                  : 'إرسال وتسجيل طلب العقار (مطلوب)'}
+                  ? 'نشر عرض العقار الآن'
+                  : 'إرسال طلب العقار في دقيقة واحدة'}
               </span>
             </button>
           </div>
         </form>
       </div>
 
-      {/* 2. Flutter AlertDialog: إظهار رسالة التنبيه الفورية للمستخدم */}
+      {/* Success Dialog */}
       {showSuccessDialog && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div 
-            className="bg-white w-full max-w-sm p-6 shadow-2xl border border-slate-100 flex flex-col gap-4 animate-in zoom-in-95 duration-150 text-right"
-            style={{ borderRadius: '15px' }}
-          >
-            {/* Title */}
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm p-6 rounded-2xl shadow-2xl text-right space-y-4">
             <div className="flex items-center gap-2">
-              <HourglassTopRounded className="w-6 h-6 text-[#D6A84F] shrink-0" />
-              <h3 className="text-[16px] font-bold text-slate-900 leading-none">
-                {isAdmin ? 'تم نشر الإعلان بنجاح' : 'تم تسجيل الطلب'}
+              <HourglassTopRounded className="w-6 h-6 text-[#D6A84F]" />
+              <h3 className="text-base font-bold text-slate-900">
+                {isAdmin ? 'تم النشر بنجاح' : isOffer ? 'تم تسجيل العرض' : 'تم تسجيل الطلب بنجاح'}
               </h3>
             </div>
-
-            {/* Content */}
-            <div className="space-y-2.5">
-              <p className="text-[13px] leading-[1.5] text-slate-700">
-                {isAdmin
-                  ? 'تم إضافة ونشر الإعلان مباشرة بنجاح دون الحاجة لمراجعة إدارية، وهو متاح الآن في عروض المنصة.'
-                  : 'تم تسجيل طلبك بنجاح! الإعلان حالياً قيد المراجعة وفي انتظار سداد رسوم النشر والموافقة الإدارية ليظهر على المنصة.'}
-              </p>
-              {submittedListingId && (
-                <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
-                  <span>كود الإعلان:</span>
-                  <span className="font-mono font-bold text-sm text-[#124C46]">{submittedListingId}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Actions: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF002B49)), onPressed: Navigator.pop(ctx); Navigator.pop(context); child: const Text('حسناً', style: TextStyle(color: Colors.white))) */}
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {isAdmin
+                ? 'تم حفظ ونشر الإعلان بنجاح في المنصة.'
+                : isOffer
+                ? 'تم استلام بيانات العرض بنجاح وهو قيد المراجعة والاعتماد السريع.'
+                : 'تم استلام طلبك بنجاح! سيقوم محرك المطابقة الذكي بإشعارك بأفضل العروض المتوافقة فوراً.'}
+            </p>
+            {submittedListingId && (
+              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs flex justify-between font-bold">
+                <span>كود الإعلان:</span>
+                <span className="font-mono text-[#124C46]">{submittedListingId}</span>
+              </div>
+            )}
             <div className="flex justify-end pt-2">
               <button
                 type="button"
                 onClick={() => {
-                  setShowSuccessDialog(false); // إغلاق النافذة
-                  onBack(); // العودة للشاشة الرئيسية
+                  setShowSuccessDialog(false);
+                  onBack();
                 }}
-                style={{ backgroundColor: '#124C46' }}
-                className="px-6 py-2 rounded-xl text-white font-bold text-sm hover:opacity-95 active:scale-95 transition-all shadow-md cursor-pointer"
+                className="px-6 py-2 rounded-xl bg-[#124C46] text-white font-bold text-sm cursor-pointer shadow-md"
               >
                 حسناً
               </button>
@@ -2057,34 +2051,20 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         </div>
       )}
 
-      {/* Floating Validation Toast Notification */}
+      {/* Toast Notification */}
       {toastMsg && (
-        <div 
+        <div
           onClick={jumpToCurrentError}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-200 pointer-events-auto cursor-pointer max-w-sm w-full px-4"
-          title="انقر هنا للانتقال فوراً لمكان الخطأ"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 cursor-pointer max-w-sm w-full px-4 animate-in slide-in-from-bottom-4"
         >
-          <div className="bg-[#124C46]/95 text-white p-3.5 rounded-2xl shadow-2xl border border-rose-400/40 flex items-center justify-between gap-3 backdrop-blur-md hover:bg-[#001D33] transition-all">
-            <div className="flex items-center gap-3 flex-1">
-              <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0">
-                <AlertCircle className="w-5 h-5 text-rose-400" />
-              </div>
-              <div className="flex-1 text-right">
-                <span className="text-xs sm:text-sm font-bold block text-white">{toastMsg}</span>
-                <span className="text-[10px] text-amber-300 font-medium block mt-0.5">انقر هنا للدخول لمكان الخطأ فوراً</span>
-              </div>
+          <div className="bg-[#124C46]/95 text-white p-3 rounded-2xl shadow-2xl border border-rose-400/40 flex items-center justify-between gap-3 backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+              <span className="text-xs font-bold text-white">{toastMsg}</span>
             </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                jumpToCurrentError();
-              }}
-              className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-            >
-              <span>مكان الخطأ</span>
-              <Target className="w-3 h-3" />
-            </button>
+            <span className="text-[10px] text-amber-300 font-bold bg-white/10 px-2 py-0.5 rounded-lg shrink-0">
+              انقر للتصحيح
+            </span>
           </div>
         </div>
       )}

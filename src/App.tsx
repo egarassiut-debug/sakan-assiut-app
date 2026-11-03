@@ -598,7 +598,7 @@ export function App() {
     propertyCode: string;
     score: number;
     comment: string;
-    inspectionId: string;
+    inspectionId?: string;
   }) => {
     if (!currentUser) return;
     setPropertyRatings((prev) => {
@@ -3220,16 +3220,16 @@ export function App() {
             onClose={() => setSelectedProperty(null)}
             isAdmin={isAdmin}
             currentUser={currentUser}
-            onEdit={canUserEditProperty(currentUser, selectedProperty) ? (p) => {
+            onEdit={canUserEditProperty(currentUser, selectedProperty) ? (p: Property) => {
               setSelectedProperty(null);
               handleStartEditProperty(p);
             } : undefined}
-            onScheduleInspection={(p) => {
+            onScheduleInspection={(p: Property) => {
               setSelectedPropertyForInspection(p);
               setIsInspectionModalOpen(true);
             }}
             ratingSummary={getPropertyRatingSummary(selectedProperty.id)}
-            onOpenRatingModal={(p) => setRatingModalProperty(p)}
+            onOpenRatingModal={(p: Property) => setRatingModalProperty(p)}
           />
         )}
 
@@ -3331,7 +3331,7 @@ export function App() {
             inspections={scheduledInspections}
             propertyRatings={propertyRatings}
             onSubmitRating={handleSubmitRating}
-            onRequestInspection={(p) => {
+            onRequestInspection={(p: Property) => {
               setRatingModalProperty(null);
               setSelectedPropertyForInspection(p);
               setIsInspectionModalOpen(true);

@@ -520,3 +520,8 @@ export const INITIAL_BLOCKED_USERS = [
     blockedAt: '2026-10-07',
   },
 ];
+
+export const INITIAL_SCHEDULED_INSPECTIONS: any[] = [];
+
+export const INITIAL_PROPERTY_RATINGS: PropertyRating[] = [];
+

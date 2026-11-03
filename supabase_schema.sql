@@ -785,6 +785,104 @@ ON CONFLICT (phone) DO UPDATE SET
     name = EXCLUDED.name;
 
 -- ============================================================================
+-- 9. جداول وهيكلة استمارات العرض والطلب والمجموعات الخمس المعتمدة
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.property_groups (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    icon_name TEXT DEFAULT 'Home',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.property_groups ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public select on property_groups" ON public.property_groups;
+CREATE POLICY "Public select on property_groups" ON public.property_groups FOR SELECT USING (true);
+
+CREATE TABLE IF NOT EXISTS public.property_types (
+    id TEXT PRIMARY KEY,
+    group_id TEXT REFERENCES public.property_groups(id) ON DELETE SET NULL,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.property_types ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_property_types_group_id ON public.property_types(group_id);
+DROP POLICY IF EXISTS "Public select on property_types" ON public.property_types;
+CREATE POLICY "Public select on property_types" ON public.property_types FOR SELECT USING (true);
+
+CREATE TABLE IF NOT EXISTS public.form_field_definitions (
+    id TEXT PRIMARY KEY,
+    field_key TEXT NOT NULL UNIQUE,
+    label TEXT NOT NULL,
+    help_text TEXT,
+    field_type TEXT NOT NULL,
+    display_type TEXT NOT NULL,
+    is_required BOOLEAN NOT NULL DEFAULT FALSE,
+    form_scope TEXT NOT NULL DEFAULT 'both',
+    operation_scope TEXT NOT NULL DEFAULT 'both',
+    applicable_groups JSONB NOT NULL DEFAULT '["all"]'::jsonb,
+    applicable_types JSONB NOT NULL DEFAULT '[]'::jsonb,
+    options JSONB NOT NULL DEFAULT '[]'::jsonb,
+    sort_order_offer INTEGER NOT NULL DEFAULT 0,
+    sort_order_request INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.form_field_definitions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public select on form_field_definitions" ON public.form_field_definitions;
+CREATE POLICY "Public select on form_field_definitions" ON public.form_field_definitions FOR SELECT USING (true);
+
+-- ترقية جدول عروض العقارات (properties)
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS property_group TEXT;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS is_negotiable BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS payment_frequency TEXT;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS custom_district TEXT;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS finishing_status TEXT;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS street_width NUMERIC;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS ceiling_height NUMERIC;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS truck_access BOOLEAN;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS suitable_activity TEXT;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS specifications JSONB DEFAULT '{}'::jsonb;
+
+CREATE INDEX IF NOT EXISTS idx_properties_property_group ON public.properties(property_group);
+CREATE INDEX IF NOT EXISTS idx_properties_finishing_status ON public.properties(finishing_status);
+
+-- ترقية جدول طلبات العقارات (tenant_requests)
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS property_group TEXT;
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS preferred_districts JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS custom_district TEXT;
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS payment_frequency TEXT;
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS finishing_status TEXT;
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS street_width NUMERIC;
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS ceiling_height NUMERIC;
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS truck_access BOOLEAN;
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS suitable_activity TEXT;
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS specifications JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.tenant_requests ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+
+CREATE INDEX IF NOT EXISTS idx_tenant_requests_property_group ON public.tenant_requests(property_group);
+CREATE INDEX IF NOT EXISTS idx_tenant_requests_finishing_status ON public.tenant_requests(finishing_status);
+
+-- بذر المجموعات الخمس
+INSERT INTO public.property_groups (id, name, description, icon_name, sort_order, is_active)
+VALUES 
+    ('residential', 'سكني', 'شقق سكنية، فلل، دوبلكس، ومنازل عائلية بأسيوط', 'Home', 1, true),
+    ('commercial', 'تجاري', 'محلات، معارض، كافيهات، ومطاعم في شوارع أسيوط الحيوية', 'Store', 2, true),
+    ('admin_medical', 'إداري وطبي', 'مكاتب إدارية، مقرات شركات، عيادات ومراكز طبية متخصصة', 'Building2', 3, true),
+    ('lands', 'أراضٍ', 'أراضٍ سكنية، تجارية، صناعية، وزراعية بكافة مناطق أسيوط', 'LandPlot', 4, true),
+    ('industrial_storage', 'صناعي ومخازن', 'مخازن، بدرومات، مصانع، وعنابر إنتاج وجراجات', 'Warehouse', 5, true)
+ON CONFLICT (id) DO UPDATE 
+SET name = EXCLUDED.name, description = EXCLUDED.description, sort_order = EXCLUDED.sort_order;
+
+-- ============================================================================
 -- إعادة تحميل كاش مخطط PostgREST فورياً لمنع أي أخطاء schema cache
 -- ============================================================================
 NOTIFY pgrst, 'reload schema';
+

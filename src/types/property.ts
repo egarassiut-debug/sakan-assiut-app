@@ -208,6 +208,16 @@ export interface Property {
   propertyType: string; // e.g. "شقة سكنية", "قطعة أرض فضاء", "سكن طلابي", etc.
   purpose: PropertyPurpose; // 'rent' | 'sale'
   legalStatus?: LegalStatusOption | string; // الموقف القانوني للعقار (مرخصة، بعد الرخصة، تصالح نهائي، جاري التصالح، مخالف)
+  propertyGroup?: string; // e.g. 'residential' | 'commercial' | 'admin_medical' | 'lands' | 'industrial_storage'
+  isNegotiable?: boolean; // قابل للتفاوض: نعم / لا
+  paymentFrequency?: 'monthly' | 'quarterly' | 'semi_annual' | 'annual' | string; // دورية السداد للإيجار
+  customDistrict?: string; // اسم المنطقة اليدوي عند اختيار "غير ذلك"
+  finishingStatus?: 'مشطبة' | 'نصف تشطيب' | 'مفروشة' | string; // حالة التشطيب للعقار
+  streetWidth?: number; // عرض الشارع بالمتر
+  ceilingHeight?: number; // ارتفاع السقف بالمتر (للمصانع والمخازن)
+  truckAccess?: boolean; // إمكانية دخول سيارات نقل ثقيل وتريلات
+  suitableActivity?: string; // النشاط التجاري أو الصناعي المناسب
+  specifications?: Record<string, any>; // حقول ومواصفات ديناميكية إضافية
   price: number;
   originalPrice?: number;
   deposit?: number;
@@ -235,12 +245,28 @@ export interface Property {
   featured?: boolean;
   status: PropertyStatus;
   adminNote?: string;
-  createdByAdmin?: boolean;
-  createdAt: string;
   ownershipDocumentUrl?: string;
   viewsCount?: number;
+  fee?: number;
+  inspectionDate?: string;
   isVerified?: boolean;
   verifiedByAdmin?: boolean;
+}
+
+export interface ScheduledInspection {
+  id: string;
+  propertyId: string;
+  propertyCode: string;
+  clientName: string;
+  clientPhone: string;
+  preferredDate: string;
+  preferredTime: string;
+  notes?: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  fee?: number;
+  feePaid?: boolean;
+  completedAt?: string;
+  createdAt: string;
 }
 
 export interface PropertyRating {
@@ -264,9 +290,18 @@ export interface TenantRequest {
   tenantName: string;
   tenantPhone: string;
   preferredDistrict: string;
+  preferredDistricts?: string[]; // إمكانية اختيار أكثر من منطقة للبحث
+  customDistrict?: string; // اسم المنطقة المكتوبة يدوياً عند اختيار "غير ذلك"
   propertyType: string;
+  propertyGroup?: string; // e.g. 'residential' | 'commercial' | 'admin_medical' | 'lands' | 'industrial_storage'
   purpose: PropertyPurpose;
+  paymentFrequency?: 'monthly' | 'quarterly' | 'semi_annual' | 'annual' | string; // دورية السداد المفضلة للإيجار
   legalStatus?: LegalStatusOption | string; // الموقف القانوني المفضل للعقار المطلوب
+  streetWidth?: number; // عرض الشارع المفضل بالمتر
+  ceilingHeight?: number; // ارتفاع السقف المطلوب بالمتر
+  truckAccess?: boolean; // اشتراط دخول سيارات نقل ثقيل وتريلات
+  suitableActivity?: string; // النشاط المطلوب
+  specifications?: Record<string, any>; // مواصفات تفصيلية إضافية
   minPrice?: number;
   maxPrice: number;
   minArea?: number;

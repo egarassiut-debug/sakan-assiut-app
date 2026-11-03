@@ -20,6 +20,7 @@ interface PropertyDetailsModalProps {
   onToggleFavorite?: (propertyId: string) => void;
   ratingSummary?: { average: number; count: number };
   onOpenRatingModal?: (property: Property) => void;
+  onScheduleInspection?: (property: Property) => void;
 }
 
 export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
