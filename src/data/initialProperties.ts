@@ -523,5 +523,3 @@ export const INITIAL_BLOCKED_USERS = [
 
 export const INITIAL_SCHEDULED_INSPECTIONS: any[] = [];
 
-export const INITIAL_PROPERTY_RATINGS: PropertyRating[] = [];
-

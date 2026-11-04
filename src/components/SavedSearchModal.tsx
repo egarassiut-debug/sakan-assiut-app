@@ -274,8 +274,8 @@ export const SavedSearchModal: React.FC<SavedSearchModalProps> = ({
                           <span className="font-bold text-[#24313D] truncate block">
                             {item.minPrice || item.maxPrice ? (
                               <>
-                                {item.minPrice ? `${item.minPrice.toLocaleString()}` : '0'} -{' '}
-                                {item.maxPrice ? `${item.maxPrice.toLocaleString()}` : 'بدون حد'}
+                                {item.minPrice ? `${Number(item.minPrice).toLocaleString()} ج.م` : '0 ج.م'} -{' '}
+                                {item.maxPrice ? `${Number(item.maxPrice).toLocaleString()} ج.م` : 'بدون حد'}
                               </>
                             ) : (
                               'أي سعر'
@@ -323,3 +323,6 @@ export const SavedSearchModal: React.FC<SavedSearchModalProps> = ({
     </div>
   );
 };
+
+export default SavedSearchModal;
+

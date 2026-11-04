@@ -91,9 +91,6 @@ export function clearSecureSession(): void {
   safeStorageRemoveItem(ADMIN_SESSION_KEY);
 }
 
-export const ADMIN_PASSKEY = '9999'; // Master backup passkey for emergency admin access
-export const MASTER_KEYS = ['9999', 'ADMIN_MASTER_KEY', 'ASUIT_ADMIN_2026', 'ADMIN_PASSKEY'];
-
 /**
  * Checks if a given input string matches any system administrator master key
  */
@@ -105,7 +102,7 @@ export function isMasterKey(key: string | null | undefined): boolean {
       ? String(import.meta.env.VITE_ADMIN_MASTER_KEY).trim()
       : '';
   if (envMaster && trimmed === envMaster) return true;
-  return MASTER_KEYS.includes(trimmed);
+  return false;
 }
 
 /**
@@ -113,8 +110,7 @@ export function isMasterKey(key: string | null | undefined): boolean {
  */
 export async function verifyAdminPasskey(pin: string): Promise<boolean> {
   if (!pin) return false;
-  const trimmed = pin.trim();
-  return trimmed === '1234' || isMasterKey(trimmed);
+  return isMasterKey(pin.trim());
 }
 
 /**
@@ -138,15 +134,36 @@ export async function hashPassword(plainText: string): Promise<string> {
   return `hash_${Math.abs(hash).toString(16)}`;
 }
 
+export interface PasswordVerificationResult {
+  isValid: boolean;
+  needsUpgrade: boolean;
+}
+
+/**
+ * Detailed verification of password against stored hash with legacy plaintext upgrade detection
+ */
+export async function verifyPasswordDetailed(plainText: string, storedHash: string): Promise<PasswordVerificationResult> {
+  if (!storedHash || !plainText) return { isValid: false, needsUpgrade: false };
+  const computed = await hashPassword(plainText);
+  if (computed === storedHash) {
+    return { isValid: true, needsUpgrade: false };
+  }
+  // Safe migration check for legacy accounts:
+  // If storedHash in DB is an unhashed PIN, it must match plainText exactly,
+  // and we flag needsUpgrade: true so the caller can upgrade it immediately to SHA-256.
+  const isSha256Hex = /^[0-9a-f]{64}$/i.test(storedHash);
+  if (!isSha256Hex && storedHash === plainText) {
+    return { isValid: true, needsUpgrade: true };
+  }
+  return { isValid: false, needsUpgrade: false };
+}
+
 /**
  * Verifies a plaintext password or PIN against a stored password_hash
  */
 export async function verifyPassword(plainText: string, storedHash: string): Promise<boolean> {
-  if (!storedHash) return false;
-  // Match in case legacy stored plaintext
-  if (storedHash === plainText) return true;
-  const computed = await hashPassword(plainText);
-  return computed === storedHash;
+  const result = await verifyPasswordDetailed(plainText, storedHash);
+  return result.isValid;
 }
 
 /**

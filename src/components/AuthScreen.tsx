@@ -17,76 +17,6 @@ interface AuthScreenProps {
   onLoginSuccess: (user: AppUser) => void;
 }
 
-// Default Demonstration Users with preconfigured accounts
-const DEFAULT_USERS: AppUser[] = [
-  {
-    id: 'owner-mostfa',
-    name: 'MOSTFA',
-    phone: '01501799110',
-    pin: '1234',
-    role: 'super_admin',
-    createdAt: '2026-10-29',
-    isFoundingOwner: true,
-  },
-  {
-    id: 'owner-sakan-assiut',
-    name: 'SAKAN ASSIUT',
-    phone: '01001717780',
-    pin: '1234',
-    role: 'super_admin',
-    createdAt: '2026-10-29',
-    isFoundingOwner: true,
-  },
-  {
-    id: 'user-regular-default',
-    name: 'م. أحمد عبد الرحيم',
-    phone: '01012345678',
-    pin: '1234',
-    role: 'user',
-    createdAt: '2026-10-10',
-  },
-  {
-    id: 'admin-sec-1',
-    name: 'مسؤول المنظومة',
-    phone: '01002345678',
-    pin: '1234',
-    role: 'admin',
-    createdAt: '2026-10-10',
-  },
-  {
-    id: 'admin-sec-2',
-    name: 'المشرف العام',
-    phone: '01000000000',
-    pin: '1234',
-    role: 'admin',
-    createdAt: '2026-10-10',
-  },
-  {
-    id: 'admin-sec-3',
-    name: 'مسؤول العمليات',
-    phone: '01011112222',
-    pin: '1234',
-    role: 'admin',
-    createdAt: '2026-10-10',
-  },
-  {
-    id: 'admin-sec-4',
-    name: 'مسؤول المعاينات',
-    phone: '01122334455',
-    pin: '1234',
-    role: 'admin',
-    createdAt: '2026-10-10',
-  },
-  {
-    id: 'admin-sec-5',
-    name: 'مسؤول التدقيق',
-    phone: '01223344556',
-    pin: '1234',
-    role: 'admin',
-    createdAt: '2026-10-10',
-  },
-];
-
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   // Navigation mode: 'login' | 'register' (Clean 2-mode UI)
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -194,7 +124,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       return;
     }
 
-    const usersDb: AppUser[] = safeStorageGetItem<AppUser[]>('ardaw_users_db', DEFAULT_USERS);
+    const usersDb: AppUser[] = safeStorageGetItem<AppUser[]>('ardaw_users_db', []);
 
     if (authMode === 'register') {
       if (!name.trim()) {
@@ -281,15 +211,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
         }
       }
 
-      // 2. Fallback check for local storage users & demo accounts
+      // 2. Fallback check for local storage users
       let foundUser = usersDb.find(
         (u) => (u.phone === cleanPhone || u.phone === normalizedPhone) && u.pin === trimmedPin
       );
-
-      // Support fallback for demo regular user with PIN '1234'
-      if (!foundUser && (cleanPhone === '01012345678' || normalizedPhone === '01012345678') && trimmedPin === '1234') {
-        foundUser = DEFAULT_USERS[0];
-      }
 
       if (!foundUser) {
         setErrorMessage('رقم الهاتف أو كلمة المرور غير صحيحة! تأكد من صحة البيانات.');

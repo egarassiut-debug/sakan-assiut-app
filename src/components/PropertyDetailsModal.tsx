@@ -442,6 +442,55 @@ export const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
             </div>
           </div>
 
+          {/* Specialized Custom Fields (readySetup, powerCapacity, etc.) */}
+          {property.customFields && Object.values(property.customFields).some((v) => v !== undefined && v !== '' && (!Array.isArray(v) || v.length > 0)) && (
+            <div className="bg-[#F8FAF9] p-3 rounded-2xl border border-[#D6DEE5]/80 space-y-2">
+              <h4 className="font-bold text-xs text-[#124C46]">المواصفات الفنية والمتخصصة:</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                {property.customFields.landType && (
+                  <div className="bg-white p-2 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block text-[10px]">نوع وتصنيف الأرض</span>
+                    <span className="font-bold text-slate-800">{property.customFields.landType}</span>
+                  </div>
+                )}
+                {property.customFields.suitableActivity && (
+                  <div className="bg-white p-2 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block text-[10px]">النشاط التجاري المناسب</span>
+                    <span className="font-bold text-slate-800">{property.customFields.suitableActivity}</span>
+                  </div>
+                )}
+                {property.customFields.powerCapacity && (
+                  <div className="bg-white p-2 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block text-[10px]">القدرة الكهربائية والعداد</span>
+                    <span className="font-bold text-slate-800">{property.customFields.powerCapacity}</span>
+                  </div>
+                )}
+                {property.customFields.readySetup && (Array.isArray(property.customFields.readySetup) ? property.customFields.readySetup.length > 0 : Boolean(property.customFields.readySetup)) && (
+                  <div className="bg-white p-2 rounded-xl border border-slate-200 col-span-2">
+                    <span className="text-slate-500 block text-[10px]">التجهيزات الإدارية والطبية المتوفرة</span>
+                    <span className="font-bold text-slate-800">
+                      {Array.isArray(property.customFields.readySetup) 
+                        ? property.customFields.readySetup.join(' • ') 
+                        : property.customFields.readySetup}
+                    </span>
+                  </div>
+                )}
+                {property.customFields.ceilingHeight && (
+                  <div className="bg-white p-2 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block text-[10px]">ارتفاع السقف</span>
+                    <span className="font-bold text-slate-800">{property.customFields.ceilingHeight} م</span>
+                  </div>
+                )}
+                {property.customFields.truckAccess && (
+                  <div className="bg-white p-2 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block text-[10px]">دخول سيارات النقل</span>
+                    <span className="font-bold text-slate-800">{property.customFields.truckAccess}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Description */}
           <div>
             <h4 className="font-bold text-sm text-[#24313D] mb-1.5">وصف العقار التفصيلي</h4>

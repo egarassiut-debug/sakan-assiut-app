@@ -15,17 +15,21 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-// Authorized administrators & staff registry with granular RBAC roles
-const STAFF_ROLES: Record<string, 'super_admin' | 'admin' | 'reviewer' | 'support'> = {
-  '01501799110': 'super_admin', // MOSTFA (مالك ومؤسس)
-  '01001717780': 'super_admin', // SAKAN ASSIUT (مالك ومؤسس)
-  '01002345678': 'super_admin', // مسؤول المنظومة
-  '01000000000': 'super_admin', // المشرف العام
-  '01011112222': 'admin',       // مدير العمليات
-  '01122334455': 'reviewer',    // مسؤول المعاينات
-  '01223344556': 'reviewer',    // مراجع الإعلانات
-  '01555667788': 'support',     // الدعم الفني وخدمة العملاء
+// Authorized administrators & staff registry with granular RBAC roles and credentials
+const STAFF_CREDENTIALS: Record<string, { role: 'super_admin' | 'admin' | 'reviewer' | 'support'; pin: string }> = {
+  '01501799110': { role: 'super_admin', pin: '1234' }, // MOSTFA (مالك ومؤسس)
+  '01001717780': { role: 'super_admin', pin: '1234' }, // SAKAN ASSIUT (مالك ومؤسس)
+  '01002345678': { role: 'super_admin', pin: '1234' }, // مسؤول المنظومة
+  '01000000000': { role: 'super_admin', pin: '1234' }, // المشرف العام
+  '01011112222': { role: 'admin', pin: '1234' },       // مدير العمليات
+  '01122334455': { role: 'reviewer', pin: '1234' },    // مسؤول المعاينات
+  '01223344556': { role: 'reviewer', pin: '1234' },    // مراجع الإعلانات
+  '01555667788': { role: 'support', pin: '1234' },     // الدعم الفني وخدمة العملاء
 };
+
+const STAFF_ROLES: Record<string, 'super_admin' | 'admin' | 'reviewer' | 'support'> = Object.fromEntries(
+  Object.entries(STAFF_CREDENTIALS).map(([phone, val]) => [phone, val.role])
+);
 
 const AUTHORIZED_ADMIN_PHONES = new Set(Object.keys(STAFF_ROLES));
 
@@ -35,12 +39,7 @@ const AUTHORIZED_ADMIN_PHONES = new Set(Object.keys(STAFF_ROLES));
  */
 function resolveStaffRole(phone?: string, token?: string): 'super_admin' | 'admin' | 'reviewer' | 'support' | 'user' {
   const masterKey = process.env.ADMIN_MASTER_KEY;
-  if (
-    (masterKey && token === masterKey) ||
-    token === '9999' ||
-    token === 'ADMIN_MASTER_KEY' ||
-    token === 'ASUIT_ADMIN_2026'
-  ) {
+  if (masterKey && token && token === masterKey) {
     return 'super_admin';
   }
 
@@ -86,14 +85,9 @@ function verifyAdminToken(token: string, phone?: string): boolean {
     }
   }
 
-  // 3. Accept secure master admin token if defined in environment or standard master keys
+  // 3. Accept secure master admin token if defined in environment
   const masterKey = process.env.ADMIN_MASTER_KEY;
-  if (
-    (masterKey && token === masterKey) ||
-    token === '9999' ||
-    token === 'ADMIN_MASTER_KEY' ||
-    token === 'ASUIT_ADMIN_2026'
-  ) {
+  if (masterKey && token === masterKey) {
     return true;
   }
 
@@ -186,34 +180,74 @@ function requireGranularRole(allowedRoles: string[]): express.RequestHandler {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Serverless URL normalization: ensures /api routes are mapped whether called directly or via serverless rewrite
+app.use((req, _res, next) => {
+  if (
+    !req.url.startsWith('/api') &&
+    !req.url.startsWith('/@') &&
+    !req.url.startsWith('/src') &&
+    !req.url.startsWith('/assets') &&
+    !req.url.startsWith('/public') &&
+    !req.url.includes('.')
+  ) {
+    req.url = `/api${req.url}`;
+  }
+  next();
+});
+
 // Health check (Public)
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Direct SQL Migration Download Route
+app.get([
+  '/20261104_001_complete_fresh_database_rebuild.sql',
+  '/api/download/sql',
+  '/download/sql',
+  '/download/20261104_001_complete_fresh_database_rebuild.sql'
+], (_req, res) => {
+  const filePath = path.resolve(__dirname, 'supabase/migrations/20261104_001_complete_fresh_database_rebuild.sql');
+  if (fs.existsSync(filePath)) {
+    res.setHeader('Content-Type', 'application/sql; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="20261104_001_complete_fresh_database_rebuild.sql"');
+    return res.sendFile(filePath);
+  }
+  return res.status(404).send('SQL migration file not found');
 });
 
 // Admin Route: Check credentials or master key with Granular RBAC Role Resolution
 app.post('/api/admin/verify-credentials', (req, res) => {
   const { phone, pin } = req.body || {};
   const masterKey = process.env.ADMIN_MASTER_KEY;
-  const isMaster =
-    (masterKey && pin === masterKey) ||
-    pin === '9999' ||
-    pin === 'ADMIN_MASTER_KEY' ||
-    pin === 'ASUIT_ADMIN_2026';
+  const isMaster = Boolean(masterKey && pin && pin === masterKey);
   const cleanPhone = phone ? String(phone).trim() : '';
   const isStaffPhone = cleanPhone ? AUTHORIZED_ADMIN_PHONES.has(cleanPhone) : false;
 
-  if (isMaster || (isStaffPhone && (pin === '1234' || pin === '9999' || isMaster))) {
-    const role = isMaster ? 'super_admin' : (STAFF_ROLES[cleanPhone] || 'admin');
+  if (isMaster) {
     return res.json({ 
       success: true, 
       isAdmin: true, 
-      phone: cleanPhone,
-      role 
+      phone: cleanPhone || 'master_admin',
+      role: 'super_admin' 
     });
   }
 
-  return res.json({ success: false });
+  // If staff phone is provided, verify against server-side staff credentials
+  if (isStaffPhone && pin) {
+    const cred = STAFF_CREDENTIALS[cleanPhone];
+    if (cred && String(pin).trim() === cred.pin) {
+      return res.json({ 
+        success: true, 
+        isAdmin: true, 
+        phone: cleanPhone,
+        role: cred.role 
+      });
+    }
+    return res.status(401).json({ success: false, error: 'كلمة المرور غير صحيحة.' });
+  }
+
+  return res.status(401).json({ success: false, error: 'بيانات الدخول غير صحيحة.' });
 });
 
 // Admin Route: Verify Active Session Token & Return Granular Role
@@ -573,4 +607,10 @@ async function startServer() {
   });
 }
 
-startServer();
+// In Vercel serverless environment, do not start local HTTP daemon
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
+export { app };

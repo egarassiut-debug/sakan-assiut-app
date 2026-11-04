@@ -14,7 +14,7 @@ interface MyAdsScreenProps {
   currentUser: AppUser;
   properties: Property[];
   tenantRequests: TenantRequest[];
-  inspections: ScheduledInspection[];
+  inspections?: ScheduledInspection[];
   onEditProperty: (property: Property) => void;
   onDeleteProperty: (propertyId: string) => void;
   onArchiveProperty: (propertyId: string) => void;
@@ -37,7 +37,7 @@ export const MyAdsScreen: React.FC<MyAdsScreenProps> = ({
   currentUser,
   properties,
   tenantRequests,
-  inspections,
+  inspections = [],
   onEditProperty,
   onDeleteProperty,
   onArchiveProperty,

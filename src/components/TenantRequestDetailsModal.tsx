@@ -106,9 +106,50 @@ export const TenantRequestDetailsModal: React.FC<TenantRequestDetailsModalProps>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-[#5D6B78] font-semibold">
               <MapPin className="w-4 h-4 text-[#124C46] shrink-0" />
-              <span>الحي المفضل: {request.preferredDistrict} (أسيوط)</span>
+              <span>
+                {request.preferredDistricts && request.preferredDistricts.length > 1
+                  ? `الأحياء المستهدفة: ${request.preferredDistricts.join(' • ')} (أسيوط)`
+                  : `الحي المفضل: ${request.preferredDistrict || 'أسيوط'}`}
+              </span>
             </div>
           </div>
+
+          {/* Specialized Specs if present (readySetup, powerCapacity, etc.) */}
+          {request.customFields && Object.values(request.customFields).some((v) => v !== undefined && v !== '' && (!Array.isArray(v) || v.length > 0)) && (
+            <div className="bg-[#F8FAF9] p-3 rounded-xl border border-[#D6DEE5] space-y-2 text-xs">
+              <span className="font-bold text-[#124C46] block text-[11px]">مواصفات واشتراطات تخصصية:</span>
+              <div className="grid grid-cols-2 gap-2">
+                {request.customFields.landType && (
+                  <div className="bg-white p-2 rounded-lg border border-slate-200">
+                    <span className="text-[10px] text-slate-500 block">تصنيف الأرض:</span>
+                    <span className="font-bold text-slate-800">{request.customFields.landType}</span>
+                  </div>
+                )}
+                {request.customFields.suitableActivity && (
+                  <div className="bg-white p-2 rounded-lg border border-slate-200">
+                    <span className="text-[10px] text-slate-500 block">النشاط التجاري:</span>
+                    <span className="font-bold text-slate-800">{request.customFields.suitableActivity}</span>
+                  </div>
+                )}
+                {request.customFields.powerCapacity && (
+                  <div className="bg-white p-2 rounded-lg border border-slate-200">
+                    <span className="text-[10px] text-slate-500 block">القدرة الكهربائية:</span>
+                    <span className="font-bold text-slate-800">{request.customFields.powerCapacity}</span>
+                  </div>
+                )}
+                {request.customFields.readySetup && (Array.isArray(request.customFields.readySetup) ? request.customFields.readySetup.length > 0 : Boolean(request.customFields.readySetup)) && (
+                  <div className="bg-white p-2 rounded-lg border border-slate-200 col-span-2">
+                    <span className="text-[10px] text-slate-500 block">التجهيزات الإدارية والطبية:</span>
+                    <span className="font-bold text-slate-800">
+                      {Array.isArray(request.customFields.readySetup) 
+                        ? request.customFields.readySetup.join(' • ') 
+                        : request.customFields.readySetup}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Budget & Key Specifications Box */}
           <div className="bg-[#F5F7F9] border border-[#D6DEE5] rounded-xl p-4 space-y-3">

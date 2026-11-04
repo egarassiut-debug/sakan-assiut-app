@@ -6,24 +6,8 @@ import { safeStorageGetItem, safeStorageSetItem } from './storageManager';
 
 const USERS_DB_KEY = 'ardaw_users_db';
 
-const DEFAULT_USERS_FALLBACK: AppUser[] = [
-  {
-    id: 'user-regular-default',
-    name: 'م. أحمد عبد الرحيم',
-    phone: '01012345678',
-    pin: '1234',
-    role: 'user',
-    createdAt: '2026-10-10',
-  },
-  {
-    id: 'admin-sec-1',
-    name: 'مسؤول المنظومة',
-    phone: '01002345678',
-    pin: '1234',
-    role: 'admin',
-    createdAt: '2026-10-10',
-  },
-];
+// Production user initialization - no mock dummy users
+const DEFAULT_USERS_FALLBACK: AppUser[] = [];
 
 export function isMasterOwner(user?: AppUser | null): boolean {
   if (!user) return false;

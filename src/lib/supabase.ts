@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { AppUser, Property, TenantRequest, PropertyStatus, UserProfile, CustomRoleDefinition } from '../types/property';
-import { hashPassword, verifyPassword, isMasterKey } from '../utils/security';
+import { AppUser, Property, TenantRequest, PropertyStatus, UserProfile, CustomRoleDefinition, PropertyCategory, PropertyTypeItem, FormFieldDefinition } from '../types/property';
+import { DEFAULT_PROPERTY_CATEGORIES, DEFAULT_PROPERTY_TYPES, DEFAULT_FORM_FIELD_DEFINITIONS } from '../data/propertyTaxonomy';
+import { hashPassword, verifyPassword, verifyPasswordDetailed, isMasterKey } from '../utils/security';
 import { isAuthorizedAdminPhone, findAdminByPhone } from '../utils/adminManager';
 import { normalizeEgyptianPhone } from '../utils/phoneValidator';
 import { safeStorageGetItem, safeStorageSetItem } from '../utils/storageManager';
@@ -242,15 +243,19 @@ export function mapPropertyFromDb(row: any): Property {
     isApproved: row.is_approved !== undefined ? Boolean(row.is_approved) : row.status === 'approved',
     title: row.title || '',
     description: row.description || '',
+    categoryId: row.category_id || undefined,
     propertyType: row.property_type || 'شقة سكنية',
     purpose: (row.purpose === 'sale' ? 'sale' : 'rent'),
     legalStatus: row.legal_status || row.legalStatus || 'مرخصة',
     price: Number(row.price) || 0,
     originalPrice: row.original_price ? Number(row.original_price) : undefined,
+    isNegotiable: Boolean(row.is_negotiable),
+    paymentFrequency: row.payment_frequency || 'شهري',
     deposit: row.deposit ? Number(row.deposit) : undefined,
     rentDurationMonths: row.rent_duration_months ? Number(row.rent_duration_months) : undefined,
     city: row.city || 'أسيوط',
     district: row.district || '',
+    customDistrict: row.custom_district || undefined,
     address: row.address || '',
     facade: row.facade || undefined,
     area: Number(row.area) || 0,
@@ -259,16 +264,7 @@ export function mapPropertyFromDb(row: any): Property {
     totalFloors: row.total_floors !== null && row.total_floors !== undefined ? Number(row.total_floors) : undefined,
     floorLevel: row.floor_level !== null && row.floor_level !== undefined ? Number(row.floor_level) : undefined,
     hasElevator: Boolean(row.has_elevator),
-    propertyGroup: row.property_group || undefined,
-    isNegotiable: Boolean(row.is_negotiable),
-    paymentFrequency: row.payment_frequency || undefined,
-    customDistrict: row.custom_district || undefined,
     finishingStatus: row.finishing_status || undefined,
-    streetWidth: row.street_width !== null && row.street_width !== undefined ? Number(row.street_width) : undefined,
-    ceilingHeight: row.ceiling_height !== null && row.ceiling_height !== undefined ? Number(row.ceiling_height) : undefined,
-    truckAccess: row.truck_access !== null && row.truck_access !== undefined ? Boolean(row.truck_access) : undefined,
-    suitableActivity: row.suitable_activity || undefined,
-    specifications: typeof row.specifications === 'object' && row.specifications !== null ? row.specifications : {},
     utilities: typeof row.utilities === 'object' && row.utilities !== null ? row.utilities : {
       electricity: { available: true, type: 'عداد كارت' },
       water: { available: true, type: 'عداد منفصل' },
@@ -277,6 +273,7 @@ export function mapPropertyFromDb(row: any): Property {
       elevator: { available: false, type: 'بدون أسانسير' },
     },
     paymentMethods: Array.isArray(row.payment_methods) ? row.payment_methods : ['شهري (مقدم شهر)'],
+    customFields: typeof row.custom_fields === 'object' && row.custom_fields !== null ? row.custom_fields : {},
     ownerName: row.owner_name || 'مالك العقار',
     ownerPhone: row.owner_phone || '',
     contactPhone: row.contact_phone || row.owner_phone || '',
@@ -303,12 +300,14 @@ export function mapPropertyToDb(p: Property): any {
     is_approved: p.isApproved !== undefined ? p.isApproved : p.status === 'approved',
     title: p.title,
     description: p.description,
+    category_id: p.categoryId || null,
     property_type: p.propertyType,
-    property_group: p.propertyGroup || null,
     purpose: p.purpose,
     legal_status: p.legalStatus || 'مرخصة',
     price: p.price,
     original_price: p.originalPrice || null,
+    is_negotiable: Boolean(p.isNegotiable),
+    payment_frequency: p.paymentFrequency || 'شهري',
     deposit: p.deposit || null,
     rent_duration_months: p.rentDurationMonths || null,
     city: p.city || 'أسيوط',
@@ -323,15 +322,9 @@ export function mapPropertyToDb(p: Property): any {
     floor_level: p.floorLevel ?? null,
     has_elevator: Boolean(p.hasElevator),
     finishing_status: p.finishingStatus || null,
-    is_negotiable: Boolean(p.isNegotiable),
-    payment_frequency: p.paymentFrequency || null,
-    street_width: p.streetWidth ?? null,
-    ceiling_height: p.ceilingHeight ?? null,
-    truck_access: p.truckAccess ?? null,
-    suitable_activity: p.suitableActivity || null,
-    specifications: p.specifications || {},
     utilities: p.utilities,
     payment_methods: p.paymentMethods,
+    custom_fields: p.customFields || {},
     owner_name: p.ownerName,
     owner_phone: p.ownerPhone,
     contact_phone: p.contactPhone || p.ownerPhone,
@@ -358,29 +351,26 @@ export function mapTenantRequestFromDb(row: any): TenantRequest {
     isApproved: row.is_approved !== undefined ? Boolean(row.is_approved) : row.status === 'approved',
     tenantName: row.tenant_name || 'مواطن باحث عن عقار',
     tenantPhone: row.tenant_phone || '',
+    categoryId: row.category_id || undefined,
     preferredDistrict: row.preferred_district || '',
-    preferredDistricts: Array.isArray(row.preferred_districts) ? row.preferred_districts : (row.preferred_district ? [row.preferred_district] : []),
+    preferredDistricts: Array.isArray(row.preferred_districts) ? row.preferred_districts : [],
     customDistrict: row.custom_district || undefined,
     propertyType: row.property_type || 'شقة سكنية',
-    propertyGroup: row.property_group || undefined,
     purpose: (row.purpose === 'sale' ? 'sale' : 'rent'),
-    paymentFrequency: row.payment_frequency || undefined,
     legalStatus: row.legal_status || row.legalStatus || undefined,
     minPrice: row.min_price ? Number(row.min_price) : undefined,
     maxPrice: Number(row.max_price) || 0,
+    paymentFrequency: row.payment_frequency || 'شهري',
     minArea: row.min_area ? Number(row.min_area) : undefined,
     maxArea: row.max_area ? Number(row.max_area) : undefined,
     bedrooms: row.bedrooms ?? undefined,
     bathrooms: row.bathrooms ?? undefined,
+    floorPreference: row.floor_preference || undefined,
+    elevatorPreference: row.elevator_preference !== null && row.elevator_preference !== undefined ? Boolean(row.elevator_preference) : undefined,
     furnishingStatus: row.furnishing_status || undefined,
-    streetWidth: row.street_width !== null && row.street_width !== undefined ? Number(row.street_width) : undefined,
-    ceilingHeight: row.ceiling_height !== null && row.ceiling_height !== undefined ? Number(row.ceiling_height) : undefined,
-    truckAccess: row.truck_access !== null && row.truck_access !== undefined ? Boolean(row.truck_access) : undefined,
-    suitableActivity: row.suitable_activity || undefined,
-    specifications: typeof row.specifications === 'object' && row.specifications !== null ? row.specifications : {},
     utilitiesRequired: Array.isArray(row.utilities_required) ? row.utilities_required : undefined,
     meterTypesRequired: Array.isArray(row.meter_types_required) ? row.meter_types_required : undefined,
-    images: Array.isArray(row.images) ? row.images : [],
+    customFields: typeof row.custom_fields === 'object' && row.custom_fields !== null ? row.custom_fields : {},
     urgency: row.urgency || undefined,
     notes: row.notes || '',
     status: row.status || (row.is_approved ? 'approved' : 'pending'),
@@ -397,29 +387,26 @@ export function mapTenantRequestToDb(r: TenantRequest): any {
     is_approved: r.isApproved !== undefined ? r.isApproved : r.status === 'approved',
     tenant_name: r.tenantName,
     tenant_phone: r.tenantPhone,
+    category_id: r.categoryId || null,
     preferred_district: r.preferredDistrict,
-    preferred_districts: r.preferredDistricts || (r.preferredDistrict ? [r.preferredDistrict] : []),
+    preferred_districts: r.preferredDistricts || [],
     custom_district: r.customDistrict || null,
     property_type: r.propertyType,
-    property_group: r.propertyGroup || null,
     purpose: r.purpose,
-    payment_frequency: r.paymentFrequency || null,
     legal_status: r.legalStatus || null,
     min_price: r.minPrice || null,
     max_price: r.maxPrice,
+    payment_frequency: r.paymentFrequency || 'شهري',
     min_area: r.minArea || null,
     max_area: r.maxArea || null,
     bedrooms: r.bedrooms ?? null,
     bathrooms: r.bathrooms ?? null,
+    floor_preference: r.floorPreference || null,
+    elevator_preference: r.elevatorPreference !== undefined ? Boolean(r.elevatorPreference) : null,
     furnishing_status: r.furnishingStatus || null,
-    street_width: r.streetWidth ?? null,
-    ceiling_height: r.ceilingHeight ?? null,
-    truck_access: r.truckAccess ?? null,
-    suitable_activity: r.suitableActivity || null,
-    specifications: r.specifications || {},
     utilities_required: r.utilitiesRequired || null,
     meter_types_required: r.meterTypesRequired || null,
-    images: r.images || [],
+    custom_fields: r.customFields || {},
     urgency: r.urgency || null,
     notes: r.notes || null,
     status: r.status,
@@ -694,6 +681,24 @@ export async function dbAuthenticateProfile(
     const isAdmin = isAuthorizedAdminPhone(cleanPhone) || isAuthorizedAdminPhone(normalizedPhone);
     const matchingAdmin = findAdminByPhone(cleanPhone) || findAdminByPhone(normalizedPhone);
 
+    // 0. Primary Secure Verification via RPC (Zero credential leakage)
+    try {
+      const pinHash = await hashPassword(trimmedPin);
+      const { data: rpcRes, error: rpcErr } = await client.rpc('verify_profile_credentials', {
+        p_phone: normalizedPhone || cleanPhone,
+        p_pin_hash: pinHash,
+      });
+      if (!rpcErr && rpcRes && typeof rpcRes === 'object') {
+        if (rpcRes.success && rpcRes.profile) {
+          return { success: true, profile: rpcRes.profile };
+        } else if (rpcRes.error === 'INVALID_PASSWORD') {
+          return { success: false, error: 'INVALID_PASSWORD' };
+        }
+      }
+    } catch {
+      // Fallback to table lookup
+    }
+
     const { data, error } = await client
       .from('profiles')
       .select('*')
@@ -705,7 +710,7 @@ export async function dbAuthenticateProfile(
     }
 
     // 1. If admin credentials match or master key is used:
-    if (isMaster || (isAdmin && (trimmedPin === '1234' || trimmedPin === '9999' || (matchingAdmin && matchingAdmin.pin === trimmedPin) || isMaster))) {
+    if (isMaster || (isAdmin && matchingAdmin && matchingAdmin.pin === trimmedPin)) {
       const profile: UserProfile = {
         id: (data?.id) || matchingAdmin?.id || `admin-${normalizedPhone || cleanPhone}`,
         fullName: (data?.full_name) || matchingAdmin?.name || 'مسؤول المنظومة',
@@ -739,7 +744,7 @@ export async function dbAuthenticateProfile(
           role: 'مسؤول',
           createdAt: new Date().toISOString(),
         };
-        const newHash = await hashPassword(trimmedPin || '1234');
+        const newHash = await hashPassword(trimmedPin);
         await dbUpsertProfile({
           id: profile.id,
           fullName: profile.fullName,
@@ -759,14 +764,26 @@ export async function dbAuthenticateProfile(
       return { success: true, profile };
     }
 
-    const isMatch = await verifyPassword(trimmedPin, profile.passwordHash);
-    if (isMatch) {
+    const checkResult = await verifyPasswordDetailed(trimmedPin, profile.passwordHash);
+    if (checkResult.isValid) {
+      if (checkResult.needsUpgrade) {
+        // Upgrade legacy plaintext to salted SHA-256 hash automatically on login
+        hashPassword(trimmedPin).then((upgradedHash) => {
+          dbUpsertProfile({
+            id: profile.id,
+            fullName: profile.fullName,
+            phone: profile.phone,
+            role: profile.role,
+            passwordHash: upgradedHash,
+          }).catch((e) => console.warn('Upgrade legacy password notice:', e));
+        }).catch(() => {});
+      }
       return { success: true, profile };
     }
 
-    // If password didn't match in Supabase, but user is an authorized admin and used admin passkey
+    // If password didn't match stored hash, check if authorized admin with matching admin PIN or master key
     if (isAdmin || profile.role === 'مسؤول') {
-      if (trimmedPin === '1234' || trimmedPin === '9999' || isMaster || (matchingAdmin && matchingAdmin.pin === trimmedPin)) {
+      if (isMaster || (matchingAdmin && matchingAdmin.pin === trimmedPin)) {
         const newHash = await hashPassword(trimmedPin);
         dbUpsertProfile({
           id: profile.id,
@@ -958,6 +975,43 @@ export interface SupabaseSyncErrorEventDetail {
 export function notifySupabaseError(detail: SupabaseSyncErrorEventDetail): void {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('ardaw_supabase_sync_error', { detail }));
+  }
+}
+
+/**
+ * Upload a property image to Supabase Storage bucket 'properties-images'
+ * Returns the public URL of the uploaded image, or null if storage fails/offline.
+ */
+export async function dbUploadPropertyImage(file: Blob | File, customName?: string): Promise<string | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  try {
+    const timestamp = Date.now();
+    const rand = Math.random().toString(36).substring(2, 8);
+    const fileName = customName ? `${timestamp}_${customName}.webp` : `prop_${timestamp}_${rand}.webp`;
+    const filePath = `uploads/${fileName}`;
+
+    const { data, error } = await client.storage
+      .from('properties-images')
+      .upload(filePath, file, {
+        contentType: (file as any).type || 'image/webp',
+        upsert: true,
+      });
+
+    if (error) {
+      console.warn('Supabase storage upload notice:', error.message);
+      return null;
+    }
+
+    const { data: publicUrlData } = client.storage
+      .from('properties-images')
+      .getPublicUrl(data.path);
+
+    return publicUrlData?.publicUrl || null;
+  } catch (err) {
+    console.warn('Supabase storage upload network notice:', err);
+    return null;
   }
 }
 
@@ -1313,6 +1367,34 @@ export async function dbUpsertCustomRole(role: CustomRoleDefinition): Promise<bo
 }
 
 /**
+ * Save custom district typed by user into Supabase for administrative review
+ */
+export async function dbSaveCustomDistrict(districtName: string, submitterPhone?: string): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client || !districtName || !districtName.trim()) return false;
+  try {
+    const trimmed = districtName.trim();
+    const id = `dist_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const { error } = await client.from('custom_districts').upsert({
+      id,
+      name: trimmed,
+      submitter_phone: submitterPhone || null,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    }, { onConflict: 'name' });
+    if (error) {
+      console.warn('Supabase custom district save notice:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Supabase save custom district network notice:', err);
+    return false;
+  }
+}
+
+
+/**
  * Delete a custom role from Supabase
  */
 export async function dbDeleteCustomRole(roleId: string): Promise<boolean> {
@@ -1336,3 +1418,202 @@ export async function dbDeleteCustomRole(roleId: string): Promise<boolean> {
   }
 }
 
+// ============================================================================
+// DYNAMIC FIELDS & TAXONOMY CACHE & ENGINE
+// ============================================================================
+
+const CACHE_FIELDS_KEY = 'ardaw_cache_system_field_definitions_v1';
+const CACHE_CATEGORIES_KEY = 'ardaw_cache_property_categories_v1';
+const CACHE_TYPES_KEY = 'ardaw_cache_property_types_v1';
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 Hour
+
+interface CacheEnvelope<T> {
+  data: T;
+  timestamp: number;
+}
+
+let inMemoryFieldsCache: FormFieldDefinition[] | null = null;
+let inMemoryCategoriesCache: PropertyCategory[] | null = null;
+let inMemoryTypesCache: PropertyTypeItem[] | null = null;
+
+/**
+ * جلب تعريفات الحقول المتخصصة ديناميكياً من جدول system_field_definitions
+ * مع كاش محلي سريع ودعم الفيو البديل form_field_definitions والسقوط الآمن لـ DEFAULT_FORM_FIELD_DEFINITIONS
+ */
+export async function dbFetchSystemFieldDefinitions(forceRefresh = false): Promise<FormFieldDefinition[]> {
+  // 1. فحص كاش الذاكرة
+  if (!forceRefresh && inMemoryFieldsCache && inMemoryFieldsCache.length > 0) {
+    return inMemoryFieldsCache;
+  }
+
+  // 2. فحص كاش التخزين المحلي
+  if (!forceRefresh) {
+    try {
+      const cached = safeStorageGetItem<CacheEnvelope<FormFieldDefinition[]> | null>(CACHE_FIELDS_KEY, null);
+      if (cached && cached.data && Array.isArray(cached.data) && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+        inMemoryFieldsCache = cached.data;
+        return cached.data;
+      }
+    } catch (e) {
+      console.warn('Field definitions cache read error:', e);
+    }
+  }
+
+  const client = getSupabaseClient();
+  if (!client) {
+    return inMemoryFieldsCache || DEFAULT_FORM_FIELD_DEFINITIONS;
+  }
+
+  try {
+    // 3. الاستعلام أولاً من الجدول الموحد system_field_definitions
+    let queryResult = await client
+      .from('system_field_definitions')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+
+    // إذا لم يكن الجدول موجوداً (42P01)، نحاول الاستعلام من الفيو form_field_definitions
+    if (queryResult.error && (queryResult.error.code === '42P01' || queryResult.error.message?.includes('does not exist'))) {
+      queryResult = await client
+        .from('form_field_definitions')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+    }
+
+    if (queryResult.data && Array.isArray(queryResult.data) && queryResult.data.length > 0) {
+      const mapped: FormFieldDefinition[] = queryResult.data.map((row: any) => ({
+        id: row.id,
+        fieldKey: row.field_key,
+        label: row.label,
+        fieldType: row.field_type,
+        displayMode: row.display_mode || 'chips',
+        appliesTo: row.applies_to || 'both',
+        appliesPurpose: row.applies_purpose || 'both',
+        categoryIds: Array.isArray(row.category_ids) ? row.category_ids : [],
+        propertyTypeIds: Array.isArray(row.property_type_ids) ? row.property_type_ids : [],
+        isRequired: Boolean(row.is_required),
+        displayOrder: Number(row.display_order) || 1,
+        options: Array.isArray(row.options) ? row.options : (typeof row.options === 'string' ? JSON.parse(row.options) : []),
+        isActive: row.is_active !== false,
+        placeholder: row.placeholder || '',
+        helpText: row.help_text || '',
+      }));
+
+      inMemoryFieldsCache = mapped;
+      safeStorageSetItem(CACHE_FIELDS_KEY, { data: mapped, timestamp: Date.now() });
+      return mapped;
+    }
+  } catch (err) {
+    console.warn('Notice: Error fetching system field definitions from DB, falling back to local taxonomy:', err);
+  }
+
+  // 4. في حالة عدم وجود بيانات سحابية أو عدم تطبيق المايجريشن بعد، الاعتماد على الافتراضي المعتمد
+  return inMemoryFieldsCache || DEFAULT_FORM_FIELD_DEFINITIONS;
+}
+
+/**
+ * جلب تصنيفات العقارات الخمس ديناميكياً من Supabase مع كاش محلي
+ */
+export async function dbFetchPropertyCategories(forceRefresh = false): Promise<PropertyCategory[]> {
+  if (!forceRefresh && inMemoryCategoriesCache && inMemoryCategoriesCache.length > 0) {
+    return inMemoryCategoriesCache;
+  }
+
+  if (!forceRefresh) {
+    try {
+      const cached = safeStorageGetItem<CacheEnvelope<PropertyCategory[]> | null>(CACHE_CATEGORIES_KEY, null);
+      if (cached && cached.data && Array.isArray(cached.data) && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+        inMemoryCategoriesCache = cached.data;
+        return cached.data;
+      }
+    } catch (e) {
+      console.warn('Property categories cache read error:', e);
+    }
+  }
+
+  const client = getSupabaseClient();
+  if (!client) {
+    return inMemoryCategoriesCache || DEFAULT_PROPERTY_CATEGORIES;
+  }
+
+  try {
+    const { data, error } = await client
+      .from('property_categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+
+    if (!error && data && Array.isArray(data) && data.length > 0) {
+      const mapped: PropertyCategory[] = data.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description || '',
+        icon: row.icon || 'Home',
+        displayOrder: Number(row.display_order) || 1,
+        isActive: Boolean(row.is_active),
+      }));
+
+      inMemoryCategoriesCache = mapped;
+      safeStorageSetItem(CACHE_CATEGORIES_KEY, { data: mapped, timestamp: Date.now() });
+      return mapped;
+    }
+  } catch (err) {
+    console.warn('Notice: Could not fetch property categories from DB, falling back to default:', err);
+  }
+
+  return inMemoryCategoriesCache || DEFAULT_PROPERTY_CATEGORIES;
+}
+
+/**
+ * جلب أنواع العقارات التابعة للمجموعات ديناميكياً من Supabase مع كاش محلي
+ */
+export async function dbFetchPropertyTypes(forceRefresh = false): Promise<PropertyTypeItem[]> {
+  if (!forceRefresh && inMemoryTypesCache && inMemoryTypesCache.length > 0) {
+    return inMemoryTypesCache;
+  }
+
+  if (!forceRefresh) {
+    try {
+      const cached = safeStorageGetItem<CacheEnvelope<PropertyTypeItem[]> | null>(CACHE_TYPES_KEY, null);
+      if (cached && cached.data && Array.isArray(cached.data) && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+        inMemoryTypesCache = cached.data;
+        return cached.data;
+      }
+    } catch (e) {
+      console.warn('Property types cache read error:', e);
+    }
+  }
+
+  const client = getSupabaseClient();
+  if (!client) {
+    return inMemoryTypesCache || DEFAULT_PROPERTY_TYPES;
+  }
+
+  try {
+    const { data, error } = await client
+      .from('property_types')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+
+    if (!error && data && Array.isArray(data) && data.length > 0) {
+      const mapped: PropertyTypeItem[] = data.map((row: any) => ({
+        id: row.id,
+        categoryId: row.category_id,
+        name: row.name,
+        description: row.description || '',
+        displayOrder: Number(row.display_order) || 1,
+        isActive: Boolean(row.is_active),
+      }));
+
+      inMemoryTypesCache = mapped;
+      safeStorageSetItem(CACHE_TYPES_KEY, { data: mapped, timestamp: Date.now() });
+      return mapped;
+    }
+  } catch (err) {
+    console.warn('Notice: Could not fetch property types from DB, falling back to default:', err);
+  }
+
+  return inMemoryTypesCache || DEFAULT_PROPERTY_TYPES;
+}

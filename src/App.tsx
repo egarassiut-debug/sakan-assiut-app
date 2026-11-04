@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspens
 import { useBackLayer } from './utils/navigationHistory';
 import { 
   Property, 
-  ScheduledInspection, 
   PropertyStatus, 
   TenantRequest, 
   BlockedUser, 
@@ -15,7 +14,6 @@ import {
 import { 
   INITIAL_PROPERTIES, 
   INITIAL_TENANT_REQUESTS, 
-  INITIAL_SCHEDULED_INSPECTIONS, 
   INITIAL_BLOCKED_USERS,
   INITIAL_PROPERTY_RATINGS
 } from './data/initialProperties';
@@ -25,6 +23,7 @@ import {
   DropdownCategory, 
   UtilityOptionDefinition 
 } from './data/dropdownOptions';
+import { arePropertyTypesCompatible } from './data/propertyTaxonomy';
 import { Header } from './components/Header';
 import { BottomNavBar, NavTabIndex } from './components/BottomNavBar';
 import { PropertyCard } from './components/PropertyCard';
@@ -61,12 +60,13 @@ import {
 } from './utils/storageManager';
 import { logAdminActivity, isStaffRole } from './utils/adminManager';
 import { logAuditEvent } from './utils/auditManager';
+import { syncUsersWithDatabase } from './utils/userManager';
 import { 
   canUserEditProperty, 
-  canUserDeleteProperty, 
   canUserEditTenantRequest, 
+  canUserDeleteProperty, 
   canUserDeleteTenantRequest 
-} from './utils/permissionManager';
+} from './utils/security';
 
 // Resilient dynamic chunk loader with automatic retry for transient network hiccups
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -83,20 +83,20 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
   });
 }
 
-// Code-split heavy components & modals for optimal runtime performance
-const AdminPanel = lazyWithRetry(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
 import { FormEntryScreen } from './components/FormEntryScreen';
 import { TrendFeedScreen } from './components/TrendFeedScreen';
 import { VoiceAssistantModal } from './components/VoiceAssistantModal';
-import { PullToRefreshWrapper } from './components/PullToRefreshWrapper';
-import { ScreenshotConverter } from './components/ScreenshotConverter';
+import { PullToRefresh } from './components/PullToRefresh';
+import PropertyRatingModal from './components/PropertyRatingModal';
+import SavedSearchModal from './components/SavedSearchModal';
+import FavoritesModal from './components/FavoritesModal';
+
+// Code-split heavy components & modals for optimal runtime performance
+const AdminPanel = lazyWithRetry(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const PropertyDetailsModal = lazyWithRetry(() => import('./components/PropertyDetailsModal').then(m => ({ default: m.PropertyDetailsModal })));
 const TenantRequestDetailsModal = lazyWithRetry(() => import('./components/TenantRequestDetailsModal').then(m => ({ default: m.TenantRequestDetailsModal })));
-const InspectionModal = lazyWithRetry(() => import('./components/InspectionModal').then(m => ({ default: m.InspectionModal })));
 const SmartMatchingResultsModal = lazyWithRetry(() => import('./components/SmartMatchingResultsModal').then(m => ({ default: m.SmartMatchingResultsModal })));
-const SavedSearchModal = lazyWithRetry(() => import('./components/SavedSearchModal').then(m => ({ default: m.SavedSearchModal })));
-const FavoritesModal = lazyWithRetry(() => import('./components/FavoritesModal').then(m => ({ default: m.FavoritesModal })));
-import PropertyRatingModal from './components/PropertyRatingModal';
+const ScreenshotConverter = lazyWithRetry(() => import('./components/ScreenshotConverter').then(m => ({ default: m.ScreenshotConverter })));
 import { 
   Search, 
   Building2, 
@@ -233,10 +233,6 @@ export function App() {
     return safeStorageGetItem<TenantRequest[]>('ardaw_tenant_requests', INITIAL_TENANT_REQUESTS);
   });
 
-  const [scheduledInspections, setScheduledInspections] = useState<ScheduledInspection[]>(() => {
-    return safeStorageGetItem<ScheduledInspection[]>('ardaw_scheduled_inspections', INITIAL_SCHEDULED_INSPECTIONS);
-  });
-
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>(() => {
     return safeStorageGetItem<BlockedUser[]>('ardaw_blocked_users', INITIAL_BLOCKED_USERS);
   });
@@ -255,11 +251,12 @@ export function App() {
 
         if (!isMounted) return;
 
-        if (dbProps && Array.isArray(dbProps) && dbProps.length > 0) {
+        if (dbProps && Array.isArray(dbProps)) {
           setProperties((prev) => {
             const propMap = new Map<string, Property>();
-            INITIAL_PROPERTIES.forEach((p) => propMap.set(p.id, p));
-            prev.forEach((p) => propMap.set(p.id, p));
+            // Keep local pending submissions if any
+            prev.filter((p) => p.id.startsWith('local-') || p.status === 'pending').forEach((p) => propMap.set(p.id, p));
+            // Live DB properties are primary source of truth
             dbProps.forEach((p) => propMap.set(p.id, p));
             const merged = Array.from(propMap.values());
             safeStorageSetItem('ardaw_properties', merged);
@@ -267,11 +264,12 @@ export function App() {
           });
         }
 
-        if (dbReqs && Array.isArray(dbReqs) && dbReqs.length > 0) {
+        if (dbReqs && Array.isArray(dbReqs)) {
           setTenantRequests((prev) => {
             const reqMap = new Map<string, TenantRequest>();
-            INITIAL_TENANT_REQUESTS.forEach((r) => reqMap.set(r.id, r));
-            prev.forEach((r) => reqMap.set(r.id, r));
+            // Keep local pending requests if any
+            prev.filter((r) => r.id.startsWith('local-') || r.status === 'pending').forEach((r) => reqMap.set(r.id, r));
+            // Live DB requests are primary source of truth
             dbReqs.forEach((r) => reqMap.set(r.id, r));
             const merged = Array.from(reqMap.values());
             safeStorageSetItem('ardaw_tenant_requests', merged);
@@ -319,6 +317,12 @@ export function App() {
               }
             });
           })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'app_users' }, () => {
+            syncUsersWithDatabase().catch(() => {});
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+            syncUsersWithDatabase().catch(() => {});
+          })
           .subscribe();
       } catch (e) {
         console.warn('Realtime channel error:', e);
@@ -347,7 +351,7 @@ export function App() {
     return safeStorageGetItem<UtilityOptionDefinition[]>('ardaw_utility_definitions', INITIAL_UTILITY_DEFINITIONS);
   });
 
-  // Search & Filter State for Listings (Defaults to unfiltered 'all' for natural, open exploration)
+  // Search & Filter State for Listings
   const [searchQuery, setSearchQuery] = useState('');
   const [purposeFilter, setPurposeFilter] = useState<'all' | 'rent' | 'sale'>('all');
   const [excludeEnded, setExcludeEnded] = useState(false);
@@ -355,6 +359,7 @@ export function App() {
   const [selectedPropertyType, setSelectedPropertyType] = useState<string>('all');
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
+  const [isScreenshotConverterOpen, setIsScreenshotConverterOpen] = useState(false);
 
   // Saved Search Criteria (localStorage)
   const [savedSearches, setSavedSearches] = useState<SavedSearchCriteria[]>(() => {
@@ -400,12 +405,9 @@ export function App() {
 
   // Modals & Active Selections
   const [isChoiceAddOpen, setIsChoiceAddOpen] = useState(false);
-  const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
   const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState(false);
   const [isAdminDrawerOpen, setIsAdminDrawerOpen] = useState(false);
   const [isVoiceAssistantOpen, setIsVoiceAssistantOpen] = useState(false);
-  const [isScreenshotConverterOpen, setIsScreenshotConverterOpen] = useState(false);
-  const [trendRefreshTrigger, setTrendRefreshTrigger] = useState(0);
 
   // App-level Swipe Gesture Listener:
   // Automatically opens the side drawer (AdminDrawer / AppSideDrawer) when swiping from the right edge to the left,
@@ -465,7 +467,6 @@ export function App() {
   }, [isAdminDrawerOpen]);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [selectedTenantRequest, setSelectedTenantRequest] = useState<TenantRequest | null>(null);
-  const [selectedPropertyForInspection, setSelectedPropertyForInspection] = useState<Property | null>(null);
 
   // Favorite Properties system with localStorage persistence
   const [favoritePropertyIds, setFavoritePropertyIds] = useState<string[]>(() => {
@@ -642,6 +643,40 @@ export function App() {
       return updated;
     });
   };
+
+  // Pull-to-refresh & double-tap data sync handler
+  const handleRefreshData = useCallback(async () => {
+    try {
+      if (isSupabaseActive()) {
+        const [dbProps, dbReqs] = await Promise.all([
+          dbFetchProperties(),
+          dbFetchTenantRequests(),
+        ]);
+        if (dbProps && Array.isArray(dbProps) && dbProps.length > 0) {
+          setProperties(dbProps);
+          safeStorageSetItem('ardaw_properties', dbProps);
+        }
+        if (dbReqs && Array.isArray(dbReqs) && dbReqs.length > 0) {
+          setTenantRequests(dbReqs);
+          safeStorageSetItem('ardaw_tenant_requests', dbReqs);
+        }
+      }
+      addToast({
+        type: 'success',
+        title: 'تم تحديث البيانات 🔄',
+        message: 'تم تحديث القوائم والعروض والطلبات بنجاح.',
+        duration: 2500,
+      });
+    } catch (e) {
+      console.warn('Error refreshing data:', e);
+    }
+  }, []);
+
+  // Double tap on bottom nav bar icon to scroll smoothly to top and refresh
+  const handleDoubleTapBottomNav = useCallback(async (index: number) => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    await handleRefreshData();
+  }, [handleRefreshData]);
 
   // Sync current active criteria to localStorage
   useEffect(() => {
@@ -836,13 +871,6 @@ export function App() {
   });
 
   useBackLayer({
-    id: 'screenshot_converter_modal',
-    isOpen: isScreenshotConverterOpen,
-    priority: 85,
-    onClose: () => setIsScreenshotConverterOpen(false),
-  });
-
-  useBackLayer({
     id: 'notification_center',
     isOpen: isNotificationCenterOpen,
     priority: 85,
@@ -861,16 +889,6 @@ export function App() {
     isOpen: isFavoritesModalOpen,
     priority: 85,
     onClose: () => setIsFavoritesModalOpen(false),
-  });
-
-  useBackLayer({
-    id: 'inspection_modal',
-    isOpen: isInspectionModalOpen,
-    priority: 85,
-    onClose: () => {
-      setIsInspectionModalOpen(false);
-      setSelectedPropertyForInspection(null);
-    },
   });
 
   useBackLayer({
@@ -915,81 +933,6 @@ export function App() {
     onClose: handleNavigateBackTab,
     url: navIndex === 3 ? '/admin' : '/',
   });
-
-  // Pull-to-Refresh & Rapid Double-Tap Refresh Handlers
-  const handleRefreshOffers = useCallback(async () => {
-    try {
-      if (isSupabaseActive()) {
-        const fresh = await dbFetchProperties();
-        if (fresh && Array.isArray(fresh) && fresh.length > 0) {
-          setProperties(fresh);
-          safeStorageSetItem('ardaw_properties', fresh);
-        }
-      } else {
-        const stored = safeStorageGetItem<Property[]>('ardaw_properties', INITIAL_PROPERTIES);
-        setProperties(stored);
-      }
-      addToast({
-        type: 'success',
-        title: 'تم تحديث العروض 🔄',
-        message: 'تم تحديث أحدث عروض العقارات والشقق بنجاح.',
-      });
-    } catch (err) {
-      console.error('Refresh offers error:', err);
-    }
-  }, []);
-
-  const handleRefreshRequests = useCallback(async () => {
-    try {
-      if (isSupabaseActive()) {
-        const fresh = await dbFetchTenantRequests();
-        if (fresh && Array.isArray(fresh) && fresh.length > 0) {
-          setTenantRequests(fresh);
-          safeStorageSetItem('ardaw_tenant_requests', fresh);
-        }
-      } else {
-        const stored = safeStorageGetItem<TenantRequest[]>('ardaw_tenant_requests', INITIAL_TENANT_REQUESTS);
-        setTenantRequests(stored);
-      }
-      addToast({
-        type: 'success',
-        title: 'تم تحديث الطلبات 🔄',
-        message: 'تم تحديث أحدث طلبات السكن والوحدات بنجاح.',
-      });
-    } catch (err) {
-      console.error('Refresh requests error:', err);
-    }
-  }, []);
-
-  const handleRefreshTrend = useCallback(async () => {
-    setTrendRefreshTrigger((prev) => prev + 1);
-    addToast({
-      type: 'success',
-      title: 'تم تحديث ترند أسيوط ⚡',
-      message: 'تم تحديث أحدث اليوميات والمنشورات بنجاح.',
-    });
-  }, []);
-
-  const handleDoubleTapIndex = useCallback(async (index: number) => {
-    if (index === 0) {
-      setPurposeFilter('all');
-      setSelectedDistrict('all');
-      setSelectedPropertyType('all');
-      setSearchQuery('');
-      setMinPrice('');
-      setMaxPrice('');
-      setExcludeEnded(false);
-      await handleRefreshOffers();
-    } else if (index === 1) {
-      setRequestPurpose('all');
-      setRequestDistrict('all');
-      setRequestPropertyType('all');
-      setRequestSearchQuery('');
-      await handleRefreshRequests();
-    } else if (index === 4) {
-      await handleRefreshTrend();
-    }
-  }, [handleRefreshOffers, handleRefreshRequests, handleRefreshTrend]);
 
   const dispatchPushNotification = (notification: Omit<InAppPushNotification, 'id' | 'createdAt' | 'isRead'>) => {
     const newPush: InAppPushNotification = {
@@ -1337,18 +1280,18 @@ export function App() {
       });
     }
 
-    // 1. حساب المتطابقات التامة (Exact Matches): [نوع العقار] + [الغرض: بيع / إيجار]
+    // 1. حساب المتطابقات التامة (Exact Matches): [توافق نوع العقار (مع دعم السجلات القديمة والجديدة)] + [الغرض: بيع / إيجار]
     const exactMatchList: MatchEntry[] = tenantRequests
       .filter((req) => 
-        req.propertyType.trim().toLowerCase() === newProp.propertyType.trim().toLowerCase() &&
+        arePropertyTypesCompatible(req.propertyType, newProp.propertyType) &&
         req.purpose === newProp.purpose
       )
       .map((req) => ({ type: 'request', item: req }));
 
-    // 2. حساب أشباه المتطابقات (Similar Matches): تشترك في [نوع العقار] فقط حتى لو اختلف الغرض أو السعر
+    // 2. حساب أشباه المتطابقات (Similar Matches): تشترك في [توافق نوع العقار] فقط حتى لو اختلف الغرض أو السعر
     const similarMatchList: MatchEntry[] = tenantRequests
       .filter((req) => 
-        req.propertyType.trim().toLowerCase() === newProp.propertyType.trim().toLowerCase() &&
+        arePropertyTypesCompatible(req.propertyType, newProp.propertyType) &&
         req.purpose !== newProp.purpose
       )
       .map((req) => ({ type: 'request', item: req }));
@@ -1440,18 +1383,18 @@ export function App() {
       duration: 5000,
     });
 
-    // 1. حساب المتطابقات التامة (Exact Matches): [نوع العقار] + [الغرض: بيع / إيجار]
+    // 1. حساب المتطابقات التامة (Exact Matches): [توافق نوع العقار (مع دعم السجلات القديمة والجديدة)] + [الغرض: بيع / إيجار]
     const exactMatchList: MatchEntry[] = properties
       .filter((prop) => 
-        prop.propertyType.trim().toLowerCase() === newReq.propertyType.trim().toLowerCase() &&
+        arePropertyTypesCompatible(prop.propertyType, newReq.propertyType) &&
         prop.purpose === newReq.purpose
       )
       .map((prop) => ({ type: 'property', item: prop }));
 
-    // 2. حساب أشباه المتطابقات (Similar Matches): تشترك في [نوع العقار] فقط حتى لو اختلف الغرض أو السعر
+    // 2. حساب أشباه المتطابقات (Similar Matches): تشترك في [توافق نوع العقار] فقط حتى لو اختلف الغرض أو السعر
     const similarMatchList: MatchEntry[] = properties
       .filter((prop) => 
-        prop.propertyType.trim().toLowerCase() === newReq.propertyType.trim().toLowerCase() &&
+        arePropertyTypesCompatible(prop.propertyType, newReq.propertyType) &&
         prop.purpose !== newReq.purpose
       )
       .map((prop) => ({ type: 'property', item: prop }));
@@ -1498,13 +1441,13 @@ export function App() {
     }
   };
 
-  // Start Editing Property
+  // Start Editing Property (Protected with Strict RBAC & Ownership Verification)
   const handleStartEditProperty = (prop: Property) => {
     if (!canUserEditProperty(currentUser, prop)) {
       addToast({
         type: 'error',
-        title: 'غير مصرح بالتعديل ⛔',
-        message: 'لا تملك صلاحية تعديل هذا الإعلان. التعديل متاح لصاحب الإعلان فقط أو للإدارة.',
+        title: 'غير مصرح بالتعديل',
+        message: 'لا تملك صلاحية تعديل هذا الإعلان. فقط صاحب الإعلان الأصلي أو المشرف المختص يمكنه التعديل.',
         duration: 4000,
       });
       return;
@@ -1515,13 +1458,13 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Start Editing Tenant Request
+  // Start Editing Tenant Request (Protected with Strict RBAC & Ownership Verification)
   const handleStartEditTenantRequest = (req: TenantRequest) => {
     if (!canUserEditTenantRequest(currentUser, req)) {
       addToast({
         type: 'error',
-        title: 'غير مصرح بالتعديل ⛔',
-        message: 'لا تملك صلاحية تعديل هذا الطلب. التعديل متاح لصاحب الطلب فقط أو للإدارة.',
+        title: 'غير مصرح بالتعديل',
+        message: 'لا تملك صلاحية تعديل هذا الطلب. فقط صاحب الطلب أو المشرف المختص يمكنه التعديل.',
         duration: 4000,
       });
       return;
@@ -1532,35 +1475,57 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Update Property in Local Storage and Database
+  // Update Property in Local Storage and Database (Protected with Identity & Ownership Check)
   const handleUpdateProperty = (updatedProp: Property) => {
-    const existing = properties.find((p) => p.id === updatedProp.id);
-    if (!canUserEditProperty(currentUser, existing || updatedProp)) {
+    const originalProp = properties.find((p) => p.id === updatedProp.id) || updatedProp;
+    if (!canUserEditProperty(currentUser, originalProp)) {
       addToast({
         type: 'error',
-        title: 'تم حظر التعديل ⛔',
-        message: 'محاولة غير مصرح بها لتعديل إعلان شخص آخر.',
-        duration: 4500,
+        title: 'تم رفض العملية - انتهاك أمني',
+        message: 'غير مصرح لك بتعديل بيانات هذا الإعلان.',
+        duration: 5000,
+      });
+      logAuditEvent({
+        userName: currentUser?.name || 'مستخدم مجهول',
+        userPhone: currentUser?.phone || '',
+        userRole: currentUser?.role || 'user',
+        action: 'UPDATE',
+        entityType: 'property',
+        entityId: updatedProp.id,
+        entityCode: updatedProp.code,
+        oldValues: { securityWarning: 'Unauthorized property update rejected by RBAC guard.' },
       });
       return;
     }
 
+    // Preserve owner phone and administrative publisher flags for non-admin users to prevent spoofing
+    const isFullStaff = currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin' || isStaffRole(currentUser.role));
+    const finalProp: Property = isFullStaff
+      ? updatedProp
+      : {
+          ...updatedProp,
+          ownerPhone: originalProp.ownerPhone,
+          createdByAdmin: originalProp.createdByAdmin,
+          isApproved: originalProp.isApproved,
+          status: originalProp.status === 'needs_completion' ? 'pending_approval' : originalProp.status,
+        };
+
     setProperties((prev) => {
-      const updated = prev.map((p) => (p.id === updatedProp.id ? updatedProp : p));
+      const updated = prev.map((p) => (p.id === finalProp.id ? finalProp : p));
       safeStorageSetItem('ardaw_properties', updated);
       return updated;
     });
-    dbUpsertProperty(updatedProp).catch((err) => {
+    dbUpsertProperty(finalProp).catch((err) => {
       console.warn('Supabase update property failed:', err);
     });
 
-    // Audit log for admin modifications
+    // Audit log for modifications
     logAdminActivity(
       currentUser?.name || 'مدير المنظومة',
       currentUser?.phone || '01002345678',
       'edit_operation',
-      `تعديل بيانات عقار (كود: ${updatedProp.code})`,
-      `العنوان: "${updatedProp.title}" - المنطقة: ${updatedProp.district} - السعر: ${updatedProp.price.toLocaleString()} ج.م - النوع: ${updatedProp.propertyType}`
+      `تعديل بيانات عقار (كود: ${finalProp.code})`,
+      `العنوان: "${finalProp.title}" - المنطقة: ${finalProp.district} - السعر: ${finalProp.price.toLocaleString()} ج.م - النوع: ${finalProp.propertyType}`
     );
 
     logAuditEvent({
@@ -1569,9 +1534,9 @@ export function App() {
       userRole: currentUser?.role || 'admin',
       action: 'UPDATE',
       entityType: 'property',
-      entityId: updatedProp.id,
-      entityCode: updatedProp.code,
-      newValues: updatedProp,
+      entityId: finalProp.id,
+      entityCode: finalProp.code,
+      newValues: finalProp,
     });
 
     setEditingProperty(null);
@@ -1579,40 +1544,60 @@ export function App() {
     addToast({
       type: 'success',
       title: 'تم حفظ التعديلات بنجاح',
-      message: `تم تحديث بيانات العقار (${updatedProp.code}) بنجاح.`,
+      message: `تم تحديث بيانات العقار (${finalProp.code}) بنجاح.`,
       duration: 4000,
     });
   };
 
-  // Update Tenant Request in Local Storage and Database
+  // Update Tenant Request in Local Storage and Database (Protected with Identity & Ownership Check)
   const handleUpdateTenantRequest = (updatedReq: TenantRequest) => {
-    const existing = tenantRequests.find((r) => r.id === updatedReq.id);
-    if (!canUserEditTenantRequest(currentUser, existing || updatedReq)) {
+    const originalReq = tenantRequests.find((r) => r.id === updatedReq.id) || updatedReq;
+    if (!canUserEditTenantRequest(currentUser, originalReq)) {
       addToast({
         type: 'error',
-        title: 'تم حظر التعديل ⛔',
-        message: 'محاولة غير مصرح بها لتعديل طلب مستخدم آخر.',
-        duration: 4500,
+        title: 'تم رفض العملية - انتهاك أمني',
+        message: 'غير مصرح لك بتعديل بيانات هذا الطلب.',
+        duration: 5000,
+      });
+      logAuditEvent({
+        userName: currentUser?.name || 'مستخدم مجهول',
+        userPhone: currentUser?.phone || '',
+        userRole: currentUser?.role || 'user',
+        action: 'UPDATE',
+        entityType: 'tenant_request',
+        entityId: updatedReq.id,
+        entityCode: updatedReq.requestCode || updatedReq.id,
+        oldValues: { securityWarning: 'Unauthorized tenant request update rejected by RBAC guard.' },
       });
       return;
     }
 
+    const isFullStaff = currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin' || isStaffRole(currentUser.role));
+    const finalReq: TenantRequest = isFullStaff
+      ? updatedReq
+      : {
+          ...updatedReq,
+          tenantPhone: originalReq.tenantPhone,
+          isApproved: originalReq.isApproved,
+          status: originalReq.status === 'needs_completion' ? 'pending_approval' : originalReq.status,
+        };
+
     setTenantRequests((prev) => {
-      const updated = prev.map((r) => (r.id === updatedReq.id ? updatedReq : r));
+      const updated = prev.map((r) => (r.id === finalReq.id ? finalReq : r));
       safeStorageSetItem('ardaw_tenant_requests', updated);
       return updated;
     });
-    dbUpsertTenantRequest(updatedReq).catch((err) => {
+    dbUpsertTenantRequest(finalReq).catch((err) => {
       console.warn('Supabase update tenant request failed:', err);
     });
 
-    // Audit log for admin modifications
+    // Audit log for modifications
     logAdminActivity(
       currentUser?.name || 'مدير المنظومة',
       currentUser?.phone || '01002345678',
       'edit_operation',
-      `تعديل طلب سكن (كود: ${updatedReq.requestCode || updatedReq.id})`,
-      `المطلوب: ${updatedReq.propertyType} في حي ${updatedReq.preferredDistrict} - الحد الأقصى للسعر: ${updatedReq.maxPrice.toLocaleString()} ج.م - العميل: ${updatedReq.tenantName}`
+      `تعديل طلب سكن (كود: ${finalReq.requestCode || finalReq.id})`,
+      `المطلوب: ${finalReq.propertyType} في حي ${finalReq.preferredDistrict} - الحد الأقصى للسعر: ${finalReq.maxPrice.toLocaleString()} ج.م - العميل: ${finalReq.tenantName}`
     );
 
     logAuditEvent({
@@ -1621,9 +1606,9 @@ export function App() {
       userRole: currentUser?.role || 'admin',
       action: 'UPDATE',
       entityType: 'tenant_request',
-      entityId: updatedReq.id,
-      entityCode: updatedReq.requestCode || updatedReq.id,
-      newValues: updatedReq,
+      entityId: finalReq.id,
+      entityCode: finalReq.requestCode || finalReq.id,
+      newValues: finalReq,
     });
 
     setEditingTenantRequest(null);
@@ -1631,7 +1616,7 @@ export function App() {
     addToast({
       type: 'success',
       title: 'تم حفظ التعديل',
-      message: `تم تحديث بيانات طلبك (${updatedReq.requestCode || updatedReq.id}) بنجاح.`,
+      message: `تم تحديث بيانات طلبك (${finalReq.requestCode || finalReq.id}) بنجاح.`,
       duration: 4000,
     });
   };
@@ -1730,21 +1715,18 @@ export function App() {
     });
   };
 
-  // Delete Tenant Request
+  // Delete Tenant Request (Protected with RBAC & Ownership Verification)
   const handleDeleteTenantRequest = (reqId: string) => {
     const targetReq = tenantRequests.find((r) => r.id === reqId);
-    if (!targetReq) return;
-
-    if (!canUserDeleteTenantRequest(currentUser, targetReq)) {
+    if (targetReq && !canUserDeleteTenantRequest(currentUser, targetReq)) {
       addToast({
         type: 'error',
-        title: 'غير مصرح بالحذف ⛔',
-        message: 'لا تملك صلاحية حذف هذا الطلب.',
+        title: 'غير مصرح بحذف الطلب',
+        message: 'لا تملك الصلاحية لحذف هذا الطلب.',
         duration: 4000,
       });
       return;
     }
-
     setTenantRequests((prev) => {
       const updated = prev.filter((r) => r.id !== reqId);
       safeStorageSetItem('ardaw_tenant_requests', updated);
@@ -1889,16 +1871,14 @@ export function App() {
     });
   };
 
-  // Delete Property
+  // Delete Property (Protected with RBAC & Ownership Verification)
   const handleDeleteProperty = (propId: string) => {
     const targetProp = properties.find((p) => p.id === propId);
-    if (!targetProp) return;
-
-    if (!canUserDeleteProperty(currentUser, targetProp)) {
+    if (targetProp && !canUserDeleteProperty(currentUser, targetProp)) {
       addToast({
         type: 'error',
-        title: 'غير مصرح بالحذف ⛔',
-        message: 'لا تملك صلاحية حذف هذا العقار.',
+        title: 'غير مصرح بحذف العقار',
+        message: 'لا تملك الصلاحية لحذف هذا الإعلان.',
         duration: 4000,
       });
       return;
@@ -1942,8 +1922,19 @@ export function App() {
     });
   };
 
-  // Archive Property (أرشفة الإعلان)
+  // Archive Property (أرشفة الإعلان) (Protected with RBAC & Ownership Verification)
   const handleArchiveProperty = (propId: string) => {
+    const targetProp = properties.find((p) => p.id === propId);
+    if (targetProp && !canUserEditProperty(currentUser, targetProp)) {
+      addToast({
+        type: 'error',
+        title: 'غير مصرح بالأرشفة',
+        message: 'لا تملك الصلاحية لأرشفة هذا الإعلان.',
+        duration: 4000,
+      });
+      return;
+    }
+
     setProperties((prev) => {
       const updated = prev.map((p) => (p.id === propId ? { ...p, status: 'archived' as PropertyStatus } : p));
       safeStorageSetItem('ardaw_properties', updated);
@@ -1957,8 +1948,19 @@ export function App() {
     });
   };
 
-  // Republish Property (إعادة نشر الإعلان)
+  // Republish Property (إعادة نشر الإعلان) (Protected with RBAC & Ownership Verification)
   const handleRepublishProperty = (propId: string) => {
+    const targetProp = properties.find((p) => p.id === propId);
+    if (targetProp && !canUserEditProperty(currentUser, targetProp)) {
+      addToast({
+        type: 'error',
+        title: 'غير مصرح بإعادة النشر',
+        message: 'لا تملك الصلاحية لإعادة نشر هذا الإعلان.',
+        duration: 4000,
+      });
+      return;
+    }
+
     setProperties((prev) => {
       const updated = prev.map((p) => (p.id === propId ? { ...p, status: 'approved' as PropertyStatus, isApproved: true } : p));
       safeStorageSetItem('ardaw_properties', updated);
@@ -1972,8 +1974,19 @@ export function App() {
     });
   };
 
-  // Toggle Rented or Sold status (تحديد هل تم التأجير)
+  // Toggle Rented or Sold status (تحديد هل تم التأجير) (Protected with RBAC & Ownership Verification)
   const handleToggleRentedSold = (propId: string, currentStatus: PropertyStatus) => {
+    const targetProp = properties.find((p) => p.id === propId);
+    if (targetProp && !canUserEditProperty(currentUser, targetProp)) {
+      addToast({
+        type: 'error',
+        title: 'غير مصرح بتعديل الحالة',
+        message: 'لا تملك الصلاحية لتعديل حالة هذا الإعلان.',
+        duration: 4000,
+      });
+      return;
+    }
+
     const isCurrentlyRented = currentStatus === 'rented' || currentStatus === 'sold';
     const newStatus: PropertyStatus = isCurrentlyRented ? 'approved' : 'rented';
     setProperties((prev) => {
@@ -1989,58 +2002,6 @@ export function App() {
     });
   };
 
-  // Schedule Inspection
-  const handleScheduleInspection = (inspection: Omit<ScheduledInspection, 'id' | 'createdAt' | 'status'>) => {
-    const newInspection: ScheduledInspection = {
-      ...inspection,
-      id: `insp-${Date.now()}`,
-      createdAt: new Date().toISOString().split('T')[0],
-      status: 'pending',
-    };
-    setScheduledInspections((prev) => {
-      const updated = [newInspection, ...prev];
-      safeStorageSetItem('ardaw_scheduled_inspections', updated);
-      return updated;
-    });
-    addToast({
-      type: 'success',
-      title: 'تم حجز موعد المعاينة!',
-      message: `تم حجز معاينة كود (${inspection.propertyCode}) يوم ${inspection.preferredDate} الساعة ${inspection.preferredTime}. ستتواصل الإدارة لتأكيد الموعد.`,
-      duration: 5000,
-    });
-  };
-
-  // Update Inspection Status & Fee verification
-  const handleUpdateInspectionStatus = (
-    id: string, 
-    status: 'pending' | 'confirmed' | 'completed' | 'cancelled',
-    feePaid?: boolean
-  ) => {
-    setScheduledInspections((prev) => {
-      const updated = prev.map((i) => {
-        if (i.id === id) {
-          const isComp = status === 'completed';
-          return {
-            ...i,
-            status,
-            feePaid: feePaid !== undefined ? feePaid : (isComp ? true : i.feePaid),
-            completedAt: isComp ? new Date().toISOString().split('T')[0] : i.completedAt,
-          };
-        }
-        return i;
-      });
-      safeStorageSetItem('ardaw_scheduled_inspections', updated);
-      return updated;
-    });
-    addToast({
-      type: 'success',
-      title: status === 'completed' ? 'تم إتمام المعاينة وسداد الرسوم' : 'تم تحديث المعاينة',
-      message: status === 'completed' 
-        ? 'تم توثيق المعاينة وسداد الرسوم بنجاح. العميل الآن مؤهل لإضافة تقييم موثق.'
-        : `تم تحديث حالة المعاينة إلى (${status === 'confirmed' ? 'مؤكدة' : status}).`,
-      duration: 3500,
-    });
-  };
 
   // Blocked Users Management
   const handleAddBlockedUser = (newUser: Omit<BlockedUser, 'id' | 'blockedAt'>) => {
@@ -2242,7 +2203,6 @@ export function App() {
           properties.filter((p) => p.status === 'pending_approval' || (p as any).isApproved === false).length +
           tenantRequests.filter((r) => r.status === 'pending' || (r as any).isApproved === false).length
         }
-        pendingInspectionsCount={scheduledInspections.filter((i) => i.status === 'pending').length}
         blockedUsersCount={blockedUsers.length}
         onLogout={handleLogout}
       />
@@ -2294,10 +2254,10 @@ export function App() {
           /* ========================================================================= */
           /* 1. صفحة عروض الإيجار (المتاحة) - Index 0 */
           /* ========================================================================= */
-          <PullToRefreshWrapper onRefresh={handleRefreshOffers}>
+          <PullToRefresh onRefresh={handleRefreshData}>
             <div className="space-y-4 animate-in fade-in duration-150">
-              {/* Page Title Banner Card: Clean Light White with subtle border */}
-              <div className="bg-white text-slate-900 p-4 rounded-[14px] shadow-xs border border-slate-200/90 flex items-center justify-between">
+            {/* Page Title Banner Card: Clean Light White with subtle border */}
+            <div className="bg-white text-slate-900 p-4 rounded-[14px] shadow-xs border border-slate-200/90 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
                   <Building2 className="w-5 h-5 text-blue-600" />
@@ -2639,13 +2599,8 @@ export function App() {
                   <PropertyCard
                     key={prop.id}
                     property={prop}
-                    currentUser={currentUser}
                     onOpenDetails={(p) => setSelectedProperty(p)}
                     onEdit={canUserEditProperty(currentUser, prop) ? handleStartEditProperty : undefined}
-                    onRequestInspection={(p) => {
-                      setSelectedPropertyForInspection(p);
-                      setIsInspectionModalOpen(true);
-                    }}
                     isFavorite={favoriteIdsSet.has(prop.id)}
                     onToggleFavorite={handleToggleFavorite}
                     ratingSummary={getPropertyRatingSummary(prop.id)}
@@ -2654,16 +2609,16 @@ export function App() {
                 ))}
               </div>
             )}
-            </div>
-          </PullToRefreshWrapper>
-        ) : (navIndex === 1 || (isAdmin && navIndex === 2)) ? (
-          /* ========================================================================= */
-          /* 2. شاشة طلبات الإيجار والشراء (المطلوبة) - Index 1 لكلا الواجهتين */
-          /* ========================================================================= */
-          <PullToRefreshWrapper onRefresh={handleRefreshRequests}>
-            <div className="space-y-4 animate-in fade-in duration-150">
-              {/* Page Title Banner Card: Clean Light White with subtle border */}
-              <div className="bg-white text-[#24313D] p-4 rounded-[14px] shadow-xs border border-[#D6DEE5] flex items-center justify-between">
+          </div>
+        </PullToRefresh>
+      ) : (navIndex === 1 || (isAdmin && navIndex === 2)) ? (
+        /* ========================================================================= */
+        /* 2. شاشة طلبات الإيجار والشراء (المطلوبة) - Index 1 لكلا الواجهتين */
+        /* ========================================================================= */
+        <PullToRefresh onRefresh={handleRefreshData}>
+          <div className="space-y-4 animate-in fade-in duration-150">
+            {/* Page Title Banner Card: Clean Light White with subtle border */}
+            <div className="bg-white text-[#24313D] p-4 rounded-[14px] shadow-xs border border-[#D6DEE5] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#EAF3EF] flex items-center justify-center border border-[#DCECE7] shrink-0">
                   <ClipboardList className="w-5 h-5 text-[#124C46]" />
@@ -2994,17 +2949,19 @@ export function App() {
                   <TenantRequestCard
                     key={req.id}
                     request={req}
-                    currentUser={currentUser}
                     onEdit={canUserEditTenantRequest(currentUser, req) ? handleStartEditTenantRequest : undefined}
                     onOpenDetails={(r) => setSelectedTenantRequest(r)}
                     isAdmin={isAdmin}
+                    isFavorite={favoriteIdsSet.has(req.id)}
+                    onToggleFavorite={handleToggleFavorite}
+                    ratingSummary={getPropertyRatingSummary(req.id)}
                   />
                 ))}
               </div>
             )}
-            </div>
-          </PullToRefreshWrapper>
-        ) : (!isAdmin && navIndex === 2) ? (
+          </div>
+        </PullToRefresh>
+      ) : (!isAdmin && navIndex === 2) ? (
           /* ========================================================================= */
           /* 4. شاشة إعلاناتي (للمستخدم العادي فقط) - Index 2 */
           /* ========================================================================= */
@@ -3013,7 +2970,6 @@ export function App() {
               currentUser={currentUser}
               properties={properties}
               tenantRequests={tenantRequests}
-              inspections={scheduledInspections}
               onEditProperty={handleStartEditProperty}
               onDeleteProperty={handleDeleteProperty}
               onArchiveProperty={handleArchiveProperty}
@@ -3071,11 +3027,9 @@ export function App() {
                   onUpdateUtilityDefinitions={handleUpdateUtilityDefinitions}
                   onResetDefaults={handleResetDefaults}
                   onLockAdmin={handleLogout}
-                  inspections={scheduledInspections}
                   blockedUsers={blockedUsers}
                   onAddBlockedUser={handleAddBlockedUser}
                   onRemoveBlockedUser={handleRemoveBlockedUser}
-                  onUpdateInspectionStatus={handleUpdateInspectionStatus}
                   isDrawerOpen={isAdminDrawerOpen}
                   setIsDrawerOpen={setIsAdminDrawerOpen}
                   onCloseDrawer={() => setIsAdminDrawerOpen(false)}
@@ -3088,23 +3042,23 @@ export function App() {
           /* ========================================================================= */
           /* 6. شاشة ترند ويوميات سكن أسيوط (Social Feed) */
           /* ========================================================================= */
-          <div className="animate-in fade-in duration-150">
-            <TrendFeedScreen
-              currentUser={currentUser}
-              isAdmin={isAdmin}
-              refreshTrigger={trendRefreshTrigger}
-              onRefresh={handleRefreshTrend}
-              onOpenLogin={() => {
-                setNavIndex(0);
-                addToast({
-                  type: 'info',
-                  title: 'تسجيل الدخول مطلوب للنشر',
-                  message: 'يرجى تسجيل الدخول برقم هاتفك للنشر والتفاعل في الترند.',
-                });
-              }}
-              onAddToast={addToast}
-            />
-          </div>
+          <PullToRefresh onRefresh={handleRefreshData}>
+            <div className="animate-in fade-in duration-150">
+              <TrendFeedScreen
+                currentUser={currentUser}
+                isAdmin={isAdmin}
+                onOpenLogin={() => {
+                  setNavIndex(0);
+                  addToast({
+                    type: 'info',
+                    title: 'تسجيل الدخول مطلوب للنشر',
+                    message: 'يرجى تسجيل الدخول برقم هاتفك للنشر والتفاعل في الترند.',
+                  });
+                }}
+                onAddToast={addToast}
+              />
+            </div>
+          </PullToRefresh>
         ) : (
           /* Fallback for regular user or out-of-range index */
           <div className="text-center py-10">
@@ -3127,9 +3081,12 @@ export function App() {
             setOverlayScreen('none');
             setNavIndex(index as NavTabIndex);
           }}
-          onDoubleTapIndex={handleDoubleTapIndex}
+          onDoubleTapIndex={handleDoubleTapBottomNav}
           onOpenAddModal={() => setIsChoiceAddOpen(true)}
-          pendingInspectionsCount={scheduledInspections.filter((i) => i.status === 'pending').length}
+          pendingModerationCount={
+            properties.filter((p) => p.status === 'pending_approval' || (p as any).isApproved === false).length +
+            tenantRequests.filter((r) => r.status === 'pending' || (r as any).isApproved === false).length
+          }
           tenantRequestsCount={tenantRequests.length}
           myAdsCount={myAdsCount}
         />
@@ -3219,30 +3176,16 @@ export function App() {
             property={selectedProperty}
             onClose={() => setSelectedProperty(null)}
             isAdmin={isAdmin}
-            currentUser={currentUser}
-            onEdit={canUserEditProperty(currentUser, selectedProperty) ? (p: Property) => {
-              setSelectedProperty(null);
-              handleStartEditProperty(p);
-            } : undefined}
-            onScheduleInspection={(p: Property) => {
-              setSelectedPropertyForInspection(p);
-              setIsInspectionModalOpen(true);
-            }}
+            onEdit={
+              canUserEditProperty(currentUser, selectedProperty)
+                ? (p) => {
+                    setSelectedProperty(null);
+                    handleStartEditProperty(p);
+                  }
+                : undefined
+            }
             ratingSummary={getPropertyRatingSummary(selectedProperty.id)}
-            onOpenRatingModal={(p: Property) => setRatingModalProperty(p)}
-          />
-        )}
-
-        {/* Inspection Modal */}
-        {isInspectionModalOpen && (
-          <InspectionModal
-            property={selectedPropertyForInspection}
-            isOpen={isInspectionModalOpen}
-            onClose={() => {
-              setIsInspectionModalOpen(false);
-              setSelectedPropertyForInspection(null);
-            }}
-            onScheduleSuccess={handleScheduleInspection}
+            onOpenRatingModal={(p) => setRatingModalProperty(p)}
           />
         )}
 
@@ -3269,11 +3212,14 @@ export function App() {
             request={selectedTenantRequest}
             onClose={() => setSelectedTenantRequest(null)}
             isAdmin={isAdmin}
-            currentUser={currentUser}
-            onEdit={canUserEditTenantRequest(currentUser, selectedTenantRequest) ? (r) => {
-              setSelectedTenantRequest(null);
-              handleStartEditTenantRequest(r);
-            } : undefined}
+            onEdit={
+              canUserEditTenantRequest(currentUser, selectedTenantRequest)
+                ? (r) => {
+                    setSelectedTenantRequest(null);
+                    handleStartEditTenantRequest(r);
+                  }
+                : undefined
+            }
           />
         )}
 
@@ -3328,15 +3274,46 @@ export function App() {
             property={ratingModalProperty}
             onClose={() => setRatingModalProperty(null)}
             currentUser={currentUser}
-            inspections={scheduledInspections}
             propertyRatings={propertyRatings}
             onSubmitRating={handleSubmitRating}
-            onRequestInspection={(p: Property) => {
-              setRatingModalProperty(null);
-              setSelectedPropertyForInspection(p);
-              setIsInspectionModalOpen(true);
-            }}
           />
+        )}
+
+        {/* Screenshot Converter Modal (متاح لكافة المستخدمين من القائمة الجانبية) */}
+        {isScreenshotConverterOpen && (
+          <div 
+            onClick={() => setIsScreenshotConverterOpen(false)}
+            className="fixed inset-0 z-50 bg-[#24313D]/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in"
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 shadow-2xl border border-slate-200 relative my-auto"
+            >
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+                <span className="text-xs font-bold text-slate-500">المحول الذكي للاسكرينات (AI OCR)</span>
+                <button
+                  type="button"
+                  onClick={() => setIsScreenshotConverterOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <ScreenshotConverter
+                onPublishProperty={(newProp) => {
+                  handleAddProperty(newProp);
+                  setIsScreenshotConverterOpen(false);
+                }}
+                onPublishTenantRequest={(newReq) => {
+                  handleAddTenantRequest(newReq);
+                  setIsScreenshotConverterOpen(false);
+                }}
+                adminName={currentUser?.name || 'مستخدم المنظومة'}
+                adminPhone={currentUser?.phone || '01000000000'}
+                onClose={() => setIsScreenshotConverterOpen(false)}
+              />
+            </div>
+          </div>
         )}
       </Suspense>
 
@@ -3402,47 +3379,6 @@ export function App() {
           });
         }}
       />
-
-      {/* 5. Screenshot & Facebook Post Converter Modal - متاح لجميع المستخدمين */}
-      {isScreenshotConverterOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-[#24313D]/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
-          onClick={() => setIsScreenshotConverterOpen(false)}
-        >
-          <div 
-            className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-[#D6DEE5] max-w-4xl w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 my-auto animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ScreenshotConverter
-              isAdmin={isAdmin}
-              currentUser={currentUser}
-              adminName={currentUser?.name || 'مستخدم سكن أسيوط'}
-              adminPhone={currentUser?.phone || ''}
-              onClose={() => setIsScreenshotConverterOpen(false)}
-              onPublishProperty={(prop) => {
-                handleAddProperty(prop);
-                setIsScreenshotConverterOpen(false);
-                setNavIndex(0);
-                addToast({
-                  type: 'success',
-                  title: 'تم نشر العرض بنجاح 🎉',
-                  message: `تمت إضافة العقار "${prop.title}" إلى قائمة العروض.`,
-                });
-              }}
-              onPublishTenantRequest={(req) => {
-                handleAddTenantRequest(req);
-                setIsScreenshotConverterOpen(false);
-                setNavIndex(1);
-                addToast({
-                  type: 'success',
-                  title: 'تم نشر الطلب بنجاح 🎉',
-                  message: `تمت إضافة طلب السكن "${req.requestCode || `${req.preferredDistrict} - ${req.propertyType}`}" إلى قائمة الطلبات.`,
-                });
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

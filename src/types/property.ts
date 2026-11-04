@@ -198,6 +198,45 @@ export const DEFAULT_CARD_IMAGE = '/default-card-placeholder.webp';
 
 export type LegalStatusOption = 'مرخصة' | 'بعد الرخصة' | 'تصالح نهائي' | 'جاري التصالح' | 'مخالف';
 
+export type PropertyFinishingStatus = 'مشطبة' | 'نصف تشطيب' | 'مفروشة';
+export type PaymentFrequency = 'شهري' | 'ربع سنوي' | 'نصف سنوي' | 'سنوي';
+
+export interface PropertyCategory {
+  id: string; // 'residential' | 'commercial' | 'administrative_medical' | 'lands' | 'industrial_storage'
+  name: string; // 'سكني' | 'تجاري' | 'إداري وطبي' | 'أراضٍ' | 'صناعي ومخازن'
+  description?: string;
+  icon: string;
+  displayOrder: number;
+  isActive: boolean;
+}
+
+export interface PropertyTypeItem {
+  id: string;
+  categoryId: string;
+  name: string;
+  description?: string;
+  displayOrder: number;
+  isActive: boolean;
+}
+
+export interface FormFieldDefinition {
+  id: string;
+  fieldKey: string;
+  label: string;
+  fieldType: 'short_text' | 'long_text' | 'number' | 'currency' | 'single_choice' | 'multi_choice' | 'boolean' | 'range' | 'date';
+  displayMode?: 'chips' | 'dropdown' | 'buttons' | 'toggle' | 'inputs';
+  appliesTo: 'offer' | 'request' | 'both';
+  appliesPurpose?: 'rent' | 'sale' | 'both';
+  categoryIds?: string[];
+  propertyTypeIds?: string[];
+  isRequired: boolean;
+  displayOrder: number;
+  options?: string[];
+  isActive: boolean;
+  placeholder?: string;
+  helpText?: string;
+}
+
 export interface Property {
   id: string;
   code: string; // e.g. "ASY-102"
@@ -205,25 +244,19 @@ export interface Property {
   isApproved?: boolean;
   title: string;
   description: string;
-  propertyType: string; // e.g. "شقة سكنية", "قطعة أرض فضاء", "سكن طلابي", etc.
+  categoryId?: string;
+  propertyType: string; // e.g. "شقة سكنية", "قطعة أرض فضاء", "محل تجاري", etc.
   purpose: PropertyPurpose; // 'rent' | 'sale'
-  legalStatus?: LegalStatusOption | string; // الموقف القانوني للعقار (مرخصة، بعد الرخصة، تصالح نهائي، جاري التصالح، مخالف)
-  propertyGroup?: string; // e.g. 'residential' | 'commercial' | 'admin_medical' | 'lands' | 'industrial_storage'
-  isNegotiable?: boolean; // قابل للتفاوض: نعم / لا
-  paymentFrequency?: 'monthly' | 'quarterly' | 'semi_annual' | 'annual' | string; // دورية السداد للإيجار
-  customDistrict?: string; // اسم المنطقة اليدوي عند اختيار "غير ذلك"
-  finishingStatus?: 'مشطبة' | 'نصف تشطيب' | 'مفروشة' | string; // حالة التشطيب للعقار
-  streetWidth?: number; // عرض الشارع بالمتر
-  ceilingHeight?: number; // ارتفاع السقف بالمتر (للمصانع والمخازن)
-  truckAccess?: boolean; // إمكانية دخول سيارات نقل ثقيل وتريلات
-  suitableActivity?: string; // النشاط التجاري أو الصناعي المناسب
-  specifications?: Record<string, any>; // حقول ومواصفات ديناميكية إضافية
+  legalStatus?: LegalStatusOption | string;
   price: number;
   originalPrice?: number;
+  isNegotiable?: boolean; // قابل للتفاوض: نعم / لا
+  paymentFrequency?: PaymentFrequency | string; // دورية السداد للإيجار (شهري / ربع سنوي / نصف سنوي / سنوي)
   deposit?: number;
   rentDurationMonths?: number;
   city: string; // "أسيوط"
   district: string; // "حي الجامعة", "شارع الجمهورية", "النميس", etc.
+  customDistrict?: string; // اسم المنطقة المدخل يدوياً عند اختيار "غير ذلك"
   address: string;
   facade?: string; // e.g. "واجهة بحرية 15 متر", "شارع رئيسي"
   area: number; // in m²
@@ -232,8 +265,10 @@ export interface Property {
   totalFloors?: number;
   floorLevel?: number;
   hasElevator?: boolean;
+  finishingStatus?: PropertyFinishingStatus | string; // حالة العقار: مشطبة، نصف تشطيب، مفروشة
   utilities: PropertyUtilities;
   paymentMethods: string[];
+  customFields?: Record<string, any>; // حقول إضافية متخصصة حسب نوع العقار (مساحة التخزين، نشاط المحل، عرض الشارع، إلخ)
   ownerName: string;
   ownerPhone: string;
   contactPhone?: string; // رقم الهاتف المباشر للتواصل
@@ -245,28 +280,29 @@ export interface Property {
   featured?: boolean;
   status: PropertyStatus;
   adminNote?: string;
+  createdByAdmin?: boolean;
+  createdAt: string;
   ownershipDocumentUrl?: string;
   viewsCount?: number;
-  fee?: number;
-  inspectionDate?: string;
   isVerified?: boolean;
   verifiedByAdmin?: boolean;
+  fee?: number;
+  inspectionDate?: string;
 }
 
 export interface ScheduledInspection {
   id: string;
   propertyId: string;
   propertyCode: string;
-  clientName: string;
-  clientPhone: string;
-  preferredDate: string;
-  preferredTime: string;
+  clientName?: string;
+  clientPhone?: string;
+  preferredDate?: string;
+  preferredTime?: string;
   notes?: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
   fee?: number;
-  feePaid?: boolean;
-  completedAt?: string;
-  createdAt: string;
+  status?: string;
+  createdAt?: string;
+  [key: string]: any;
 }
 
 export interface PropertyRating {
@@ -289,28 +325,26 @@ export interface TenantRequest {
   isApproved?: boolean;
   tenantName: string;
   tenantPhone: string;
+  categoryId?: string;
   preferredDistrict: string;
   preferredDistricts?: string[]; // إمكانية اختيار أكثر من منطقة للبحث
-  customDistrict?: string; // اسم المنطقة المكتوبة يدوياً عند اختيار "غير ذلك"
+  customDistrict?: string; // اسم المنطقة يدوياً عند اختيار "غير ذلك"
   propertyType: string;
-  propertyGroup?: string; // e.g. 'residential' | 'commercial' | 'admin_medical' | 'lands' | 'industrial_storage'
   purpose: PropertyPurpose;
-  paymentFrequency?: 'monthly' | 'quarterly' | 'semi_annual' | 'annual' | string; // دورية السداد المفضلة للإيجار
-  legalStatus?: LegalStatusOption | string; // الموقف القانوني المفضل للعقار المطلوب
-  streetWidth?: number; // عرض الشارع المفضل بالمتر
-  ceilingHeight?: number; // ارتفاع السقف المطلوب بالمتر
-  truckAccess?: boolean; // اشتراط دخول سيارات نقل ثقيل وتريلات
-  suitableActivity?: string; // النشاط المطلوب
-  specifications?: Record<string, any>; // مواصفات تفصيلية إضافية
+  legalStatus?: LegalStatusOption | string;
   minPrice?: number;
   maxPrice: number;
+  paymentFrequency?: PaymentFrequency | string; // دورية الميزانية عند البحث عن إيجار (مخفية تماماً في البيع)
   minArea?: number;
   maxArea?: number;
   bedrooms?: number;
   bathrooms?: number;
-  furnishingStatus?: string;
+  floorPreference?: string;
+  elevatorPreference?: boolean;
+  furnishingStatus?: PropertyFinishingStatus | string; // مشطبة، نصف تشطيب، مفروشة
   utilitiesRequired?: string[];
   meterTypesRequired?: string[];
+  customFields?: Record<string, any>; // مواصفات مطلوبة متخصصة حسب التصنيف
   urgency?: 'immediate' | 'within_month' | 'exploring';
   notes?: string;
   adminNote?: string;

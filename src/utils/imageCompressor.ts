@@ -139,3 +139,66 @@ export async function processMultipleImageFiles(
   const promises = files.map((file) => compressImageFile(file, maxSizeBytes));
   return Promise.all(promises);
 }
+
+/**
+ * Compresses an image File and returns both Blob and DataURL
+ */
+export function compressImageFileToBlob(
+  file: File,
+  maxSizeBytes: number = 250 * 1024
+): Promise<{ blob: Blob; dataUrl: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        const maxDimension = 1400;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          canvas.toBlob((blob) => {
+            resolve({ blob: blob || new Blob(), dataUrl: reader.result as string });
+          }, 'image/webp', 0.82);
+          return;
+        }
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let quality = 0.82;
+        let dataUrl = canvas.toDataURL('image/webp', quality);
+        let size = getDataUrlSizeBytes(dataUrl);
+
+        while (size > maxSizeBytes && quality > 0.4) {
+          quality -= 0.12;
+          dataUrl = canvas.toDataURL('image/webp', quality);
+          size = getDataUrlSizeBytes(dataUrl);
+        }
+
+        canvas.toBlob((blob) => {
+          resolve({ blob: blob || new Blob(), dataUrl });
+        }, 'image/webp', quality);
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
