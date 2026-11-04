@@ -41,8 +41,13 @@
   </head>
   <body class="bg-[#E8EDF1] text-[#24313D] font-sans antialiased selection:bg-[#124C46]/20 selection:text-[#124C46]">
     <div id="root"></div>
-    <!-- PWA Service Worker Registration -->
+    <!-- PWA Early Install Prompt & Service Worker Registration -->
     <script>
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__pwa_deferred_prompt = e;
+        window.dispatchEvent(new CustomEvent('pwa-prompt-available'));
+      });
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
           navigator.serviceWorker.register('/sw.js', { scope: '/' })

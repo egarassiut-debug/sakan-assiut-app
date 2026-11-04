@@ -817,61 +817,227 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     onBack();
   };
 
+  // Section: نوع العملية (Purpose)
+  const renderPurposeSection = (stepNum: number) => (
+    <section className="bg-white rounded-3xl p-4 sm:p-5 border border-[#D6DEE5] shadow-xs space-y-3">
+      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-6 h-6 rounded-lg bg-[#EAF3EF] text-[#124C46] flex items-center justify-center text-xs font-black">
+            {stepNum}
+          </span>
+          <h2 className="text-sm sm:text-base font-black text-[#124C46]">نوع العملية</h2>
+        </div>
+        <span className="text-[11px] text-[#5D6B78] font-medium">بيع أو إيجار</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => setPurpose('rent')}
+          className={`py-3 px-4 rounded-2xl border font-black text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            purpose === 'rent'
+              ? 'bg-[#124C46] text-white border-[#124C46] shadow-xs'
+              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+          }`}
+        >
+          <span>{isOffer ? 'معروض للإيجار' : 'طلب إيجار'}</span>
+          {purpose === 'rent' && <Check className="w-4 h-4 text-[#D6A84F]" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setPurpose('sale')}
+          className={`py-3 px-4 rounded-2xl border font-black text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            purpose === 'sale'
+              ? 'bg-[#124C46] text-white border-[#124C46] shadow-xs'
+              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+          }`}
+        >
+          <span>{isOffer ? 'معروض للبيع' : 'طلب شراء'}</span>
+          {purpose === 'sale' && <Check className="w-4 h-4 text-[#D6A84F]" />}
+        </button>
+      </div>
+    </section>
+  );
+
+  // Section: المجموعة العقارية / (نوع العقار)
+  const renderCategorySection = (stepNum: number) => (
+    <section className="bg-white rounded-3xl p-4 sm:p-5 border border-[#D6DEE5] shadow-xs space-y-3">
+      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-6 h-6 rounded-lg bg-[#EAF3EF] text-[#124C46] flex items-center justify-center text-xs font-black">
+            {stepNum}
+          </span>
+          <h2 className="text-sm sm:text-base font-black text-[#124C46]">
+            {isOffer ? 'المجموعة العقارية' : '(نوع العقار)'}
+          </h2>
+        </div>
+        <span className="text-[11px] text-[#5D6B78] font-medium">اختر التصنيف الأساسي</span>
+      </div>
+
+      {/* 5 Category Selector Chips - في استمارة الطلب تظهر 4 خانات في السطر الواحد لتكون مدمجة وأنيقة */}
+      <div className={!isOffer ? "grid grid-cols-4 sm:grid-cols-5 gap-1.5 sm:gap-2" : "grid grid-cols-2 sm:grid-cols-5 gap-2"}>
+        {categories.map((cat) => {
+          const isSelected = selectedCategoryId === cat.id;
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => handleCategorySelect(cat.id)}
+              className={`${!isOffer ? 'p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl gap-1' : 'p-3 rounded-2xl gap-1.5'} border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
+                isSelected
+                  ? 'bg-[#124C46] text-white border-[#124C46] shadow-sm scale-[1.02]'
+                  : 'bg-slate-50 hover:bg-slate-100/80 text-[#24313D] border-[#D6DEE5]'
+              }`}
+            >
+              <div className={`${!isOffer ? 'w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl' : 'w-8 h-8 rounded-xl'} flex items-center justify-center ${
+                isSelected ? 'bg-white/20 text-white' : 'bg-white text-[#124C46] border border-slate-200'
+              }`}>
+                {cat.id === 'residential' && <Home className={!isOffer ? "w-3.5 h-3.5 sm:w-4 sm:h-4" : "w-4 h-4"} />}
+                {cat.id === 'commercial' && <Store className={!isOffer ? "w-3.5 h-3.5 sm:w-4 sm:h-4" : "w-4 h-4"} />}
+                {cat.id === 'administrative_medical' && <Briefcase className={!isOffer ? "w-3.5 h-3.5 sm:w-4 sm:h-4" : "w-4 h-4"} />}
+                {cat.id === 'lands' && <MapPin className={!isOffer ? "w-3.5 h-3.5 sm:w-4 sm:h-4" : "w-4 h-4"} />}
+                {cat.id === 'industrial_storage' && <Warehouse className={!isOffer ? "w-3.5 h-3.5 sm:w-4 sm:h-4" : "w-4 h-4"} />}
+              </div>
+              <span className={`${!isOffer ? 'text-[10px] sm:text-xs' : 'text-xs'} font-bold leading-tight truncate max-w-full`}>{cat.name}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Sub-Types under Selected Category */}
+      <div ref={propertyTypeRef} className="pt-2">
+        <label className="block text-xs font-bold text-[#5D6B78] mb-2">
+          نوع الوحدة المحددة داخل ({categories.find((c) => c.id === selectedCategoryId)?.name || 'التصنيف'}):
+        </label>
+        <div className={!isOffer ? "grid grid-cols-4 gap-1.5 sm:gap-2" : "flex flex-wrap gap-1.5"}>
+          {currentCategoryTypes.map((typeItem) => {
+            const isTypeSelected = propertyType === typeItem.name;
+            return (
+              <button
+                key={typeItem.id}
+                type="button"
+                onClick={() => handleTypeSelect(typeItem.name)}
+                className={`${!isOffer ? 'px-1.5 py-1.5 sm:px-2.5 sm:py-2 text-[10px] sm:text-xs text-center truncate rounded-lg sm:rounded-xl' : 'px-3 py-1.5 rounded-xl text-xs'} font-bold border transition-all cursor-pointer ${
+                  isTypeSelected
+                    ? 'bg-[#124C46] text-white border-[#124C46] shadow-2xs scale-102'
+                    : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
+                }`}
+                title={typeItem.name}
+              >
+                {typeItem.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+
   return (
     <div className="bg-[#E8EDF1] min-h-screen pb-16 text-[#24313D] font-['Tajawal','Cairo',sans-serif] select-none" dir="rtl">
       
-      {/* 1. Fixed Top AppBar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#D6DEE5] shadow-xs px-3 sm:px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#124C46] flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-            title="رجوع"
-          >
-            <ArrowRight className="w-5 h-5" />
-          </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                isOffer ? 'bg-[#EAF3EF] text-[#124C46] border-[#124C46]/20' : 'bg-amber-50 text-amber-900 border-amber-300'
-              }`}>
-                {isOffer ? 'استمارة عرض وتسويق' : 'استمارة بحث وتحديد احتياجات'}
-              </span>
-              {isEditing && (
-                <span className="text-[10px] bg-blue-50 text-blue-800 border border-blue-200 font-bold px-2 py-0.5 rounded-full">
-                  تعديل
-                </span>
+      {/* 1. Fixed Top AppBar - هيدر مميز وثابت لاستمارة طلب عقار */}
+      <div className="sticky top-0 z-40 shadow-xs">
+        <header className={
+          !isOffer
+            ? "bg-gradient-to-r from-[#0C3B36] via-[#124C46] to-[#1E675E] text-white border-b border-[#0A302C] px-3 sm:px-4 py-3 flex items-center justify-between"
+            : "bg-white/95 backdrop-blur-md text-[#24313D] border-b border-[#D6DEE5] px-3 sm:px-4 py-3 flex items-center justify-between"
+        }>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs ${
+                !isOffer
+                  ? "bg-white/15 hover:bg-white/25 text-white border border-white/20 active:scale-95"
+                  : "bg-slate-100 hover:bg-slate-200 text-[#124C46]"
+              }`}
+              title="رجوع"
+            >
+              <ArrowRight className="w-5 h-5" />
+            </button>
+            <div>
+              {!isOffer ? (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#D6A84F] text-[#124C46] shadow-xs">
+                      استمارة طلب وبحث
+                    </span>
+                    {isEditing && (
+                      <span className="text-[10px] bg-white/20 text-white font-bold px-2 py-0.5 rounded-full">
+                        تعديل
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="text-base sm:text-xl font-black text-white leading-tight font-['Tajawal','Cairo',sans-serif] mt-0.5">
+                    تسجيل طلب عقار
+                  </h1>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border bg-[#EAF3EF] text-[#124C46] border-[#124C46]/20">
+                      استمارة عرض وتسويق
+                    </span>
+                    {isEditing && (
+                      <span className="text-[10px] bg-blue-50 text-blue-800 border border-blue-200 font-bold px-2 py-0.5 rounded-full">
+                        تعديل
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="text-base sm:text-lg font-black text-[#124C46] leading-tight">
+                    {isEditing ? 'تعديل عرض العقار' : 'إضافة عرض عقار جديد'}
+                  </h1>
+                </div>
               )}
             </div>
-            <h1 className="text-base sm:text-lg font-black text-[#124C46] leading-tight">
-              {isOffer ? (isEditing ? 'تعديل عرض العقار' : 'إضافة عرض عقار جديد') : (isEditing ? 'تعديل طلب السكن' : 'تسجيل طلب عقار جديد')}
-            </h1>
-          </div>
-        </div>
-
-        {/* Progress & Fast Voice Assistant Button */}
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:flex flex-col items-end">
-            <span className="text-[10px] text-[#5D6B78] font-bold">نسبة الاكتمال</span>
-            <span className="text-xs font-black text-[#124C46]">{progressPercent}%</span>
           </div>
 
-          <button
-            type="button"
-            onClick={toggleRecording}
-            className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-xs ${
-              isRecording 
-                ? 'bg-rose-600 text-white border-rose-700 animate-pulse' 
-                : 'bg-white hover:bg-[#F5F9F8] text-[#124C46] border-[#D6DEE5]'
-            }`}
-            title="التعبئة الصوتية الذكية"
-          >
-            {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5 text-amber-600" />}
-            <span className="hidden sm:inline">{isRecording ? `تسجيل (${voiceSeconds}ث)` : 'تعبئة بالصوت'}</span>
-          </button>
-        </div>
-      </header>
+          {/* Progress & Fast Voice Assistant Button */}
+          <div className="flex items-center gap-2">
+            {isOffer && (
+              <div className="hidden sm:flex flex-col items-end">
+                <span className="text-[10px] text-[#5D6B78] font-bold">نسبة الاكتمال</span>
+                <span className="text-xs font-black text-[#124C46]">{progressPercent}%</span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={toggleRecording}
+              className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                isRecording 
+                  ? 'bg-rose-600 text-white border-rose-700 animate-pulse' 
+                  : !isOffer
+                    ? 'bg-white/15 hover:bg-white/25 text-white border-white/20'
+                    : 'bg-white hover:bg-[#F5F9F8] text-[#124C46] border-[#D6DEE5]'
+              }`}
+              title="التعبئة الصوتية الذكية"
+            >
+              {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className={`w-3.5 h-3.5 ${!isOffer ? 'text-[#D6A84F]' : 'text-amber-600'}`} />}
+              <span className="hidden sm:inline">{isRecording ? `تسجيل (${voiceSeconds}ث)` : 'تعبئة بالصوت'}</span>
+            </button>
+          </div>
+        </header>
+
+        {/* 2. شريط اكتمال البيانات الثابت في الأعلى (Sticky) الخاص بطلب العقار مع النسبة المئوية في نهايته */}
+        {!isOffer && (
+          <div className="bg-[#E8EDF1]/95 backdrop-blur-md px-3 sm:px-4 py-2 border-b border-[#D6DEE5] shadow-xs">
+            <div className="max-w-3xl mx-auto flex items-center gap-2.5 sm:gap-3">
+              <div className="flex-1 bg-white rounded-full h-1.5 overflow-hidden border border-[#D6DEE5]">
+                <div 
+                  className="bg-gradient-to-r from-[#124C46] via-[#16856B] to-[#D6A84F] h-full transition-all duration-300"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <span className="text-[11px] sm:text-xs font-black text-[#124C46] bg-white px-2 py-0.5 rounded-md border border-[#D6DEE5] shrink-0 font-['Tajawal','Cairo',sans-serif] shadow-2xs">
+                %{progressPercent}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Voice Status Alert Bar */}
       {voiceStatus && (
@@ -893,13 +1059,15 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
       {/* Main Container */}
       <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 space-y-4">
 
-        {/* Completion Progress Bar */}
-        <div className="w-full bg-white rounded-full h-1.5 overflow-hidden border border-[#D6DEE5]">
-          <div 
-            className="bg-gradient-to-r from-[#124C46] via-[#16856B] to-[#D6A84F] h-full transition-all duration-300"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
+        {/* Completion Progress Bar - لعرض العقار فقط حيث يكون داخل الحاوية الأصلية */}
+        {isOffer && (
+          <div className="w-full bg-white rounded-full h-1.5 overflow-hidden border border-[#D6DEE5]">
+            <div 
+              className="bg-gradient-to-r from-[#124C46] via-[#16856B] to-[#D6A84F] h-full transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        )}
 
         {/* Error Notice */}
         {errorMsg && (
@@ -911,111 +1079,21 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* STEP 1: التصنيفات الخمسة الأساسية (Property Category) */}
-          <section className="bg-white rounded-3xl p-4 sm:p-5 border border-[#D6DEE5] shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-[#EAF3EF] text-[#124C46] flex items-center justify-center text-xs font-black">1</span>
-                <h2 className="text-sm sm:text-base font-black text-[#124C46]">المجموعة العقارية</h2>
-              </div>
-              <span className="text-[11px] text-[#5D6B78] font-medium">اختر التصنيف الأساسي</span>
-            </div>
-
-            {/* 5 Category Selector Chips */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {categories.map((cat) => {
-                const isSelected = selectedCategoryId === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => handleCategorySelect(cat.id)}
-                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-[#124C46] text-white border-[#124C46] shadow-sm scale-[1.02]'
-                        : 'bg-slate-50 hover:bg-slate-100/80 text-[#24313D] border-[#D6DEE5]'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-white text-[#124C46] border border-slate-200'
-                    }`}>
-                      {cat.id === 'residential' && <Home className="w-4 h-4" />}
-                      {cat.id === 'commercial' && <Store className="w-4 h-4" />}
-                      {cat.id === 'administrative_medical' && <Briefcase className="w-4 h-4" />}
-                      {cat.id === 'lands' && <MapPin className="w-4 h-4" />}
-                      {cat.id === 'industrial_storage' && <Warehouse className="w-4 h-4" />}
-                    </div>
-                    <span className="text-xs font-bold leading-tight">{cat.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Sub-Types under Selected Category */}
-            <div ref={propertyTypeRef} className="pt-2">
-              <label className="block text-xs font-bold text-[#5D6B78] mb-2">
-                نوع الوحدة المحددة داخل ({categories.find((c) => c.id === selectedCategoryId)?.name || 'التصنيف'}):
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {currentCategoryTypes.map((typeItem) => {
-                  const isTypeSelected = propertyType === typeItem.name;
-                  return (
-                    <button
-                      key={typeItem.id}
-                      type="button"
-                      onClick={() => handleTypeSelect(typeItem.name)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                        isTypeSelected
-                          ? 'bg-[#124C46] text-white border-[#124C46] shadow-2xs scale-105'
-                          : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
-                      }`}
-                    >
-                      {typeItem.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
-          {/* STEP 2: نوع العملية (إيجار / بيع) */}
-          <section className="bg-white rounded-3xl p-4 sm:p-5 border border-[#D6DEE5] shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-[#EAF3EF] text-[#124C46] flex items-center justify-center text-xs font-black">2</span>
-                <h2 className="text-sm sm:text-base font-black text-[#124C46]">نوع العملية</h2>
-              </div>
-              <span className="text-[11px] text-[#5D6B78] font-medium">بيع أو إيجار</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setPurpose('rent')}
-                className={`py-3 px-4 rounded-2xl border font-black text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  purpose === 'rent'
-                    ? 'bg-[#124C46] text-white border-[#124C46] shadow-xs'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <span>{isOffer ? 'معروض للإيجار' : 'طلب إيجار'}</span>
-                {purpose === 'rent' && <Check className="w-4 h-4 text-[#D6A84F]" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPurpose('sale')}
-                className={`py-3 px-4 rounded-2xl border font-black text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  purpose === 'sale'
-                    ? 'bg-[#124C46] text-white border-[#124C46] shadow-xs'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <span>{isOffer ? 'معروض للبيع' : 'طلب شراء'}</span>
-                {purpose === 'sale' && <Check className="w-4 h-4 text-[#D6A84F]" />}
-              </button>
-            </div>
-          </section>
+          {/* STEP 1 & 2 حسب نوع الاستمارة:
+              في طلب العقار: نوع العملية (1) ثم المجموعة العقارية بعنوان "(نوع العقار)" (2)
+              في عرض العقار: المجموعة العقارية (1) ثم نوع العملية (2)
+          */}
+          {isOffer ? (
+            <>
+              {renderCategorySection(1)}
+              {renderPurposeSection(2)}
+            </>
+          ) : (
+            <>
+              {renderPurposeSection(1)}
+              {renderCategorySection(2)}
+            </>
+          )}
 
           {/* STEP 3: السعر والميزانية (Price & Budget) */}
           <section className="bg-white rounded-3xl p-4 sm:p-5 border border-[#D6DEE5] shadow-xs space-y-3">
@@ -1026,9 +1104,12 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                   {isOffer ? (purpose === 'rent' ? 'قيمة الإيجار ودورية السداد' : 'السعر الإجمالي للبيع') : 'الميزانية المتاحة'}
                 </h2>
               </div>
-              <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                الجنيه المصري (ج.م)
-              </span>
+              {/* حذف جملة "الجنيه المصري (ج.م)" من أعلى اليمين في استمارة طلب العقار */}
+              {isOffer && (
+                <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  الجنيه المصري (ج.م)
+                </span>
+              )}
             </div>
 
             {isOffer ? (
@@ -1108,9 +1189,9 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 </div>
               </div>
             ) : (
-              /* REQUEST: Budget Range (من - إلى) */
+              /* REQUEST: Budget Range (من - إلى) - في سطر واحد بجانب بعضهما */
               <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
                       الحد الأدنى للميزانية (من):
@@ -1122,9 +1203,9 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                         value={minPrice}
                         onChange={(e) => setMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
                         placeholder="مثال: 2000"
-                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#124C46] text-sm font-black text-slate-900 bg-slate-50/70 focus:bg-white pl-14"
+                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#124C46] text-xs sm:text-sm font-black text-slate-900 bg-slate-50/70 focus:bg-white pl-10 sm:pl-14"
                       />
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                      <span className="absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 text-[11px] sm:text-xs font-bold text-slate-400">
                         ج.م
                       </span>
                     </div>
@@ -1142,23 +1223,23 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                         value={maxPrice}
                         onChange={(e) => setMaxPrice(e.target.value === '' ? '' : Number(e.target.value))}
                         placeholder="مثال: 6000"
-                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#124C46] text-sm font-black text-slate-900 bg-slate-50/70 focus:bg-white pl-14"
+                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#124C46] text-xs sm:text-sm font-black text-slate-900 bg-slate-50/70 focus:bg-white pl-10 sm:pl-14"
                       />
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                      <span className="absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 text-[11px] sm:text-xs font-bold text-slate-400">
                         ج.م
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* دورية الميزانية (للإيجار فقط، لا تظهر في البيع أبداً) */}
+                {/* دورية الميزانية (للإيجار فقط) - مقتصرة على خيارين فقط (شهري / سنوي) في استمارة الطلب */}
                 {purpose === 'rent' && (
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
                       دورية سداد الميزانية المطلوبة:
                     </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {APPROVED_PAYMENT_FREQUENCIES.map((freq) => (
+                    <div className="grid grid-cols-2 gap-2">
+                      {['شهري', 'سنوي'].map((freq) => (
                         <button
                           key={freq}
                           type="button"
@@ -1210,7 +1291,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              /* في استمارة الطلب: الحد الأدنى وقباله الحد الأقصى في سطر واحد بجانب بعضهما */
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     الحد الأدنى للمساحة (من):
@@ -1222,9 +1304,9 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                       value={minArea}
                       onChange={(e) => setMinArea(e.target.value === '' ? '' : Number(e.target.value))}
                       placeholder="مثال: 90"
-                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#124C46] text-sm font-black text-slate-900 bg-slate-50/70 focus:bg-white pl-14"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#124C46] text-xs sm:text-sm font-black text-slate-900 bg-slate-50/70 focus:bg-white pl-10 sm:pl-14"
                     />
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    <span className="absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 text-[11px] sm:text-xs font-bold text-slate-400">
                       م²
                     </span>
                   </div>
@@ -1241,9 +1323,9 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
                       value={maxArea}
                       onChange={(e) => setMaxArea(e.target.value === '' ? '' : Number(e.target.value))}
                       placeholder="مثال: 160"
-                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#124C46] text-sm font-black text-slate-900 bg-slate-50/70 focus:bg-white pl-14"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#124C46] text-xs sm:text-sm font-black text-slate-900 bg-slate-50/70 focus:bg-white pl-10 sm:pl-14"
                     />
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    <span className="absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 text-[11px] sm:text-xs font-bold text-slate-400">
                       م²
                     </span>
                   </div>

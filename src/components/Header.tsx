@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppUser } from '../types/property';
 import { Menu } from 'lucide-react';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export interface HeaderProps {
   currentUser?: AppUser | null;
@@ -83,8 +84,9 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* 3. Zone Left (في الجانب الأيسر): شعار تطبيق سكن أسيوط */}
-        <div className="flex items-center shrink-0 z-10">
+        {/* 3. Zone Left (في الجانب الأيسر): زر تثبيت التطبيق الأصفر مباشرة بجانب شعار سكن أسيوط */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 z-10">
+          <PWAInstallButton />
           <div 
             onClick={() => onSelectTab && onSelectTab('home')}
             className="flex items-center cursor-pointer group"
