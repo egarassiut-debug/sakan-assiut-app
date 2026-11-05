@@ -1,37 +1,63 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Property, PropertyStatus, BlockedUser, TenantRequest, AppUser } from '../types/property';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Property, PropertyStatus, BlockedUser, TenantRequest, AppUser, PropertyRating, TrendPost } from '../types/property';
+import { PropertyGroupDefinition, PropertyTypeDefinition, FormFieldDefinition } from '../types/formConfig';
 import { DropdownCategory, UtilityOptionDefinition } from '../data/dropdownOptions';
-import { DropdownManager } from './DropdownManager';
-import { AdminRoleManagement } from './AdminRoleManagement';
+import { 
+  INITIAL_PROPERTY_GROUPS, 
+  INITIAL_PROPERTY_TYPES, 
+  INITIAL_FIELD_DEFINITIONS, 
+  ASSIUT_DISTRICTS_LIST,
+  DEFAULT_DYNAMIC_FORM_CONFIG
+} from '../data/formConfig';
+import { AdminSectionId } from '../types/adminNav';
+import { AdminDrawer } from './AdminDrawer';
 import { hasSectionAccess, getDefaultSectionForRole } from '../utils/adminManager';
-import { GRANULAR_ROLES } from '../types/property';
-import { SettingsIcon, VerifiedUserIcon } from './FlutterIcons';
-import { validateEgyptianPhone, normalizeEgyptianPhone } from '../utils/phoneValidator';
+import { safeStorageGetItem, safeStorageSetItem } from '../utils/storageManager';
 import { 
-  BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid 
-} from 'recharts';
-import { 
-  ShieldCheck, CheckCircle2, XCircle, Trash2, Eye, Lock, 
-  UserX, Ban, AlertTriangle, Calendar, Plus, Search,
-  Edit3, MessageSquare, Users, UserCheck, Download, FileSpreadsheet, Printer, ChevronDown,
-  SlidersHorizontal, BarChart3, RotateCcw, Building2, Menu, X, ChevronLeft,
-  Phone, MessageCircle, User, Database, RefreshCw, Sparkles
+  Building2, Users, FileText, Star, TrendingUp, Layers, CheckCircle2, 
+  Clock, ShieldAlert, SlidersHorizontal, MapPin, Menu, X, ArrowLeft, 
+  Lock, RefreshCw, ShieldCheck, Activity, Download, Sparkles, Database, Sliders, ChevronLeft
 } from 'lucide-react';
-import { UserManagement } from './UserManagement';
+
+// Modular Sections
+import { AdminOverviewSection } from './admin/AdminOverviewSection';
+import { AdminPropertiesSection } from './admin/AdminPropertiesSection';
+import { AdminRequestsSection } from './admin/AdminRequestsSection';
+import { AdminUsersSection } from './admin/AdminUsersSection';
+import { AdminGroupsSection } from './admin/AdminGroupsSection';
+import { AdminTypesSection } from './admin/AdminTypesSection';
+import { AdminFieldsSection } from './admin/AdminFieldsSection';
+import { AdminDistrictsSection } from './admin/AdminDistrictsSection';
+import { AdminRatingsSection } from './admin/AdminRatingsSection';
+import { AdminTrendPostsSection } from './admin/AdminTrendPostsSection';
+import { AdminAuditLogsSection } from './admin/AdminAuditLogsSection';
+import { AdminSettingsSection } from './admin/AdminSettingsSection';
 import { RoleClassificationManagement } from './RoleClassificationManagement';
+import { AdminRoleManagement } from './AdminRoleManagement';
 import { ScreenshotConverter } from './ScreenshotConverter';
-import { AdminDrawer, AdminSectionId, ADMIN_NAVIGATION_ITEMS } from './AdminDrawer';
 import { DatabaseMigrationsTab } from './DatabaseMigrationsTab';
-import { SupabaseConnectionStatus } from './SupabaseConnectionStatus';
-import { exportToCSV, exportToPrintablePDF } from '../utils/exportUtils';
+import { DropdownManager } from './DropdownManager';
+
 import { 
-  isSupabaseActive, 
-  getSupabaseConfig, 
-  saveSupabaseConfig, 
-  dbFetchProperties, 
-  dbFetchTenantRequests, 
-  dbUpsertProperty, 
-  dbUpsertTenantRequest 
+  dbFetchUsers,
+  dbUpsertUser,
+  dbUpdateUserBlockStatus,
+  dbFetchPropertyGroups,
+  dbUpsertPropertyGroup,
+  dbDeletePropertyGroup,
+  dbFetchPropertyTypes,
+  dbUpsertPropertyType,
+  dbDeletePropertyType,
+  dbFetchFormFieldDefinitions,
+  dbUpsertFormFieldDefinition,
+  dbDeleteFormFieldDefinition,
+  dbFetchPropertyRatings,
+  dbDeletePropertyRating,
+  dbFetchTrendPosts,
+  dbUpdateTrendPostStatus,
+  dbDeleteTrendPost,
+  dbDeleteProperty,
+  dbDeleteTenantRequest
 } from '../lib/supabase';
 
 interface AdminPanelProps {
@@ -66,14 +92,6 @@ interface AdminPanelProps {
   onUpdateInspectionStatus?: (id: string, status: any, feePaid?: boolean) => void;
 }
 
-/**
- * AdminControlPanelScreen:
- * Divided strictly into TWO Top Tabs matching Flutter AdminControlPanelScreen:
- * Tab 0: 'التحكم بالواجهة والفلاتر' (Icons.settings)
- *        - تعديل الفلاتر، القوائم المنسدلة، وشكل التطبيق وإحصائيات Recharts
- * Tab 1: 'الموافقات والبلوكات المعاينات' (Icons.verified_user)
- *        - مراجعة الإعلانات (الموافقات والرفض)، حظر المستخدمين (البلوكات)، وإدارة المعاينات
- */
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   currentUser,
   properties,
@@ -99,1692 +117,597 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onRemoveBlockedUser,
   isDrawerOpen: propIsDrawerOpen,
   setIsDrawerOpen: propSetIsDrawerOpen,
-  onToggleDrawer,
   onCloseDrawer,
   onAddToast,
 }) => {
-  // Active Section & Slide-over Drawer State (Defaults based on user's granular role permissions)
-  const [activeSection, setActiveSection] = useState<AdminSectionId>(() => {
-    return getDefaultSectionForRole(currentUser?.role);
-  });
-  const [internalDrawerOpen, setInternalDrawerOpen] = useState(false);
+  // Active Navigation Section
+  const [activeSection, setActiveSection] = useState<AdminSectionId>('overview');
 
-  // Enforce section permissions if user role changes or unauthorized section is requested
-  useEffect(() => {
-    if (!hasSectionAccess(currentUser?.role, activeSection)) {
-      setActiveSection(getDefaultSectionForRole(currentUser?.role));
-    }
-  }, [currentUser?.role, activeSection]);
+  // Mobile Drawer State
+  const [localDrawerOpen, setLocalDrawerOpen] = useState(false);
+  const isDrawerOpen = propIsDrawerOpen !== undefined ? propIsDrawerOpen : localDrawerOpen;
+  const setIsDrawerOpen = propSetIsDrawerOpen || setLocalDrawerOpen;
 
-  const isDrawerOpen = propIsDrawerOpen !== undefined ? propIsDrawerOpen : internalDrawerOpen;
-  const setIsDrawerOpen = (open: boolean) => {
-    setInternalDrawerOpen(open);
-    if (propSetIsDrawerOpen) propSetIsDrawerOpen(open);
-    if (onToggleDrawer) onToggleDrawer(open);
-    if (!open && onCloseDrawer) onCloseDrawer();
-  };
+  // Real database states
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [groups, setGroups] = useState<PropertyGroupDefinition[]>(INITIAL_PROPERTY_GROUPS);
+  const [propertyTypes, setPropertyTypes] = useState<PropertyTypeDefinition[]>(INITIAL_PROPERTY_TYPES);
+  const [formFields, setFormFields] = useState<FormFieldDefinition[]>(INITIAL_FIELD_DEFINITIONS);
+  const [districts, setDistricts] = useState<string[]>(ASSIUT_DISTRICTS_LIST);
+  const [ratings, setRatings] = useState<PropertyRating[]>([]);
+  const [trendPosts, setTrendPosts] = useState<TrendPost[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
-  // Close drawer on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsDrawerOpen(false);
-    };
-    if (isDrawerOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDrawerOpen]);
-
-  // Swipe gesture: Swipe from right edge to left to open drawer, or swipe left-to-right to close
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-
-  useEffect(() => {
-    const handleTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      touchStartRef.current = {
-        x: touch.clientX,
-        y: touch.clientY,
-        time: Date.now(),
-      };
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (!touchStartRef.current) return;
-      const touch = e.changedTouches[0];
-      const deltaX = touchStartRef.current.x - touch.clientX; // positive when dragging right to left
-      const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
-      const deltaTime = Date.now() - touchStartRef.current.time;
-
-      // In RTL Arabic layout:
-      // If user drags from right towards left by at least 40px and horizontal motion is dominant:
-      if (!isDrawerOpen && deltaX > 40 && deltaX > deltaY * 1.1 && deltaTime < 700) {
-        setIsDrawerOpen(true);
-      } else if (isDrawerOpen && deltaX < -40 && Math.abs(deltaX) > deltaY * 1.1) {
-        // Swiping left-to-right closes the drawer
-        setIsDrawerOpen(false);
-      }
-
-      touchStartRef.current = null;
-    };
-
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchend', handleTouchEnd, { passive: true });
-
-    return () => {
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [isDrawerOpen]);
-
-  const pendingModerationCount = useMemo(() => {
-    const pendingProps = properties.filter(
-      (p) =>
-        (p.isApproved === false || p.status === 'pending' || p.status === 'pending_approval' || p.status === 'under_review') &&
-        p.status !== 'needs_completion' &&
-        p.status !== 'rejected'
-    ).length;
-    const pendingReqs = tenantRequests.filter(
-      (r) =>
-        (r.isApproved === false || r.status === 'pending' || r.status === 'pending_approval' || r.status === 'under_review') &&
-        r.status !== 'needs_completion' &&
-        r.status !== 'rejected'
-    ).length;
-    return pendingProps + pendingReqs;
-  }, [properties, tenantRequests]);
-
-
-  // Moderation type: properties (عروض) or requests (طلبات)
-  const [moderationType, setModerationType] = useState<'properties' | 'requests'>('properties');
-
-  // Moderation filter
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [moderationSearch, setModerationSearch] = useState('');
-
-  // Inline note input state for needs_completion
-  const [noteInputId, setNoteInputId] = useState<string | null>(null);
-  const [customNote, setCustomNote] = useState<string>('');
-
-  // New Block Form Modal / Inline State
-  const [isAddBlockOpen, setIsAddBlockOpen] = useState(false);
-  const [blockName, setBlockName] = useState('');
-  const [blockPhone, setBlockPhone] = useState('');
-  const [blockRole, setBlockRole] = useState<'owner' | 'broker' | 'tenant'>('tenant');
-  const [blockReason, setBlockReason] = useState('');
-  const [blockPhoneError, setBlockPhoneError] = useState<string | null>(null);
-
-  // Supabase Configuration State & Migration
-  const initialSbConfig = useMemo(() => getSupabaseConfig(), []);
-  const [sbUrl, setSbUrl] = useState(initialSbConfig?.url || '');
-  const [sbAnonKey, setSbAnonKey] = useState(initialSbConfig?.anonKey || '');
-  const [sbSaveMsg, setSbSaveMsg] = useState<string | null>(null);
-  const [isPushingAllToSb, setIsPushingAllToSb] = useState(false);
-
-  const handleSaveSbConfig = () => {
-    if (!sbUrl.trim() || !sbAnonKey.trim()) {
-      setSbSaveMsg('يرجى إدخال كل من رابط المشروع ومفتاح الوصول (Anon Key).');
-      return;
-    }
-    saveSupabaseConfig({ url: sbUrl.trim(), anonKey: sbAnonKey.trim() });
-    setSbSaveMsg('تم حفظ وتحديث إعدادات Supabase بنجاح! جاري الاتصال المباشر بقاعدة البيانات.');
-    setTimeout(() => setSbSaveMsg(null), 4000);
-  };
-
-  const handlePushAllToSupabase = async () => {
-    if (!isSupabaseActive()) {
-      alert('يرجى حفظ إعدادات Supabase أولاً والتأكد من صحة الرابط والمفتاح.');
-      return;
-    }
-    setIsPushingAllToSb(true);
+  // Load Real Data from Supabase
+  const loadDatabaseData = useCallback(async () => {
+    setIsLoadingData(true);
     try {
-      let countP = 0;
-      let countR = 0;
-      for (const p of properties) {
-        await dbUpsertProperty(p);
-        countP++;
+      const [
+        fetchedUsers,
+        fetchedGroups,
+        fetchedTypes,
+        fetchedFields,
+        fetchedRatings,
+        fetchedTrend
+      ] = await Promise.allSettled([
+        dbFetchUsers(),
+        dbFetchPropertyGroups(),
+        dbFetchPropertyTypes(),
+        dbFetchFormFieldDefinitions(),
+        dbFetchPropertyRatings(),
+        dbFetchTrendPosts(),
+      ]);
+
+      if (fetchedUsers.status === 'fulfilled' && fetchedUsers.value) {
+        setUsers(fetchedUsers.value);
       }
-      for (const r of tenantRequests) {
-        await dbUpsertTenantRequest(r);
-        countR++;
+      if (fetchedGroups.status === 'fulfilled' && fetchedGroups.value && fetchedGroups.value.length > 0) {
+        setGroups(fetchedGroups.value);
       }
-      setSbSaveMsg(`تم رفع ومزامنة (${countP}) عقار و (${countR}) طلب بنجاح إلى قاعدة بيانات Supabase!`);
+      if (fetchedTypes.status === 'fulfilled' && fetchedTypes.value && fetchedTypes.value.length > 0) {
+        setPropertyTypes(fetchedTypes.value);
+      }
+      if (fetchedFields.status === 'fulfilled' && fetchedFields.value && fetchedFields.value.length > 0) {
+        setFormFields(fetchedFields.value);
+      }
+      if (fetchedRatings.status === 'fulfilled' && fetchedRatings.value) {
+        setRatings(fetchedRatings.value);
+      }
+      if (fetchedTrend.status === 'fulfilled' && fetchedTrend.value) {
+        setTrendPosts(fetchedTrend.value);
+      }
     } catch (err) {
-      setSbSaveMsg('حدث خطأ أثناء مزامنة البيانات.');
-      console.error(err);
+      console.warn('Error loading admin Supabase data:', err);
     } finally {
-      setIsPushingAllToSb(false);
-      setTimeout(() => setSbSaveMsg(null), 5000);
+      setIsLoadingData(false);
     }
-  };
-
-  // Recharts Data
-  const rentTotal = properties.filter((p) => p.purpose === 'rent').length;
-  const saleTotal = properties.filter((p) => p.purpose === 'sale').length;
-  const totalPurposeCount = rentTotal + saleTotal;
-  const rentPct = totalPurposeCount > 0 ? Math.round((rentTotal / totalPurposeCount) * 100) : 0;
-  const salePct = totalPurposeCount > 0 ? Math.round((saleTotal / totalPurposeCount) * 100) : 0;
-
-  const purposeData = useMemo(() => {
-    return [
-      { name: `عقارات للإيجار (${rentPct}%)`, value: rentTotal, color: '#002B49' },
-      { name: `عقارات للبيع (${salePct}%)`, value: saleTotal, color: '#FFB300' },
-    ];
-  }, [rentTotal, saleTotal, rentPct, salePct]);
-
-  const districtData = useMemo(() => {
-    const counts: Record<string, { rent: number; sale: number; total: number }> = {};
-    properties.forEach((p) => {
-      const dist = p.district || 'أخرى';
-      if (!counts[dist]) counts[dist] = { rent: 0, sale: 0, total: 0 };
-      if (p.purpose === 'rent') counts[dist].rent += 1;
-      else counts[dist].sale += 1;
-      counts[dist].total += 1;
-    });
-
-    return Object.entries(counts).map(([name, val]) => ({
-      name,
-      إيجار: val.rent,
-      بيع: val.sale,
-      الإجمالي: val.total,
-    }));
-  }, [properties]);
-
-  const filteredProperties = useMemo(() => {
-    return properties.filter((p) => {
-      if (filterStatus === 'pending') {
-        const isPending =
-          (p.isApproved === false || p.status === 'pending' || p.status === 'pending_approval' || p.status === 'under_review') &&
-          p.status !== 'needs_completion' &&
-          p.status !== 'rejected';
-        if (!isPending) return false;
-      } else if (filterStatus === 'needs_completion') {
-        if (p.status !== 'needs_completion') return false;
-      } else if (filterStatus === 'approved') {
-        if (p.isApproved === false || p.status !== 'approved') return false;
-      } else if (filterStatus === 'rejected') {
-        if (p.status !== 'rejected') return false;
-      }
-      if (moderationSearch.trim()) {
-        const q = moderationSearch.toLowerCase();
-        return (
-          p.code.toLowerCase().includes(q) ||
-          p.title.toLowerCase().includes(q) ||
-          p.district.toLowerCase().includes(q) ||
-          (p.ownerPhone && p.ownerPhone.includes(q)) ||
-          (p.ownerName && p.ownerName.toLowerCase().includes(q))
-        );
-      }
-      return true;
-    });
-  }, [properties, filterStatus, moderationSearch]);
-
-  const filteredRequests = useMemo(() => {
-    return tenantRequests.filter((r) => {
-      if (filterStatus === 'pending') {
-        const isPending =
-          (r.isApproved === false || r.status === 'pending' || r.status === 'pending_approval' || r.status === 'under_review') &&
-          r.status !== 'needs_completion' &&
-          r.status !== 'rejected';
-        if (!isPending) return false;
-      } else if (filterStatus === 'needs_completion') {
-        if (r.status !== 'needs_completion') return false;
-      } else if (filterStatus === 'approved') {
-        if (r.isApproved === false || (r.status !== 'approved' && r.status !== 'active')) return false;
-      } else if (filterStatus === 'rejected') {
-        if (r.status !== 'rejected') return false;
-      }
-      if (moderationSearch.trim()) {
-        const q = moderationSearch.toLowerCase();
-        return (
-          (r.requestCode && r.requestCode.toLowerCase().includes(q)) ||
-          r.propertyType.toLowerCase().includes(q) ||
-          r.preferredDistrict.toLowerCase().includes(q) ||
-          (r.tenantPhone && r.tenantPhone.includes(q)) ||
-          (r.tenantName && r.tenantName.toLowerCase().includes(q))
-        );
-      }
-      return true;
-    });
-  }, [tenantRequests, filterStatus, moderationSearch]);
-
-  const handleCreateBlock = (e: React.FormEvent) => {
-    e.preventDefault();
-    setBlockPhoneError(null);
-    if (!blockName.trim() || !blockPhone.trim() || !onAddBlockedUser) return;
-
-    const phoneErr = validateEgyptianPhone(blockPhone, 'رقم الهاتف المراد حظره');
-    if (phoneErr) {
-      setBlockPhoneError(phoneErr);
-      return;
-    }
-
-    onAddBlockedUser({
-      name: blockName.trim(),
-      phone: normalizeEgyptianPhone(blockPhone),
-      role: blockRole,
-      reason: blockReason.trim() || 'مخالفة شروط وسياسات التطبيق في أسيوط',
-    });
-    setBlockName('');
-    setBlockPhone('');
-    setBlockReason('');
-    setBlockPhoneError(null);
-    setIsAddBlockOpen(false);
-  };
-
-  // Export State
-  const [isExportOpen, setIsExportOpen] = useState(false);
-  const exportRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (exportRef.current && !exportRef.current.contains(event.target as Node)) {
-        setIsExportOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Export Columns Configuration
-  const propertyExportColumns = [
-    { header: 'كود العقار', accessor: (p: Property) => p.code },
-    { header: 'عنوان الإعلان', accessor: (p: Property) => p.title },
-    { header: 'الغرض', accessor: (p: Property) => (p.purpose === 'rent' ? 'إيجار' : 'بيع') },
-    { header: 'نوع العقار', accessor: (p: Property) => p.propertyType },
-    { header: 'الحي / المنطقة', accessor: (p: Property) => p.district },
-    { header: 'السعر (ج.م)', accessor: (p: Property) => p.price },
-    { header: 'هاتف المعلن', accessor: (p: Property) => p.ownerPhone || '-' },
-    { header: 'اسم المعلن', accessor: (p: Property) => p.ownerName || '-' },
-    {
-      header: 'حالة العقار',
-      accessor: (p: Property) =>
-        p.status === 'approved'
-          ? 'معتمد'
-          : p.status === 'pending'
-          ? 'قيد المراجعة'
-          : p.status === 'needs_completion'
-          ? 'استكمال بيانات'
-          : 'مرفوض',
-    },
-    { header: 'تاريخ الإضافة', accessor: (p: Property) => (p.createdAt ? new Date(p.createdAt).toLocaleDateString('ar-EG') : '-') },
-  ];
+  useEffect(() => {
+    loadDatabaseData();
+  }, [loadDatabaseData]);
 
-  const requestExportColumns = [
-    { header: 'كود الطلب', accessor: (r: TenantRequest) => r.requestCode || r.id },
-    { header: 'اسم صاحب الطلب', accessor: (r: TenantRequest) => r.tenantName },
-    { header: 'رقم الهاتف', accessor: (r: TenantRequest) => r.tenantPhone },
-    { header: 'نوع العقار المطلوب', accessor: (r: TenantRequest) => r.propertyType },
-    { header: 'الحي المفضل', accessor: (r: TenantRequest) => r.preferredDistrict },
-    { header: 'الحد الأقصى للميزانية', accessor: (r: TenantRequest) => r.maxPrice },
-    {
-      header: 'حالة الطلب',
-      accessor: (r: TenantRequest) =>
-        r.status === 'approved' || r.status === 'active' ? 'معتمد' : r.status === 'pending' ? 'قيد المراجعة' : 'مرفوض',
-    },
-    { header: 'تاريخ الطلب', accessor: (r: TenantRequest) => (r.createdAt ? new Date(r.createdAt).toLocaleDateString('ar-EG') : '-') },
-  ];
-
-  const handleExportPropertiesCSV = () => {
-    exportToCSV(filteredProperties, propertyExportColumns, 'قائمة_عقارات_أسيوط');
-    setIsExportOpen(false);
+  // Toast feedback helper
+  const showToast = (title: string, message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    if (onAddToast) {
+      onAddToast({
+        id: `toast-${Date.now()}`,
+        type,
+        title,
+        message,
+        duration: 3500,
+      });
+    }
   };
 
-  const handleExportPropertiesPDF = () => {
-    exportToPrintablePDF('سجل إعلانات العقارات المعروضة - أسيوط', filteredProperties, propertyExportColumns, 'تقرير العقارات المعروضة للإيجار والبيع');
-    setIsExportOpen(false);
+  // Group Handlers
+  const handleUpsertGroup = async (group: PropertyGroupDefinition): Promise<boolean> => {
+    const success = await dbUpsertPropertyGroup(group);
+    if (success) {
+      setGroups((prev) => {
+        const idx = prev.findIndex((g) => g.id === group.id);
+        const updated = idx >= 0 ? prev.map((g) => (g.id === group.id ? group : g)) : [...prev, group];
+        safeStorageSetItem('ardaw_dynamic_groups', updated);
+        window.dispatchEvent(new CustomEvent('ardaw_form_config_updated'));
+        return updated;
+      });
+      showToast('المجموعات العقارية', `تم حفظ وتحديث مجموعة "${group.name}" بنجاح في Supabase.`);
+      return true;
+    }
+    showToast('خطأ في الحفظ', 'تعذر حفظ المجموعة في قاعدة البيانات. تحقق من الاتصال.', 'error');
+    return false;
   };
 
-  const handleExportRequestsCSV = () => {
-    exportToCSV(filteredRequests, requestExportColumns, 'طلبات_المستأجرين_أسيوط');
-    setIsExportOpen(false);
+  const handleDeleteGroup = async (groupId: string): Promise<boolean> => {
+    const success = await dbDeletePropertyGroup(groupId);
+    if (success) {
+      setGroups((prev) => {
+        const updated = prev.filter((g) => g.id !== groupId);
+        safeStorageSetItem('ardaw_dynamic_groups', updated);
+        window.dispatchEvent(new CustomEvent('ardaw_form_config_updated'));
+        return updated;
+      });
+      showToast('حذف المجموعة', 'تم حذف المجموعة بنجاح من قاعدة البيانات.');
+      return true;
+    }
+    showToast('خطأ في الحذف', 'تعذر حذف المجموعة من Supabase.', 'error');
+    return false;
   };
 
-  const handleExportRequestsPDF = () => {
-    exportToPrintablePDF('سجل طلبات المستأجرين والباحثين - أسيوط', filteredRequests, requestExportColumns, 'تقرير طلبات الإيجار والشراء المسجلة');
-    setIsExportOpen(false);
+  // Property Type Handlers
+  const handleUpsertType = async (type: PropertyTypeDefinition): Promise<boolean> => {
+    const success = await dbUpsertPropertyType(type);
+    if (success) {
+      setPropertyTypes((prev) => {
+        const idx = prev.findIndex((t) => t.id === type.id);
+        const updated = idx >= 0 ? prev.map((t) => (t.id === type.id ? type : t)) : [...prev, type];
+        safeStorageSetItem('ardaw_dynamic_types', updated);
+        window.dispatchEvent(new CustomEvent('ardaw_form_config_updated'));
+        return updated;
+      });
+      showToast('أنواع العقارات', `تم حفظ وتحديث نوع "${type.name}" بنجاح في Supabase.`);
+      return true;
+    }
+    showToast('خطأ في الحفظ', 'تعذر حفظ نوع العقار في قاعدة البيانات.', 'error');
+    return false;
   };
 
-  // Active Section Metadata lookup from ADMIN_NAVIGATION_ITEMS
-  const activeNavItem = useMemo(() => {
-    return ADMIN_NAVIGATION_ITEMS.find((m) => m.id === activeSection) || ADMIN_NAVIGATION_ITEMS[0];
-  }, [activeSection]);
+  const handleDeleteType = async (typeId: string): Promise<boolean> => {
+    const success = await dbDeletePropertyType(typeId);
+    if (success) {
+      setPropertyTypes((prev) => {
+        const updated = prev.filter((t) => t.id !== typeId);
+        safeStorageSetItem('ardaw_dynamic_types', updated);
+        window.dispatchEvent(new CustomEvent('ardaw_form_config_updated'));
+        return updated;
+      });
+      showToast('حذف النوع', 'تم حذف نوع العقار بنجاح من قاعدة البيانات.');
+      return true;
+    }
+    showToast('خطأ في الحذف', 'تعذر حذف نوع العقار من Supabase.', 'error');
+    return false;
+  };
+
+  // Field Definition Handlers
+  const handleUpsertField = async (field: FormFieldDefinition): Promise<boolean> => {
+    const success = await dbUpsertFormFieldDefinition(field);
+    if (success) {
+      setFormFields((prev) => {
+        const idx = prev.findIndex((f) => f.id === field.id);
+        const updated = idx >= 0 ? prev.map((f) => (f.id === field.id ? field : f)) : [...prev, field];
+        safeStorageSetItem('ardaw_dynamic_fields', updated);
+        window.dispatchEvent(new CustomEvent('ardaw_form_config_updated'));
+        return updated;
+      });
+      showToast('حقول الاستمارات', `تم حفظ الحقل "${field.label}" بنجاح في Supabase.`);
+      return true;
+    }
+    showToast('خطأ في الحفظ', 'تعذر حفظ الحقل في قاعدة البيانات.', 'error');
+    return false;
+  };
+
+  const handleDeleteField = async (fieldId: string): Promise<boolean> => {
+    const success = await dbDeleteFormFieldDefinition(fieldId);
+    if (success) {
+      setFormFields((prev) => {
+        const updated = prev.filter((f) => f.id !== fieldId);
+        safeStorageSetItem('ardaw_dynamic_fields', updated);
+        window.dispatchEvent(new CustomEvent('ardaw_form_config_updated'));
+        return updated;
+      });
+      showToast('حذف الحقل', 'تم حذف الحقل بنجاح من قاعدة البيانات.');
+      return true;
+    }
+    showToast('خطأ في الحذف', 'تعذر حذف الحقل من Supabase.', 'error');
+    return false;
+  };
+
+  // Rating Delete Handler
+  const handleDeleteRating = async (ratingId: string): Promise<boolean> => {
+    const success = await dbDeletePropertyRating(ratingId);
+    if (success) {
+      setRatings((prev) => prev.filter((r) => r.id !== ratingId));
+      showToast('تقييمات العقارات', 'تم حذف التقييم بنجاح من قاعدة البيانات.');
+      return true;
+    }
+    showToast('خطأ في الحذف', 'تعذر حذف التقييم من Supabase.', 'error');
+    return false;
+  };
+
+  // Trend Post Handlers
+  const handleUpdateTrendStatus = async (
+    postId: string, 
+    status: 'active' | 'approved' | 'rejected' | 'pending' | 'removed', 
+    isApproved?: boolean
+  ): Promise<boolean> => {
+    const success = await dbUpdateTrendPostStatus(postId, status, isApproved);
+    if (success) {
+      setTrendPosts((prev) =>
+        prev.map((tp) => (tp.id === postId ? { ...tp, status, isApproved: Boolean(isApproved) } : tp))
+      );
+      showToast('منشورات الترند', `تم تحديث حالة المنشور إلى: ${status === 'approved' ? 'معتمد' : status}`);
+      return true;
+    }
+    showToast('خطأ في التحديث', 'تعذر تحديث حالة المنشور في Supabase.', 'error');
+    return false;
+  };
+
+  const handleDeleteTrendPost = async (postId: string): Promise<boolean> => {
+    const success = await dbDeleteTrendPost(postId);
+    if (success) {
+      setTrendPosts((prev) => prev.filter((tp) => tp.id !== postId));
+      showToast('منشورات الترند', 'تم حذف المنشور نهائياً من قاعدة البيانات.');
+      return true;
+    }
+    showToast('خطأ في الحذف', 'تعذر حذف المنشور من Supabase.', 'error');
+    return false;
+  };
+
+  // User Handlers
+  const handleUpdateUser = async (user: AppUser): Promise<boolean> => {
+    const success = await dbUpsertUser(user);
+    if (success) {
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? user : u)));
+      showToast('إدارة المستخدمين', `تم تحديث بيانات المستخدم ${user.name} بنجاح.`);
+      return true;
+    }
+    showToast('خطأ في التحديث', 'تعذر تحديث بيانات المستخدم.', 'error');
+    return false;
+  };
+
+  const handleBlockUser = async (userId: string, isBlocked: boolean, reason?: string): Promise<boolean> => {
+    const success = await dbUpdateUserBlockStatus(userId, isBlocked, reason);
+    if (success) {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId || u.phone === userId ? { ...u, isBlocked, blockedReason: reason } : u))
+      );
+      showToast('حظر المستخدمين', isBlocked ? 'تم حظر المستخدم بنجاح.' : 'تم إلغاء حظر المستخدم بنجاح.');
+      return true;
+    }
+    showToast('خطأ في الحظر', 'تعذر تحديث حالة حظر المستخدم في Supabase.', 'error');
+    return false;
+  };
+
+  // Property Delete Handler
+  const handleDeletePropertyWrap = async (propertyId: string): Promise<boolean> => {
+    if (onDeleteProperty) {
+      onDeleteProperty(propertyId);
+    } else {
+      await dbDeleteProperty(propertyId);
+    }
+    showToast('حذف العقار', 'تم حذف العقار نهائياً من المنظومة.');
+    return true;
+  };
+
+  // Tenant Request Delete Handler
+  const handleDeleteTenantRequestWrap = async (requestId: string): Promise<boolean> => {
+    if (onDeleteTenantRequest) {
+      onDeleteTenantRequest(requestId);
+    } else {
+      await dbDeleteTenantRequest(requestId);
+    }
+    showToast('حذف الطلب', 'تم حذف طلب المستأجر نهائياً من المنظومة.');
+    return true;
+  };
+
+  // Pending Moderation Count
+  const pendingModerationCount = properties.filter(
+    (p) => !p.isApproved && p.status !== 'approved' && p.status !== 'rejected'
+  ).length;
+
+  const blockedUsersCount = users.filter((u) => u.isBlocked).length;
+
+  // Active section renderer
+  const renderActiveSectionContent = () => {
+    switch (activeSection) {
+      case 'overview':
+        return (
+          <AdminOverviewSection
+            currentUser={currentUser}
+            properties={properties}
+            tenantRequests={tenantRequests}
+            users={users}
+            ratings={ratings}
+            trendPosts={trendPosts}
+            groups={groups}
+            propertyTypes={propertyTypes}
+            fields={formFields}
+            onNavigate={(sec) => setActiveSection(sec)}
+            onRefreshAll={loadDatabaseData}
+          />
+        );
+
+      case 'properties':
+      case 'moderation':
+        return (
+          <AdminPropertiesSection
+            currentUser={currentUser}
+            properties={properties}
+            groups={groups}
+            onUpdateStatus={(pId, stat, reason) => onUpdatePropertyStatus(pId, stat, reason)}
+            onDeleteProperty={handleDeletePropertyWrap}
+            onOpenDetails={onOpenDetails}
+            onEditProperty={onEditProperty}
+            onRefresh={loadDatabaseData}
+          />
+        );
+
+      case 'requests':
+        return (
+          <AdminRequestsSection
+            currentUser={currentUser}
+            tenantRequests={tenantRequests}
+            properties={properties}
+            groups={groups}
+            onUpdateStatus={onUpdateTenantRequestStatus}
+            onDeleteRequest={handleDeleteTenantRequestWrap}
+            onOpenDetails={onOpenTenantRequestDetails}
+            onEditRequest={onEditTenantRequest}
+            onRefresh={loadDatabaseData}
+          />
+        );
+
+      case 'users':
+      case 'blocks':
+        return (
+          <AdminUsersSection
+            currentUser={currentUser}
+            users={users}
+            properties={properties}
+            tenantRequests={tenantRequests}
+            onUpdateUser={handleUpdateUser}
+            onBlockUser={handleBlockUser}
+            onRefresh={loadDatabaseData}
+            onOpenPropertyDetails={onOpenDetails}
+            onOpenRequestDetails={onOpenTenantRequestDetails}
+          />
+        );
+
+      case 'groups':
+        return (
+          <AdminGroupsSection
+            currentUser={currentUser}
+            groups={groups}
+            propertyTypes={propertyTypes}
+            onUpsertGroup={handleUpsertGroup}
+            onDeleteGroup={handleDeleteGroup}
+            onRefresh={loadDatabaseData}
+          />
+        );
+
+      case 'types':
+        return (
+          <AdminTypesSection
+            currentUser={currentUser}
+            propertyTypes={propertyTypes}
+            groups={groups}
+            onUpsertType={handleUpsertType}
+            onDeleteType={handleDeleteType}
+            onRefresh={loadDatabaseData}
+          />
+        );
+
+      case 'fields':
+        return (
+          <AdminFieldsSection
+            currentUser={currentUser}
+            fields={formFields}
+            groups={groups}
+            onUpsertField={handleUpsertField}
+            onDeleteField={handleDeleteField}
+            onRefresh={loadDatabaseData}
+          />
+        );
+
+      case 'districts':
+        return (
+          <AdminDistrictsSection
+            currentUser={currentUser}
+            districts={districts}
+            onUpdateDistricts={(updated) => {
+              setDistricts(updated);
+              safeStorageSetItem('ardaw_dynamic_districts', updated);
+              window.dispatchEvent(new CustomEvent('ardaw_form_config_updated'));
+              showToast('أحياء أسيوط', 'تم تحديث قائمة المناطق بنجاح.');
+            }}
+          />
+        );
+
+      case 'ratings':
+        return (
+          <AdminRatingsSection
+            currentUser={currentUser}
+            ratings={ratings}
+            onDeleteRating={handleDeleteRating}
+            onRefresh={loadDatabaseData}
+          />
+        );
+
+      case 'trend':
+        return (
+          <AdminTrendPostsSection
+            currentUser={currentUser}
+            trendPosts={trendPosts}
+            onUpdateStatus={handleUpdateTrendStatus}
+            onDeletePost={handleDeleteTrendPost}
+            onRefresh={loadDatabaseData}
+          />
+        );
+
+      case 'roles_management':
+        return (
+          <RoleClassificationManagement
+            currentUser={currentUser}
+            onNavigateToUsers={() => setActiveSection('users')}
+          />
+        );
+
+      case 'admins':
+        return (
+          <AdminRoleManagement
+            currentUser={currentUser}
+            onAdminsUpdated={loadDatabaseData}
+          />
+        );
+
+      case 'logs':
+        return (
+          <AdminAuditLogsSection
+            currentUser={currentUser}
+          />
+        );
+
+      case 'settings':
+      case 'export_settings':
+        return (
+          <AdminSettingsSection
+            currentUser={currentUser}
+            properties={properties}
+            tenantRequests={tenantRequests}
+            users={users}
+          />
+        );
+
+      case 'screenshot_converter':
+        return (
+          <ScreenshotConverter
+            onPublishProperty={(p) => onAddProperty && onAddProperty(p)}
+            onPublishTenantRequest={(r) => onAddTenantRequest && onAddTenantRequest(r)}
+          />
+        );
+
+      case 'database_migrations':
+        return (
+          <DatabaseMigrationsTab
+            onAddToast={onAddToast}
+          />
+        );
+
+      case 'dropdowns':
+        return (
+          <DropdownManager
+            categories={dropdownCategories}
+            onUpdateCategory={onUpdateDropdownCategories}
+            utilities={utilityDefinitions}
+            onUpdateUtilities={onUpdateUtilityDefinitions}
+            onResetDefaults={onResetDefaults}
+          />
+        );
+
+      default:
+        return (
+          <AdminOverviewSection
+            currentUser={currentUser}
+            properties={properties}
+            tenantRequests={tenantRequests}
+            users={users}
+            ratings={ratings}
+            trendPosts={trendPosts}
+            groups={groups}
+            propertyTypes={propertyTypes}
+            fields={formFields}
+            onNavigate={(sec) => setActiveSection(sec)}
+            onRefreshAll={loadDatabaseData}
+          />
+        );
+    }
+  };
 
   return (
-    <div className="space-y-4">
-      {/* ========================================================================= */}
-      {/* 1. القائمة الجانبية المنزلقة للموبايل (Mobile Slide-over Drawer) */}
-      {/* ========================================================================= */}
-      <AdminDrawer
-        variant="drawer"
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        activeSection={activeSection}
-        onSelectSection={(sec) => setActiveSection(sec)}
-        currentUser={currentUser}
-        pendingModerationCount={pendingModerationCount}
-        blockedUsersCount={blockedUsers.length}
-        onLockAdmin={onLockAdmin}
-      />
+    <div className="min-h-screen bg-[#F8FAFB] text-[#24313D] pb-16" dir="rtl">
+      {/* Top Mobile / Tablet Navigation Bar */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3 shadow-2xs">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {/* Mobile Hamburger Drawer Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(true)}
+              className="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+              aria-label="فتح القائمة الجانبية"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
 
-      {/* ========================================================================= */}
-      {/* 2-Column Responsive Layout: Persistent Sidebar (Desktop) + Main Content */}
-      {/* ========================================================================= */}
-      <div className="flex flex-col lg:flex-row gap-5 items-start">
-        {/* ========================================================================= */}
-        {/* 2. القائمة الجانبية الثابتة على شاشات الديسكتوب (Desktop Sidebar) */}
-        {/* ========================================================================= */}
-        <div className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-20">
-          <AdminDrawer
-            variant="sidebar"
-            isOpen={true}
-            onClose={() => {}}
-            activeSection={activeSection}
-            onSelectSection={(sec) => setActiveSection(sec)}
-            currentUser={currentUser}
-            pendingModerationCount={pendingModerationCount}
-            blockedUsersCount={blockedUsers.length}
-            onLockAdmin={onLockAdmin}
-          />
-        </div>
-
-        {/* ========================================================================= */}
-        {/* 3. Main Content View (العمود الرئيسي للمحتوى) */}
-        {/* ========================================================================= */}
-        <div className="flex-1 min-w-0 w-full space-y-4">
-          {/* Top Admin Bar: Single Compact, Flat Horizontal Strip */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs flex items-center justify-between gap-2.5">
-            {/* Right: Sleek mini Drawer Trigger Button + Active Section */}
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsDrawerOpen(true)}
-                className="w-8 h-8 rounded-xl bg-[#EAF3EF] hover:bg-[#DCECE7] text-[#124C46] border border-[#DCECE7] flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-2xs shrink-0"
-                title="فتح القائمة الجانبية للأقسام (أو اسحب الشاشة من اليمين)"
-              >
-                <Menu className="w-4 h-4 text-[#124C46] stroke-[2.5]" />
-              </button>
-
-              <div className="h-5 w-px bg-[#D6DEE5] shrink-0 hidden sm:block" />
-
-              <div className="flex items-center gap-1.5 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-[#FDF8ED] text-[#D6A84F] border border-[#D6A84F]/30 flex items-center justify-center shrink-0">
-                  {React.createElement(activeNavItem.icon, { className: 'w-3.5 h-3.5' })}
-                </div>
-                <span className="text-xs font-bold text-[#24313D] truncate hidden md:inline max-w-[140px]">
-                  {activeNavItem.title}
-                </span>
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl bg-[#124C46] text-white flex items-center justify-center font-bold shadow-xs">
+                <ShieldCheck className="w-5 h-5" />
               </div>
-            </div>
-
-            {/* Center: Scrollable Horizontal Flat Tabs (شريط مسطح منظم لكافة أقسام الإدارة المسموحة) */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1 min-w-0">
-              {ADMIN_NAVIGATION_ITEMS
-                .filter((item) => hasSectionAccess(currentUser?.role, item.id))
-                .map((item) => {
-                const isActive = activeSection === item.id;
-                const Icon = item.icon;
-                const badge =
-                  item.id === 'moderation'
-                    ? pendingModerationCount > 0 ? pendingModerationCount : null
-                    : item.id === 'blocks'
-                    ? blockedUsers.length > 0 ? blockedUsers.length : null
-                    : null;
-
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setActiveSection(item.id)}
-                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                      isActive
-                        ? 'bg-[#124C46] text-white shadow-xs'
-                        : 'bg-white hover:bg-[#F5F9F8] text-[#5D6B78] hover:text-[#24313D] border border-[#D6DEE5]'
-                    }`}
-                  >
-                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-                    <span className="whitespace-nowrap">{item.title}</span>
-                    {badge !== null && (
-                      <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                          item.id === 'moderation'
-                            ? 'bg-rose-500 text-white animate-pulse'
-                            : 'bg-amber-500 text-slate-950 font-black'
-                        }`}
-                      >
-                        {badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Left Corner: Supabase Connection Status, Quick Moderation Alert & Lock button */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <SupabaseConnectionStatus
-                onOpenSettings={() => setActiveSection('export_settings')}
-              />
-
-              {pendingModerationCount > 0 && hasSectionAccess(currentUser?.role, 'moderation') && (
-                <button
-                  type="button"
-                  onClick={() => setActiveSection('moderation')}
-                  className="px-2.5 py-1 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold flex items-center gap-1 animate-pulse cursor-pointer shrink-0 shadow-2xs"
-                  title="عناصر بانتظار المراجعة"
-                >
-                  <AlertTriangle className="w-3 h-3 text-rose-500" />
-                  <span className="hidden sm:inline">{pendingModerationCount} للمراجعة</span>
-                  <span className="sm:hidden">{pendingModerationCount}</span>
-                </button>
-              )}
-
-              {onLockAdmin && (
-                <button
-                  type="button"
-                  onClick={onLockAdmin}
-                  className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200 shrink-0"
-                  title="قفل لوحة التحكم"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                </button>
-              )}
+              <div>
+                <h1 className="text-sm sm:text-base font-extrabold text-[#124C46] font-['Tajawal','Cairo',sans-serif]">
+                  لوحة تحكم سكن أسيوط
+                </h1>
+                <p className="text-[10px] text-slate-500 hidden sm:block">
+                  إدارة شاملة وقابلة للتعديل المباشر في قاعدة البيانات
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* RBAC Section Guard: Check if current role has permission to access activeSection */}
-          {!hasSectionAccess(currentUser?.role, activeSection) ? (
-            <div className="bg-white rounded-3xl border border-rose-200 p-8 text-center max-w-md mx-auto shadow-sm my-10 animate-in fade-in duration-200">
-              <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4 border border-rose-200">
-                <Lock className="w-7 h-7" />
-              </div>
-              <h3 className="text-base font-black text-slate-900 mb-1">
-                غير مصرح لك بالوصول إلى هذا القسم
-              </h3>
-              <p className="text-xs text-slate-500 mb-5 leading-relaxed">
-                صلاحية حسابك الحالية هي (<span className="font-bold text-[#124C46]">{GRANULAR_ROLES.find(r => r.id === currentUser?.role)?.name || currentUser?.role || 'مستخدم'}</span>). تم تقييد هذا القسم وفق نظام الصلاحيات المتقدم (RBAC).
-              </p>
+          {/* Quick User & Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={loadDatabaseData}
+              disabled={isLoadingData}
+              className="p-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              title="تحديث البيانات من Supabase"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoadingData ? 'animate-spin' : ''}`} />
+            </button>
+
+            {onLockAdmin && (
               <button
                 type="button"
-                onClick={() => setActiveSection(getDefaultSectionForRole(currentUser?.role))}
-                className="px-5 py-2.5 bg-[#124C46] hover:bg-[#0D3D38] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+                onClick={onLockAdmin}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200"
               >
-                العودة للقسم المخصص لك
+                <Lock className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">قفل اللوحة</span>
               </button>
-            </div>
-          ) : (
-            <>
-          {/* القسم 1: أدوات الواجهة والفلاتر */}
-          {activeSection === 'dropdowns' && (
-            <div className="space-y-4 animate-in fade-in duration-150">
-              <DropdownManager
-                categories={dropdownCategories}
-                onUpdateCategory={onUpdateDropdownCategories}
-                utilities={utilityDefinitions}
-                onUpdateUtilities={onUpdateUtilityDefinitions}
-                onResetDefaults={onResetDefaults}
-              />
-            </div>
-          )}
+            )}
+          </div>
+        </div>
+      </header>
 
-          {/* القسم 2: إحصائيات العقارات */}
-          {activeSection === 'analytics' && (
-            <div className="space-y-4 animate-in fade-in duration-150">
-              {/* Analytics Summary */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-                  <span className="text-xs text-slate-500 font-semibold block">إجمالي العقارات</span>
-                  <span className="text-2xl font-black text-amber-600 mt-1 block">{properties.length}</span>
-                </div>
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-                  <span className="text-xs text-slate-500 font-semibold block">عروض الإيجار</span>
-                  <span className="text-2xl font-black text-blue-600 mt-1 block">{rentTotal}</span>
-                </div>
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-                  <span className="text-xs text-slate-500 font-semibold block">عروض البيع والأراضي</span>
-                  <span className="text-2xl font-black text-amber-500 mt-1 block">{saleTotal}</span>
-                </div>
-              </div>
+      {/* Main Content Layout with Desktop Sidebar & Mobile Drawer */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
+        <div className="flex gap-6 items-start">
+          {/* Desktop Fixed Sidebar (Docked on Right in RTL) */}
+          <div className="hidden lg:block w-72 shrink-0 sticky top-20 max-h-[calc(100vh-6rem)]">
+            <AdminDrawer
+              isOpen={true}
+              variant="sidebar"
+              onClose={() => {}}
+              activeSection={activeSection}
+              onSelectSection={(sec) => setActiveSection(sec)}
+              currentUser={currentUser}
+              pendingModerationCount={pendingModerationCount}
+              blockedUsersCount={blockedUsersCount}
+              onLockAdmin={onLockAdmin}
+            />
+          </div>
 
-              {/* Pie and Bar Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-                  <div>
-                    <h4 className="font-bold text-sm text-slate-900 mb-1">توزيع العقارات (إيجار مقابل بيع)</h4>
-                    <p className="text-[11px] text-slate-500 mb-3">النسبة المئوية لإعلانات الإيجار مقارنة بطلبات وعروض التمليك</p>
-                  </div>
+          {/* Mobile Overlay Drawer */}
+          <AdminDrawer
+            isOpen={isDrawerOpen}
+            variant="drawer"
+            onClose={() => setIsDrawerOpen(false)}
+            activeSection={activeSection}
+            onSelectSection={(sec) => {
+              setActiveSection(sec);
+              setIsDrawerOpen(false);
+            }}
+            currentUser={currentUser}
+            pendingModerationCount={pendingModerationCount}
+            blockedUsersCount={blockedUsersCount}
+            onLockAdmin={onLockAdmin}
+          />
 
-                  <div className="h-52">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={purposeData}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={75}
-                          innerRadius={36}
-                          dataKey="value"
-                          label={false}
-                          paddingAngle={3}
-                        >
-                          {purposeData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} stroke="#FFFFFF" strokeWidth={2} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          formatter={(value: any, name: any) => [`${value} عقار`, name]}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Clean Bottom Legend Bar showing exact percentages beneath the chart */}
-                  <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 rounded-md bg-blue-600 shrink-0 shadow-2xs" />
-                      <div className="min-w-0">
-                        <div className="font-black text-slate-900 text-xs sm:text-sm truncate">%{rentPct} للإيجار</div>
-                        <div className="text-[10px] text-slate-500 font-medium">({rentTotal} عقار متاح)</div>
-                      </div>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 rounded-md bg-amber-500 shrink-0 shadow-2xs" />
-                      <div className="min-w-0">
-                        <div className="font-black text-slate-900 text-xs sm:text-sm truncate">%{salePct} للبيع</div>
-                        <div className="text-[10px] text-slate-500 font-medium">({saleTotal} عقار متاح)</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-                  <h4 className="font-bold text-sm text-slate-900 mb-3">توزيع العقارات حسب أحياء أسيوط</h4>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={districtData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} />
-                        <YAxis allowDecimals={false} tick={{ fill: '#64748B' }} />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="إيجار" fill="#2563EB" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="بيع" fill="#D97706" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* قسم المحول الذكي لإسكرينات الفيسبوك (AI Screenshot-to-Card Converter) */}
-          {activeSection === 'screenshot_converter' && (
-            <div className="space-y-4 animate-in fade-in duration-150">
-              <ScreenshotConverter
-                onPublishProperty={(prop) => {
-                  if (onAddProperty) onAddProperty(prop);
-                }}
-                onPublishTenantRequest={(req) => {
-                  if (onAddTenantRequest) onAddTenantRequest(req);
-                }}
-                adminName={currentUser?.name}
-                adminPhone={currentUser?.phone}
-              />
-            </div>
-          )}
-
-          {/* القسم 3: الموافقات ومراجعة الإعلانات */}
-          {activeSection === 'moderation' && (
-            <div className="space-y-3">
-              {/* AI Converter Quick Callout Banner */}
-              <div className="bg-gradient-to-r from-blue-50 via-slate-50 to-amber-50/70 p-3.5 rounded-2xl border border-blue-100 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <span>المحول الذكي لإسكرينات الفيسبوك (AI OCR)</span>
-                      <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded-full border border-blue-200 font-bold">جديد</span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 mt-0.5">
-                      ارفع أي لقطة شاشة لبوست عقاري لتفريغ بياناته وأرقام التواصل ونشره فوراً في المنصة بضغطة زر.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveSection('screenshot_converter')}
-                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>فتح أداة التحويل</span>
-                </button>
-              </div>
-
-              {/* Toggle Between Offers and Requests - Light Theme */}
-              <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 gap-1.5 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setModerationType('properties')}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    moderationType === 'properties'
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
-                >
-                  <span>عروض العقارات (المعروض)</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                    moderationType === 'properties' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {properties.length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModerationType('requests')}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    moderationType === 'requests'
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
-                >
-                  <span>طلبات السكن والمطلوب</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                    moderationType === 'requests' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {tenantRequests.length}
-                  </span>
-                </button>
-              </div>
-
-              {/* Filter Pills and Search */}
-              <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-                <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto no-scrollbar">
-                  {[
-                    {
-                      id: 'all',
-                      label: 'الكل',
-                      count: moderationType === 'properties' ? properties.length : tenantRequests.length,
-                    },
-                    {
-                      id: 'pending',
-                      label: 'بانتظار الموافقة ومراجعة الإدارة',
-                      count:
-                        moderationType === 'properties'
-                          ? properties.filter(
-                              (p) =>
-                                (p.isApproved === false || p.status === 'pending' || p.status === 'pending_approval' || p.status === 'under_review') &&
-                                p.status !== 'needs_completion' &&
-                                p.status !== 'rejected'
-                            ).length
-                          : tenantRequests.filter(
-                              (r) =>
-                                (r.isApproved === false || r.status === 'pending' || r.status === 'pending_approval' || r.status === 'under_review') &&
-                                r.status !== 'needs_completion' &&
-                                r.status !== 'rejected'
-                            ).length,
-                    },
-                    {
-                      id: 'needs_completion',
-                      label: 'مطلوب استكمال بيان',
-                      count:
-                        moderationType === 'properties'
-                          ? properties.filter((p) => p.status === 'needs_completion').length
-                          : tenantRequests.filter((r) => r.status === 'needs_completion').length,
-                    },
-                    {
-                      id: 'approved',
-                      label: 'معتمدة ومنشورة',
-                      count:
-                        moderationType === 'properties'
-                          ? properties.filter((p) => p.isApproved !== false && p.status === 'approved').length
-                          : tenantRequests.filter((r) => r.isApproved !== false && (r.status === 'approved' || r.status === 'active')).length,
-                    },
-                    {
-                      id: 'rejected',
-                      label: 'مرفوضة',
-                      count:
-                        moderationType === 'properties'
-                          ? properties.filter((p) => p.status === 'rejected').length
-                          : tenantRequests.filter((r) => r.status === 'rejected').length,
-                    },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setFilterStatus(tab.id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-colors border ${
-                        filterStatus === tab.id
-                          ? 'bg-blue-600 text-white border-blue-500 shadow-xs'
-                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 hover:text-slate-900'
-                      }`}
-                    >
-                      {tab.label} ({tab.count})
-                    </button>
-                  ))}
-                </div>
-
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={moderationSearch}
-                    onChange={(e) => setModerationSearch(e.target.value)}
-                    placeholder="بحث بالكود، الحي، الهاتف..."
-                    className="w-full pr-9 pl-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              {/* Moderation List */}
-              <div className="space-y-2.5">
-                {moderationType === 'properties' ? (
-                  /* 1. PROPERTIES / OFFERS */
-                  filteredProperties.length === 0 ? (
-                    <div className="bg-white p-8 rounded-2xl text-center text-slate-500 border border-slate-200 shadow-xs">
-                      لا توجد عروض عقارية مطابقة لخيارات الفلترة
-                    </div>
-                  ) : (
-                    filteredProperties.map((item) => {
-                      const isPending =
-                        (item.isApproved === false || item.status === 'pending' || item.status === 'pending_approval' || item.status === 'under_review') &&
-                        item.status !== 'needs_completion' &&
-                        item.status !== 'rejected';
-                      const isNeedsComp = item.status === 'needs_completion';
-
-                      return (
-                        <div
-                          key={item.id}
-                          className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all space-y-3"
-                        >
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-sm text-slate-900">
-                                كود: {item.code} ({item.propertyType})
-                              </span>
-                              <span
-                                className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                                  item.purpose === 'rent'
-                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                    : 'bg-amber-50 text-amber-700 border border-amber-200'
-                                }`}
-                              >
-                                {item.purpose === 'rent' ? 'إيجار' : 'بيع'}
-                              </span>
-                              <span className="text-xs text-slate-500 font-medium">• {item.district}</span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {isPending ? (
-                                <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                                  بانتظار المراجعة والاعتماد
-                                </span>
-                              ) : isNeedsComp ? (
-                                <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 text-amber-600" />
-                                  مطلوب استكمال بيان
-                                </span>
-                              ) : item.status === 'rejected' ? (
-                                <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <XCircle className="w-3 h-3 text-rose-500" />
-                                  تم الرفض
-                                </span>
-                              ) : (
-                                <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                  معتمد ومنشور
-                                </span>
-                              )}
-
-                              {onDeleteProperty && (
-                                <button
-                                  type="button"
-                                  onClick={() => onDeleteProperty(item.id)}
-                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                  title="حذف الإعلان نهائياً"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* بطاقة تفاصيل وبيانات صاحب الإعلان */}
-                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center font-bold text-xs shrink-0">
-                                  <User className="w-3.5 h-3.5" />
-                                </div>
-                                <div>
-                                  <span className="text-[10px] text-slate-500 block font-medium">بيانات صاحب الإعلان / المعلن</span>
-                                  <span className="font-bold text-xs sm:text-sm text-slate-900">{item.ownerName || 'مالك العقار'}</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {item.ownerPhone && (
-                                  <>
-                                    <a
-                                      href={`tel:${item.ownerPhone}`}
-                                      className="px-2.5 py-1 rounded-lg bg-white text-emerald-700 hover:bg-emerald-50 text-xs font-bold border border-emerald-200 flex items-center gap-1 transition-colors shadow-2xs"
-                                      title="اتصال هاتفياً بالمعلن"
-                                    >
-                                      <Phone className="w-3 h-3" />
-                                      <span dir="ltr">{item.ownerPhone}</span>
-                                    </a>
-                                    <a
-                                      href={`https://wa.me/20${item.ownerPhone.replace(/^0+/, '')}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs active:scale-95"
-                                      title="مراسلة عبر الواتساب"
-                                    >
-                                      <MessageCircle className="w-3.5 h-3.5" />
-                                      <span>واتساب</span>
-                                    </a>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-600 pt-0.5">
-                              <div>السعر: <strong className="text-amber-700 font-mono font-bold">{item.price.toLocaleString()} ج.م</strong></div>
-                              <div>المساحة: <strong className="text-slate-900 font-bold">{item.area} م²</strong></div>
-                              <div>تاريخ الإضافة: <strong className="font-mono text-slate-700">{item.createdAt || 'اليوم'}</strong></div>
-                              <div>المصدر: <strong className="text-slate-700">{item.source || 'مالك مباشر'}</strong></div>
-                            </div>
-                          </div>
-
-                          {/* ملاحظة استكمال البيان إذا كانت مسجلة مسبقاً */}
-                          {item.adminNote && (
-                            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium flex items-start gap-2">
-                              <MessageSquare className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                              <div>
-                                <span className="font-bold block">ملاحظة الإدارة للمعلن:</span>
-                                {item.adminNote}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* مربع إدخال ملاحظة الإدارة عند طلب استكمال البيانات */}
-                          {noteInputId === item.id && (
-                            <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-2 animate-in fade-in">
-                              <label className="block text-xs font-bold text-amber-900">
-                                حدد البيان المطلوب استكماله من المعلن (مثال: توضيح نوع العداد، رقم الطابق، إلخ):
-                              </label>
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  value={customNote}
-                                  onChange={(e) => setCustomNote(e.target.value)}
-                                  placeholder="اكتب البيان المطلوب استكماله بالتحديد..."
-                                  className="flex-1 p-2 bg-white rounded-lg border border-amber-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    onUpdatePropertyStatus(
-                                      item.id,
-                                      'needs_completion',
-                                      customNote.trim() || 'برجاء استكمال وتدقيق بيانات العقار الناقصة.'
-                                    );
-                                    setNoteInputId(null);
-                                    setCustomNote('');
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs cursor-pointer shadow-xs"
-                                >
-                                  حفظ وإرسال الطلب
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setNoteInputId(null);
-                                    setCustomNote('');
-                                  }}
-                                  className="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs cursor-pointer"
-                                >
-                                  إلغاء
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Quick Publish Action if Pending */}
-                          {(item.status !== 'approved' || item.isApproved === false) && (
-                            <button
-                              type="button"
-                              onClick={() => onUpdatePropertyStatus(item.id, 'approved')}
-                              className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-98 cursor-pointer border border-emerald-500"
-                              title="موافقة واعتماد نشر الإعلان"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-100 shrink-0" />
-                              <span>اعتماد ونشر الإعلان فوراً على المنظومة</span>
-                            </button>
-                          )}
-
-                          {/* PropertyCard Admin Actions Container */}
-                          <div 
-                            className="pt-2.5 border-t border-slate-100 flex flex-row flex-wrap items-center justify-start gap-2 w-full"
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'row',
-                              flexWrap: 'wrap',
-                              gap: '8px',
-                              justifyContent: 'flex-start',
-                            }}
-                          >
-                            {/* 1. Preview (معاينة) */}
-                            <button
-                              type="button"
-                              onClick={() => onOpenDetails(item)}
-                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-slate-200 shadow-2xs cursor-pointer"
-                              title="معاينة تفاصيل الإعلان"
-                            >
-                              <Eye className="w-4 h-4 text-slate-500 shrink-0" />
-                              <span className="truncate">معاينة</span>
-                            </button>
-
-                            {/* 2. Edit (تعديل) */}
-                            <button
-                              type="button"
-                              onClick={() => onEditProperty && onEditProperty(item)}
-                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-blue-200 shadow-2xs cursor-pointer"
-                              title="تعديل بيانات هذا الإعلان"
-                            >
-                              <Edit3 className="w-4 h-4 text-blue-700 shrink-0" />
-                              <span className="truncate">تعديل</span>
-                            </button>
-
-                            {/* 3. Complete (استكمال) */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNoteInputId(item.id);
-                                setCustomNote(item.adminNote || '');
-                              }}
-                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-amber-400 shadow-2xs cursor-pointer"
-                              title="طلب استكمال بيانات ناقصة من المعلن"
-                            >
-                              <AlertTriangle className="w-4 h-4 text-slate-950 shrink-0" />
-                              <span className="truncate">استكمال</span>
-                            </button>
-
-                            {/* 4. Reject (رفض) */}
-                            <button
-                              type="button"
-                              onClick={() => onUpdatePropertyStatus(item.id, 'rejected')}
-                              disabled={item.status === 'rejected'}
-                              className={`flex-1 min-w-[75px] h-9 px-2.5 rounded-xl text-white font-bold text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 shadow-2xs border cursor-pointer ${
-                                item.status === 'rejected'
-                                  ? 'bg-rose-100 border-rose-200 text-rose-400 cursor-not-allowed opacity-75'
-                                  : 'bg-rose-600 hover:bg-rose-700 border-rose-700'
-                              }`}
-                              title="رفض الإعلان"
-                            >
-                              <XCircle className="w-4 h-4 text-white shrink-0" />
-                              <span className="truncate">رفض</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )
-                ) : (
-                  /* 2. TENANT REQUESTS / ORDERS */
-                  filteredRequests.length === 0 ? (
-                    <div className="bg-white p-8 rounded-2xl text-center text-slate-500 border border-slate-200 shadow-xs">
-                      لا توجد طلبات سكن مطابقة لخيارات الفلترة
-                    </div>
-                  ) : (
-                    filteredRequests.map((req) => {
-                      const isPending =
-                        (req.isApproved === false || req.status === 'pending' || req.status === 'pending_approval' || req.status === 'under_review') &&
-                        req.status !== 'needs_completion' &&
-                        req.status !== 'rejected';
-                      const isNeedsComp = req.status === 'needs_completion';
-
-                      return (
-                        <div
-                          key={req.id}
-                          className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all space-y-3"
-                        >
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-sm text-slate-900">
-                                كود الطلب: {req.requestCode || req.id}
-                              </span>
-                              <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-bold">
-                                مطلوب: {req.propertyType}
-                              </span>
-                              <span className="text-xs text-slate-500 font-medium">
-                                • {req.preferredDistrict} ({req.purpose === 'rent' ? 'إيجار' : 'شراء'})
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {isPending ? (
-                                <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                                  قيد المراجعة الإدارية
-                                </span>
-                              ) : isNeedsComp ? (
-                                <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 text-amber-600" />
-                                  مطلوب استكمال بيان
-                                </span>
-                              ) : req.status === 'rejected' ? (
-                                <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <XCircle className="w-3 h-3 text-rose-500" />
-                                  مرفوض
-                                </span>
-                              ) : (
-                                <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                  معتمد ونشط
-                                </span>
-                              )}
-
-                              {onDeleteTenantRequest && (
-                                <button
-                                  type="button"
-                                  onClick={() => onDeleteTenantRequest(req.id)}
-                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                  title="حذف الطلب نهائياً"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* بطاقة تفاصيل وبيانات صاحب طلب السكن */}
-                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center justify-center font-bold text-xs shrink-0">
-                                  <User className="w-3.5 h-3.5" />
-                                </div>
-                                <div>
-                                  <span className="text-[10px] text-slate-500 block font-medium">بيانات صاحب الطلب / الباحث</span>
-                                  <span className="font-bold text-xs sm:text-sm text-slate-900">{req.tenantName || 'مواطن باحث عن عقار'}</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {req.tenantPhone && (
-                                  <>
-                                    <a
-                                      href={`tel:${req.tenantPhone}`}
-                                      className="px-2.5 py-1 rounded-lg bg-white text-emerald-700 hover:bg-emerald-50 text-xs font-bold border border-emerald-200 flex items-center gap-1 transition-colors shadow-2xs"
-                                      title="اتصال هاتفياً بصاحب الطلب"
-                                    >
-                                      <Phone className="w-3 h-3" />
-                                      <span dir="ltr">{req.tenantPhone}</span>
-                                    </a>
-                                    <a
-                                      href={`https://wa.me/20${req.tenantPhone.replace(/^0+/, '')}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs active:scale-95"
-                                      title="مراسلة عبر الواتساب"
-                                    >
-                                      <MessageCircle className="w-3.5 h-3.5" />
-                                      <span>واتساب</span>
-                                    </a>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-600 pt-0.5">
-                              <div>
-                                الميزانية:{' '}
-                                <strong className="text-amber-700 font-mono font-bold">
-                                  {req.minPrice ? `${req.minPrice.toLocaleString()} - ` : ''}
-                                  {req.maxPrice.toLocaleString()} ج.م
-                                </strong>
-                              </div>
-                              <div>
-                                المساحة:{' '}
-                                <strong className="text-slate-900 font-bold">
-                                  {req.minArea || req.maxArea ? `${req.minArea || ''}-${req.maxArea || ''} م²` : 'غير محدد'}
-                                </strong>
-                              </div>
-                              <div>تاريخ الطلب: <strong className="font-mono text-slate-700">{req.createdAt || 'اليوم'}</strong></div>
-                              <div>الحي المفضل: <strong className="text-slate-700">{req.preferredDistrict}</strong></div>
-                            </div>
-                          </div>
-
-                          {req.notes && (
-                            <div className="text-xs text-slate-700 bg-slate-100 p-2.5 rounded-lg border border-slate-200">
-                              <span className="font-bold text-slate-900">ملاحظات الطلب: </span>
-                              {req.notes}
-                            </div>
-                          )}
-
-                          {req.adminNote && (
-                            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium flex items-start gap-2">
-                              <MessageSquare className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                              <div>
-                                <span className="font-bold block">ملاحظة الإدارة لطالب العقار:</span>
-                                {req.adminNote}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* مربع إدخال استكمال بيان للطلب */}
-                          {noteInputId === req.id && (
-                            <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-2 animate-in fade-in">
-                              <label className="block text-xs font-bold text-amber-900">
-                                حدد البيان المطلوب استكماله من صاحب الطلب:
-                              </label>
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  value={customNote}
-                                  onChange={(e) => setCustomNote(e.target.value)}
-                                  placeholder="اكتب البيان المطلوب استكماله بالتحديد..."
-                                  className="flex-1 p-2 bg-white rounded-lg border border-amber-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (onUpdateTenantRequestStatus) {
-                                      onUpdateTenantRequestStatus(
-                                        req.id,
-                                        'needs_completion',
-                                        customNote.trim() || 'برجاء استكمال وتوضيح بيانات الطلب الناقصة.'
-                                      );
-                                    }
-                                    setNoteInputId(null);
-                                    setCustomNote('');
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs cursor-pointer shadow-xs"
-                                >
-                                  حفظ وإرسال
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setNoteInputId(null);
-                                    setCustomNote('');
-                                  }}
-                                  className="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs cursor-pointer"
-                                >
-                                  إلغاء
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Quick Publish Action if Pending */}
-                          {(req.status !== 'approved' && req.status !== 'active') && onUpdateTenantRequestStatus && (
-                            <button
-                              type="button"
-                              onClick={() => onUpdateTenantRequestStatus(req.id, 'approved')}
-                              className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-98 cursor-pointer border border-emerald-500"
-                              title="موافقة واعتماد نشر الطلب"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-100 shrink-0" />
-                              <span>اعتماد ونشر الطلب فوراً على المنظومة</span>
-                            </button>
-                          )}
-
-                          {/* Tenant Request Admin Actions Container */}
-                          <div 
-                            className="pt-2.5 border-t border-slate-100 flex flex-row flex-wrap items-center justify-start gap-2 w-full"
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'row',
-                              flexWrap: 'wrap',
-                              gap: '8px',
-                              justifyContent: 'flex-start',
-                            }}
-                          >
-                            {/* 1. Preview (معاينة) */}
-                            <button
-                              type="button"
-                              onClick={() => onOpenTenantRequestDetails && onOpenTenantRequestDetails(req)}
-                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-slate-200 shadow-2xs cursor-pointer"
-                              title="معاينة تفاصيل الطلب"
-                            >
-                              <Eye className="w-4 h-4 text-slate-500 shrink-0" />
-                              <span className="truncate">معاينة</span>
-                            </button>
-
-                            {/* 2. Edit (تعديل) */}
-                            <button
-                              type="button"
-                              onClick={() => onEditTenantRequest && onEditTenantRequest(req)}
-                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-blue-200 shadow-2xs cursor-pointer"
-                              title="تعديل هذا الطلب"
-                            >
-                              <Edit3 className="w-4 h-4 text-blue-700 shrink-0" />
-                              <span className="truncate">تعديل</span>
-                            </button>
-
-                            {/* 3. Complete (استكمال) */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNoteInputId(req.id);
-                                setCustomNote(req.adminNote || '');
-                              }}
-                              className="flex-1 min-w-[75px] h-9 px-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 border border-amber-400 shadow-2xs cursor-pointer"
-                              title="طلب استكمال بيان من صاحب الطلب"
-                            >
-                              <AlertTriangle className="w-4 h-4 text-slate-950 shrink-0" />
-                              <span className="truncate">استكمال</span>
-                            </button>
-
-                            {/* 4. Reject (رفض) */}
-                            <button
-                              type="button"
-                              onClick={() => onUpdateTenantRequestStatus && onUpdateTenantRequestStatus(req.id, 'rejected')}
-                              disabled={req.status === 'rejected'}
-                              className={`flex-1 min-w-[75px] h-9 px-2.5 rounded-xl text-white font-bold text-xs inline-flex flex-row items-center justify-center gap-1.5 transition-all active:scale-95 shadow-2xs border cursor-pointer ${
-                                req.status === 'rejected'
-                                  ? 'bg-rose-100 border-rose-200 text-rose-400 cursor-not-allowed opacity-75'
-                                  : 'bg-rose-600 hover:bg-rose-700 border-rose-700'
-                              }`}
-                              title="رفض الطلب"
-                            >
-                              <XCircle className="w-4 h-4 text-white shrink-0" />
-                              <span className="truncate">رفض</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* SUB-SECTION B: USER BLOCKS (البلوكات) */}
-          {activeSection === 'blocks' && (
-            <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-                <div>
-                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                    <Ban className="w-4 h-4 text-rose-500" />
-                    <span>سجل حظر المستخدمين (البلوكات) في أسيوط</span>
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    حظر أرقام الهواتف أو الوسطاء والملاك المخالفين لمنعهم من نشر عروض وهمية أو تلقي رسائل
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsAddBlockOpen(true)}
-                  className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>إضافة حظر جديد (بلوك)</span>
-                </button>
-              </div>
-
-              {/* Add Block Modal / Inline Form */}
-              {isAddBlockOpen && (
-                <form
-                  onSubmit={handleCreateBlock}
-                  className="bg-white border border-rose-200 p-4 rounded-2xl space-y-3 animate-in fade-in shadow-xs"
-                >
-                  <h5 className="font-bold text-xs text-rose-600 flex items-center gap-1.5">
-                    <UserX className="w-4 h-4 text-rose-500" />
-                    <span>تسجيل حظر لمستخدم أو رقم هاتف مخالف</span>
-                  </h5>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">اسم المستخدم / المعلن</label>
-                      <input
-                        type="text"
-                        value={blockName}
-                        onChange={(e) => setBlockName(e.target.value)}
-                        placeholder="مثال: أحمد مصطفى"
-                        required
-                        className="w-full p-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-rose-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">رقم الهاتف المراد حظره (11 رقماً)</label>
-                      <input
-                        type="tel"
-                        dir="ltr"
-                        value={blockPhone}
-                        onChange={(e) => {
-                          const norm = normalizeEgyptianPhone(e.target.value);
-                          if (norm.length <= 11) {
-                            setBlockPhone(norm);
-                            setBlockPhoneError(null);
-                          }
-                        }}
-                        placeholder="01012345678"
-                        required
-                        className="w-full p-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-rose-500 font-mono text-right"
-                      />
-                      {blockPhoneError && (
-                        <p className="text-[10px] text-rose-600 font-bold mt-1">{blockPhoneError}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">صفة المستخدم</label>
-                      <select
-                        value={blockRole}
-                        onChange={(e) => setBlockRole(e.target.value as any)}
-                        className="w-full p-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-rose-500"
-                      >
-                        <option value="owner">مالك عقار</option>
-                        <option value="broker">سمسار / وسيط</option>
-                        <option value="tenant">مستأجر / باحث</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">سبب الحظر</label>
-                    <input
-                      type="text"
-                      value={blockReason}
-                      onChange={(e) => setBlockReason(e.target.value)}
-                      placeholder="مثال: نشر عقار وهمي في حي الجامعة، أو تكرار الإلغاء في المعاينات"
-                      className="w-full p-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-rose-500"
-                    />
-                  </div>
-                  <div className="flex items-center justify-end gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setIsAddBlockOpen(false)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 border border-slate-200 cursor-pointer"
-                    >
-                      إلغاء
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 shadow-xs cursor-pointer"
-                    >
-                      تأكيد وحفظ البلوك
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* Blocked Users List */}
-              <div className="space-y-2.5">
-                {blockedUsers.length === 0 ? (
-                  <div className="bg-white p-8 rounded-2xl text-center text-slate-500 border border-slate-200 shadow-xs">
-                    لا يوجد مستخدمون محظورون حالياً، النظام نظيف وخالٍ من المخالفات
-                  </div>
-                ) : (
-                  blockedUsers.map((bu) => (
-                    <div
-                      key={bu.id}
-                      className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-rose-600 flex items-center gap-1">
-                            <Ban className="w-3.5 h-3.5" />
-                            <span>{bu.name}</span>
-                          </span>
-                          <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
-                            {bu.phone}
-                          </span>
-                          <span className="text-[10px] bg-rose-50 border border-rose-200 text-rose-700 font-bold px-2 py-0.5 rounded-full">
-                            {bu.role === 'broker' ? 'سمسار' : bu.role === 'owner' ? 'مالك' : 'مستأجر'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600 mt-1">سبب الحظر: {bu.reason}</p>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">تاريخ البلوك: {bu.blockedAt}</span>
-                      </div>
-
-                      {onRemoveBlockedUser && (
-                        <button
-                          onClick={() => onRemoveBlockedUser(bu.id)}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors border border-slate-200 cursor-pointer shadow-2xs"
-                        >
-                          إلغاء الحظر (فك البلوك)
-                        </button>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-
-
-          {/* القسم 6: إدارة المدراء والصلاحيات */}
-          {activeSection === 'admins' && (
-            <div className="animate-in fade-in duration-150">
-              <AdminRoleManagement currentUser={currentUser} initialSubTab="admins" />
-            </div>
-          )}
-
-          {/* القسم: سجلات النشاط */}
-          {activeSection === 'logs' && (
-            <div className="animate-in fade-in duration-150">
-              <AdminRoleManagement currentUser={currentUser} initialSubTab="logs" />
-            </div>
-          )}
-
-          {/* القسم 7: إدارة المستخدمين والحسابات */}
-          {activeSection === 'users' && (
-            <div className="animate-in fade-in duration-150">
-              <UserManagement currentUser={currentUser} />
-            </div>
-          )}
-
-          {/* تصنيف وإدارة الأدوار المخصصة (Custom RBAC) */}
-          {activeSection === 'roles_management' && (
-            <div className="animate-in fade-in duration-150">
-              <RoleClassificationManagement 
-                currentUser={currentUser} 
-                onNavigateToUsers={() => setActiveSection('users')}
-              />
-            </div>
-          )}
-
-          {/* القسم 8: الإعدادات وتصدير البيانات والتقارير */}
-          {activeSection === 'export_settings' && (
-            <div className="space-y-4 animate-in fade-in duration-150">
-              {/* Header Card */}
-              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center shrink-0">
-                    <Download className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-base">
-                      تصدير البيانات والتقارير وإعدادات النظام
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      تصدير سجلات العقارات والطلبات إلى ملفات Excel أو PDF قابلة للطباعة، وإدارة ضبط النظام.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Export Grid Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Card 1: سجل العقارات */}
-                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-bold text-slate-900 text-sm sm:text-base">سجل إعلانات العقارات</span>
-                      <span className="text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full font-mono">
-                        {filteredProperties.length} عقار
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      تصدير السجل الكامل لجميع إعلانات العقارات المعروضة في أسيوط مع الأسعار، بيانات الملاك، والمواصفات.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                    <button
-                      onClick={handleExportPropertiesCSV}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
-                    >
-                      <FileSpreadsheet className="w-4 h-4" />
-                      <span>Excel (CSV)</span>
-                    </button>
-                    <button
-                      onClick={handleExportPropertiesPDF}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
-                    >
-                      <Printer className="w-4 h-4" />
-                      <span>طباعة PDF</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Card 2: سجل طلبات المستأجرين */}
-                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-bold text-slate-900 text-sm sm:text-base">سجل طلبات السكن</span>
-                      <span className="text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-mono">
-                        {filteredRequests.length} طلب
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      تصدير السجل الكامل لطلبات السكن والبحث المسجلة في أسيوط مع أرقام التواصل والأحياء والميزانيات.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                    <button
-                      onClick={handleExportRequestsCSV}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
-                    >
-                      <FileSpreadsheet className="w-4 h-4" />
-                      <span>Excel (CSV)</span>
-                    </button>
-                    <button
-                      onClick={handleExportRequestsPDF}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
-                    >
-                      <Printer className="w-4 h-4" />
-                      <span>طباعة PDF</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 3: إعدادات الربط بقاعدة بيانات الإنتاج السحابية (Supabase) */}
-              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
-                      <Database className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-sm sm:text-base">
-                        قاعدة بيانات الإنتاج والمزامنة السحابية (Supabase)
-                      </h4>
-                      <p className="text-xs text-slate-500">
-                        ربط لوحة التحكم بالمستخدمين والعقارات الحية لضمان مزامنة الإعلانات والحسابات فورياً عبر كافة الأجهزة وVercel
-                      </p>
-                    </div>
-                  </div>
-
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shrink-0 ${
-                    isSupabaseActive()
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-amber-50 text-amber-800 border border-amber-200'
-                  }`}>
-                    <span className={`w-2 h-2 rounded-full ${isSupabaseActive() ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                    <span>{isSupabaseActive() ? 'قاعدة البيانات الحية متصلة (Online)' : 'تخزين محلي متزامن'}</span>
-                  </span>
-                </div>
-
-                {sbSaveMsg && (
-                  <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold rounded-xl flex items-center gap-2 animate-in fade-in">
-                    <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span>{sbSaveMsg}</span>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-right">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      رابط مشروع Supabase (Project URL):
-                    </label>
-                    <input
-                      type="text"
-                      dir="ltr"
-                      value={sbUrl}
-                      onChange={(e) => setSbUrl(e.target.value)}
-                      placeholder="https://xyzcompany.supabase.co"
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      مفتاح الوصول العام (Anon Public Key):
-                    </label>
-                    <input
-                      type="password"
-                      dir="ltr"
-                      value={sbAnonKey}
-                      onChange={(e) => setSbAnonKey(e.target.value)}
-                      placeholder="eyJhbGciOi..."
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={handleSaveSbConfig}
-                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 border border-blue-600"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-white" />
-                    <span>حفظ وتفعيل الاتصال فوراً</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handlePushAllToSupabase}
-                    disabled={isPushingAllToSb}
-                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isPushingAllToSb ? 'animate-spin' : ''}`} />
-                    <span>{isPushingAllToSb ? 'جاري الرفع...' : 'رفع ومزامنة كافة العروض والطلبات الحالية إلى Supabase'}</span>
-                  </button>
-                </div>
-
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
-                  💡 <strong className="text-slate-900">ملاحظة هامة:</strong> يتضمن المشروع ملف <code className="text-blue-700 font-mono font-bold bg-blue-50 px-1 py-0.5 rounded border border-blue-200">supabase_schema.sql</code> في المجلد الرئيسي، يحتوي على المخطط الشامل لجداول (<code className="font-mono text-slate-800">app_users</code>, <code className="font-mono text-slate-800">properties</code>, <code className="font-mono text-slate-800">tenant_requests</code>) مع سياسات الأمان (RLS) ومفتاح التحديث اللحظي (Realtime). قم بتشغيله في SQL Editor داخل لوحة تحكم Supabase لتفعيل كافة الصلاحيات فوراً.
-                </div>
-              </div>
-
-              {/* Card 4: إعدادات إعادة الضبط وتأمين الجلسة */}
-              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div>
-                  <span className="font-bold text-slate-900 text-sm block">استعادة الإعدادات الافتراضية للقوائم</span>
-                  <span className="text-xs text-slate-500">إعادة تعيين خيارات الأحياء والمرافق وأنواع العقارات إلى التوليفات الأساسية</span>
-                </div>
-                {onResetDefaults && (
-                  <button
-                    onClick={onResetDefaults}
-                    className="flex items-center gap-1.5 py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer shrink-0 border border-slate-200"
-                  >
-                    <RotateCcw className="w-4 h-4 text-slate-500" />
-                    <span>إعادة تعيين الافتراضيات</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* القسم 10: ترقيات ومزامنة قاعدة البيانات (Database Migrations) */}
-          {activeSection === 'database_migrations' && (
-            <DatabaseMigrationsTab onAddToast={onAddToast} />
-          )}
-          </>
-          )}
+          {/* Main Content Area */}
+          <main className="flex-1 min-w-0">
+            {renderActiveSectionContent()}
+          </main>
         </div>
       </div>
     </div>

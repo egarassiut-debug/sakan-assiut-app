@@ -17,7 +17,15 @@ import {
   CheckCircle2,
   ChevronLeft,
   Sparkles,
-  Sliders
+  Sliders,
+  LayoutDashboard,
+  Building2,
+  FileText,
+  Layers,
+  MapPin,
+  Star,
+  TrendingUp,
+  Settings
 } from 'lucide-react';
 import { VerifiedUserIcon } from './FlutterIcons';
 import { SupabaseConnectionStatus } from './SupabaseConnectionStatus';
@@ -50,11 +58,89 @@ export interface AdminNavigationItem {
 }
 
 export const ADMIN_NAVIGATION_ITEMS: AdminNavigationItem[] = [
-  // 1. الموافقات ومراجعة الإعلانات
+  // 1. لوحة المؤشرات العامة
   {
-    id: 'moderation',
-    title: 'الموافقات ومراجعة الإعلانات',
-    icon: VerifiedUserIcon,
+    id: 'overview',
+    title: 'لوحة المؤشرات العامة',
+    icon: LayoutDashboard,
+  },
+  // 2. إدارة عروض العقارات
+  {
+    id: 'properties',
+    title: 'إدارة عروض العقارات',
+    icon: Building2,
+  },
+  // 3. إدارة طلبات المستأجرين
+  {
+    id: 'requests',
+    title: 'إدارة طلبات المستأجرين',
+    icon: FileText,
+  },
+  // 4. إدارة المستخدمين
+  {
+    id: 'users',
+    title: 'إدارة المستخدمين',
+    icon: UserCheck,
+  },
+  // 5. المجموعات الخمس الرئيسية
+  {
+    id: 'groups',
+    title: 'المجموعات العقارية',
+    icon: Layers,
+  },
+  // 6. أنواع العقارات
+  {
+    id: 'types',
+    title: 'أنواع العقارات التفصيلية',
+    icon: Building2,
+  },
+  // 7. حقول الاستمارات
+  {
+    id: 'fields',
+    title: 'حقول استمارات العرض والطلب',
+    icon: SlidersHorizontal,
+  },
+  // 8. أحياء ومناطق أسيوط
+  {
+    id: 'districts',
+    title: 'أحياء ومناطق أسيوط',
+    icon: MapPin,
+  },
+  // 9. تقييمات العقارات
+  {
+    id: 'ratings',
+    title: 'تقييمات العقارات',
+    icon: Star,
+  },
+  // 10. ترند ويوميات سكن أسيوط
+  {
+    id: 'trend',
+    title: 'منشورات الترند واليوميات',
+    icon: TrendingUp,
+  },
+  // 11. تصنيف وإدارة الأدوار (RBAC)
+  {
+    id: 'roles_management',
+    title: 'تصنيف الأدوار المخصص',
+    icon: Sliders,
+  },
+  // 12. إدارة طاقم المسؤولين
+  {
+    id: 'admins',
+    title: 'إدارة طاقم المسؤولين',
+    icon: ShieldCheck,
+  },
+  // 13. سجلات التدقيق والرقابة
+  {
+    id: 'logs',
+    title: 'سجلات التدقيق والرقابة',
+    icon: Activity,
+  },
+  // 14. إعدادات المنظومة والربط
+  {
+    id: 'settings',
+    title: 'الإعدادات وتصدير البيانات',
+    icon: Settings,
   },
   // المحول الذكي لإسكرينات الفيسبوك
   {
@@ -62,61 +148,14 @@ export const ADMIN_NAVIGATION_ITEMS: AdminNavigationItem[] = [
     title: 'المحول الذكي لإسكرينات الفيسبوك',
     icon: Sparkles,
   },
-  // 2. إدارة القوائم الديناميكية
-  {
-    id: 'dropdowns',
-    title: 'إدارة القوائم الديناميكية',
-    icon: SlidersHorizontal,
-  },
-  // 4. إحصائيات العقارات والتحليلات
-  {
-    id: 'analytics',
-    title: 'إحصائيات العقارات والتحليلات',
-    icon: BarChart3,
-  },
-  // 5. إدارة المستخدمين
-  {
-    id: 'users',
-    title: 'إدارة المستخدمين',
-    icon: UserCheck,
-  },
-  // تصنيف وإدارة الأدوار المخصصة (RBAC)
-  {
-    id: 'roles_management',
-    title: 'تصنيف الأدوار المخصص',
-    icon: Sliders,
-  },
-  // 6. إدارة طاقم المسؤولين
-  {
-    id: 'admins',
-    title: 'إدارة طاقم المسؤولين',
-    icon: ShieldCheck,
-  },
-  // 7. حظر المستخدمين (البلوكات)
-  {
-    id: 'blocks',
-    title: 'حظر المستخدمين (البلوكات)',
-    icon: Ban,
-  },
-  // 8. سجلات النشاط
-  {
-    id: 'logs',
-    title: 'سجلات النشاط',
-    icon: Activity,
-  },
-  // 9. الإعدادات وتصدير البيانات
-  {
-    id: 'export_settings',
-    title: 'الإعدادات وتصدير البيانات',
-    icon: Download,
-  },
-  // 10. ترقيات ومزامنة قاعدة البيانات (Migrations)
+  // ترقيات ومزامنة قاعدة البيانات
   {
     id: 'database_migrations',
     title: 'ترقيات ومزامنة قاعدة البيانات',
     icon: Database,
   },
 ];
+
 
 export const AdminDrawer: React.FC<AdminDrawerProps> = ({
   isOpen,
@@ -141,14 +180,14 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
 
   // Compute dynamic badges
   const itemsWithBadges = ADMIN_NAVIGATION_ITEMS.map((item) => {
-    if (item.id === 'moderation') {
+    if (item.id === 'moderation' || item.id === 'properties') {
       return {
         ...item,
         badge: pendingModerationCount > 0 ? pendingModerationCount : null,
         badgeColor: 'bg-rose-500 text-white animate-pulse',
       };
     }
-    if (item.id === 'blocks') {
+    if (item.id === 'blocks' || item.id === 'users') {
       return {
         ...item,
         badge: blockedUsersCount > 0 ? blockedUsersCount : null,
