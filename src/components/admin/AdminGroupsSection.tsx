@@ -52,7 +52,9 @@ export const AdminGroupsSection: React.FC<AdminGroupsSectionProps> = ({
       id: `grp_${Date.now().toString(36)}` as any,
       name: '',
       description: '',
+      icon: 'Home',
       iconName: 'Home',
+      displayOrder: groups.length + 1,
       sortOrder: groups.length + 1,
       isActive: true,
     });
@@ -63,8 +65,8 @@ export const AdminGroupsSection: React.FC<AdminGroupsSectionProps> = ({
     setFormId(group.id);
     setFormName(group.name);
     setFormDescription(group.description || '');
-    setFormIconName(group.iconName || 'Home');
-    setFormSortOrder(group.sortOrder);
+    setFormIconName(group.icon || group.iconName || 'Home');
+    setFormSortOrder(group.displayOrder ?? group.sortOrder ?? 1);
     setFormIsActive(group.isActive);
     setEditingGroup(group);
   };
@@ -77,7 +79,9 @@ export const AdminGroupsSection: React.FC<AdminGroupsSectionProps> = ({
         id: formId.trim() as any,
         name: formName.trim(),
         description: formDescription.trim(),
+        icon: formIconName.trim() || 'Home',
         iconName: formIconName.trim() || 'Home',
+        displayOrder: Number(formSortOrder) || 1,
         sortOrder: Number(formSortOrder) || 1,
         isActive: formIsActive,
       };
@@ -114,10 +118,10 @@ export const AdminGroupsSection: React.FC<AdminGroupsSectionProps> = ({
 
   const handleStartDelete = (group: PropertyGroupDefinition) => {
     // Safety check: count linked property types
-    const linkedTypes = propertyTypes.filter((t) => t.groupId === group.id);
+    const linkedTypes = propertyTypes.filter((t) => (t.categoryId || t.groupId) === group.id);
     if (linkedTypes.length > 0) {
       setDeleteBlockedReason(
-        `لا يمكن حذف هذه المجموعة لأنها تحتوي على (${linkedTypes.length}) نوع عقار مرتبط بها (مثل: ${linkedTypes.slice(0, 3).map((t) => t.name).join('، ')}). يرجى إعادة تعيين أو حذف الأنواع المرتبطة أولاً لحماية سلامة البيانات.`
+        `لا يمكن حذف هذا التصنيف/المجموعة لأنها تحتوي على (${linkedTypes.length}) نوع عقار مرتبط بها (مثل: ${linkedTypes.slice(0, 3).map((t) => t.name).join('، ')}). يرجى إعادة تعيين أو حذف الأنواع المرتبطة أولاً لحماية سلامة البيانات ومنع فقدانها.`
       );
     } else {
       setDeleteBlockedReason(null);
@@ -178,7 +182,7 @@ export const AdminGroupsSection: React.FC<AdminGroupsSectionProps> = ({
       {/* Groups Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {groups.map((group) => {
-          const linkedCount = propertyTypes.filter((t) => t.groupId === group.id).length;
+          const linkedCount = propertyTypes.filter((t) => (t.categoryId || t.groupId) === group.id).length;
 
           return (
             <div 
@@ -199,7 +203,7 @@ export const AdminGroupsSection: React.FC<AdminGroupsSectionProps> = ({
                         <span className="text-[10px] font-mono text-slate-400">({group.id})</span>
                       </h3>
                       <span className="text-[10px] text-slate-500">
-                        الترتيب: {group.sortOrder}
+                        الترتيب: {group.displayOrder ?? group.sortOrder}
                       </span>
                     </div>
                   </div>

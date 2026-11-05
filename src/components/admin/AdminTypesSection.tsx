@@ -44,7 +44,8 @@ export const AdminTypesSection: React.FC<AdminTypesSectionProps> = ({
   // Filtered types
   const filteredTypes = useMemo(() => {
     return propertyTypes.filter((t) => {
-      if (selectedGroup !== 'all' && t.groupId !== selectedGroup) return false;
+      const typeCat = (t as any).categoryId || t.groupId;
+      if (selectedGroup !== 'all' && typeCat !== selectedGroup) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
         if (!t.name.toLowerCase().includes(q) && !(t.description || '').toLowerCase().includes(q)) {
@@ -58,17 +59,20 @@ export const AdminTypesSection: React.FC<AdminTypesSectionProps> = ({
   const handleOpenAdd = () => {
     setIsNew(true);
     const newId = `pt-${Date.now().toString(36)}`;
+    const initialCat = selectedGroup !== 'all' ? selectedGroup : (groups[0]?.id || 'residential');
     setFormId(newId);
     setFormName('');
-    setFormGroupId(selectedGroup !== 'all' ? selectedGroup : (groups[0]?.id || 'residential'));
+    setFormGroupId(initialCat);
     setFormDescription('');
     setFormSortOrder(propertyTypes.length + 1);
     setFormIsActive(true);
     setEditingType({
       id: newId,
-      groupId: (selectedGroup !== 'all' ? selectedGroup : (groups[0]?.id || 'residential')) as any,
+      categoryId: initialCat as any,
+      groupId: initialCat as any,
       name: '',
       description: '',
+      displayOrder: propertyTypes.length + 1,
       sortOrder: propertyTypes.length + 1,
       isActive: true,
     });
@@ -78,9 +82,9 @@ export const AdminTypesSection: React.FC<AdminTypesSectionProps> = ({
     setIsNew(false);
     setFormId(type.id);
     setFormName(type.name);
-    setFormGroupId(type.groupId);
+    setFormGroupId((type as any).categoryId || type.groupId);
     setFormDescription(type.description || '');
-    setFormSortOrder(type.sortOrder);
+    setFormSortOrder((type as any).displayOrder ?? type.sortOrder);
     setFormIsActive(type.isActive);
     setEditingType(type);
   };
@@ -91,9 +95,11 @@ export const AdminTypesSection: React.FC<AdminTypesSectionProps> = ({
     try {
       const payload: PropertyTypeDefinition = {
         id: formId.trim(),
+        categoryId: formGroupId as any,
         groupId: formGroupId as any,
         name: formName.trim(),
         description: formDescription.trim(),
+        displayOrder: Number(formSortOrder) || 1,
         sortOrder: Number(formSortOrder) || 1,
         isActive: formIsActive,
       };
@@ -201,7 +207,7 @@ export const AdminTypesSection: React.FC<AdminTypesSectionProps> = ({
           >
             <option value="all">كل المجموعات العقارية ({propertyTypes.length})</option>
             {groups.map((g) => {
-              const count = propertyTypes.filter((t) => t.groupId === g.id).length;
+              const count = propertyTypes.filter((t) => (t.categoryId || t.groupId) === g.id).length;
               return (
                 <option key={g.id} value={g.id}>
                   {g.name} ({count})
@@ -215,7 +221,8 @@ export const AdminTypesSection: React.FC<AdminTypesSectionProps> = ({
       {/* Grid of Property Types */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {filteredTypes.map((type) => {
-          const groupObj = groups.find((g) => g.id === type.groupId);
+          const typeCat = (type as any).categoryId || type.groupId;
+          const groupObj = groups.find((g) => g.id === typeCat);
 
           return (
             <div
@@ -231,7 +238,7 @@ export const AdminTypesSection: React.FC<AdminTypesSectionProps> = ({
                       {type.name}
                     </span>
                     <span className="text-[10px] font-mono text-slate-400">
-                      #{type.sortOrder}
+                      #{type.displayOrder ?? type.sortOrder}
                     </span>
                   </div>
 

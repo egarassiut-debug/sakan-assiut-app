@@ -245,6 +245,7 @@ export interface Property {
   title: string;
   description: string;
   categoryId?: string;
+  propertyGroup?: string; // e.g. 'residential' | 'commercial' | 'admin_medical' | 'lands' | 'industrial_storage'
   propertyType: string; // e.g. "شقة سكنية", "قطعة أرض فضاء", "محل تجاري", etc.
   purpose: PropertyPurpose; // 'rent' | 'sale'
   legalStatus?: LegalStatusOption | string;
@@ -266,6 +267,11 @@ export interface Property {
   floorLevel?: number;
   hasElevator?: boolean;
   finishingStatus?: PropertyFinishingStatus | string; // حالة العقار: مشطبة، نصف تشطيب، مفروشة
+  streetWidth?: number;
+  ceilingHeight?: number;
+  truckAccess?: boolean;
+  suitableActivity?: string;
+  specifications?: Record<string, any>;
   utilities: PropertyUtilities;
   paymentMethods: string[];
   customFields?: Record<string, any>; // حقول إضافية متخصصة حسب نوع العقار (مساحة التخزين، نشاط المحل، عرض الشارع، إلخ)
@@ -326,6 +332,7 @@ export interface TenantRequest {
   tenantName: string;
   tenantPhone: string;
   categoryId?: string;
+  propertyGroup?: string; // e.g. 'residential' | 'commercial' | 'admin_medical' | 'lands' | 'industrial_storage'
   preferredDistrict: string;
   preferredDistricts?: string[]; // إمكانية اختيار أكثر من منطقة للبحث
   customDistrict?: string; // اسم المنطقة يدوياً عند اختيار "غير ذلك"
@@ -342,6 +349,11 @@ export interface TenantRequest {
   floorPreference?: string;
   elevatorPreference?: boolean;
   furnishingStatus?: PropertyFinishingStatus | string; // مشطبة، نصف تشطيب، مفروشة
+  streetWidth?: number;
+  ceilingHeight?: number;
+  truckAccess?: boolean;
+  suitableActivity?: string;
+  specifications?: Record<string, any>;
   utilitiesRequired?: string[];
   meterTypesRequired?: string[];
   customFields?: Record<string, any>; // مواصفات مطلوبة متخصصة حسب التصنيف

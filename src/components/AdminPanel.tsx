@@ -57,7 +57,8 @@ import {
   dbUpdateTrendPostStatus,
   dbDeleteTrendPost,
   dbDeleteProperty,
-  dbDeleteTenantRequest
+  dbDeleteTenantRequest,
+  dbFetchDistricts
 } from '../lib/supabase';
 
 interface AdminPanelProps {
@@ -133,7 +134,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [groups, setGroups] = useState<PropertyGroupDefinition[]>(INITIAL_PROPERTY_GROUPS);
   const [propertyTypes, setPropertyTypes] = useState<PropertyTypeDefinition[]>(INITIAL_PROPERTY_TYPES);
   const [formFields, setFormFields] = useState<FormFieldDefinition[]>(INITIAL_FIELD_DEFINITIONS);
-  const [districts, setDistricts] = useState<string[]>(ASSIUT_DISTRICTS_LIST);
+  const [districts, setDistricts] = useState<string[]>(() => safeStorageGetItem<string[]>('ardaw_dynamic_districts', ASSIUT_DISTRICTS_LIST));
   const [ratings, setRatings] = useState<PropertyRating[]>([]);
   const [trendPosts, setTrendPosts] = useState<TrendPost[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -148,7 +149,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         fetchedTypes,
         fetchedFields,
         fetchedRatings,
-        fetchedTrend
+        fetchedTrend,
+        fetchedDistricts,
       ] = await Promise.allSettled([
         dbFetchUsers(),
         dbFetchPropertyGroups(),
@@ -156,6 +158,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         dbFetchFormFieldDefinitions(),
         dbFetchPropertyRatings(),
         dbFetchTrendPosts(),
+        dbFetchDistricts(),
       ]);
 
       if (fetchedUsers.status === 'fulfilled' && fetchedUsers.value) {
@@ -175,6 +178,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       }
       if (fetchedTrend.status === 'fulfilled' && fetchedTrend.value) {
         setTrendPosts(fetchedTrend.value);
+      }
+      if (fetchedDistricts.status === 'fulfilled' && fetchedDistricts.value && fetchedDistricts.value.length > 0) {
+        setDistricts(fetchedDistricts.value);
+        safeStorageSetItem('ardaw_dynamic_districts', fetchedDistricts.value);
       }
     } catch (err) {
       console.warn('Error loading admin Supabase data:', err);

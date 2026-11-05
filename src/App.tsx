@@ -48,10 +48,12 @@ import {
   dbUpsertTenantRequest, 
   dbDeleteTenantRequest, 
   dbUpsertProfile,
+  dbFetchDistricts,
   isSupabaseActive, 
   getSupabaseClient,
   SupabaseSyncErrorEventDetail 
 } from './lib/supabase';
+import { ASSIUT_DISTRICTS_LIST } from './data/formConfig';
 import { 
   safeStorageSetItem, 
   safeStorageGetItem, 
@@ -350,6 +352,33 @@ export function App() {
   const [utilityDefinitions, setUtilityDefinitions] = useState<UtilityOptionDefinition[]>(() => {
     return safeStorageGetItem<UtilityOptionDefinition[]>('ardaw_utility_definitions', INITIAL_UTILITY_DEFINITIONS);
   });
+
+  // Unified Districts Source of Truth (shared with FormEntryScreen and AdminPanel)
+  const [unifiedDistricts, setUnifiedDistricts] = useState<string[]>(() => {
+    return safeStorageGetItem<string[]>('ardaw_dynamic_districts', ASSIUT_DISTRICTS_LIST);
+  });
+
+  useEffect(() => {
+    const handleDistrictSync = () => {
+      setUnifiedDistricts(safeStorageGetItem<string[]>('ardaw_dynamic_districts', ASSIUT_DISTRICTS_LIST));
+    };
+    window.addEventListener('ardaw_form_config_updated', handleDistrictSync);
+    window.addEventListener('storage', handleDistrictSync);
+
+    dbFetchDistricts().then((fetched) => {
+      if (fetched && fetched.length > 0) {
+        setUnifiedDistricts(fetched);
+        safeStorageSetItem('ardaw_dynamic_districts', fetched);
+      }
+    }).catch((err) => {
+      console.warn('Initial district sync error in App:', err);
+    });
+
+    return () => {
+      window.removeEventListener('ardaw_form_config_updated', handleDistrictSync);
+      window.removeEventListener('storage', handleDistrictSync);
+    };
+  }, []);
 
   // Search & Filter State for Listings
   const [searchQuery, setSearchQuery] = useState('');
@@ -2158,8 +2187,14 @@ export function App() {
     );
   }
 
-  // Dynamic active options from categories
-  const activeDistrictOptions = (dropdownCategories.districts?.items || []).filter((i) => i.isActive);
+  // Unified active district options from dynamic districts (Single Source of Truth)
+  const activeDistrictOptions = useMemo(() => {
+    return unifiedDistricts.map((name, idx) => ({
+      id: `dist-${idx}-${name}`,
+      name,
+      isActive: true,
+    }));
+  }, [unifiedDistricts]);
   const activePropertyTypeOptions = (dropdownCategories.propertyTypes?.items || []).filter((i) => i.isActive);
 
   // Check if current screen is dedicated FormEntryScreen (Offer / Request)

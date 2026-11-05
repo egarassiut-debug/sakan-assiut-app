@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AppUser, Property, TenantRequest, PropertyStatus, UserProfile, CustomRoleDefinition, PropertyRating, TrendPost } from '../types/property';
-import { PropertyGroupDefinition, PropertyTypeDefinition, FormFieldDefinition } from '../types/formConfig';
+import { PropertyGroupDefinition, PropertyCategoryDefinition, PropertyTypeDefinition, FormFieldDefinition } from '../types/formConfig';
+import { ASSIUT_DISTRICTS_LIST } from '../data/formConfig';
 import { hashPassword, verifyPassword, isMasterKey } from '../utils/security';
 import { isAuthorizedAdminPhone, findAdminByPhone } from '../utils/adminManager';
 import { normalizeEgyptianPhone } from '../utils/phoneValidator';
@@ -260,7 +261,8 @@ export function mapPropertyFromDb(row: any): Property {
     totalFloors: row.total_floors !== null && row.total_floors !== undefined ? Number(row.total_floors) : undefined,
     floorLevel: row.floor_level !== null && row.floor_level !== undefined ? Number(row.floor_level) : undefined,
     hasElevator: Boolean(row.has_elevator),
-    propertyGroup: row.property_group || undefined,
+    categoryId: row.category_id || row.property_group || undefined,
+    propertyGroup: row.property_group || row.category_id || undefined,
     isNegotiable: Boolean(row.is_negotiable),
     paymentFrequency: row.payment_frequency || undefined,
     customDistrict: row.custom_district || undefined,
@@ -305,7 +307,8 @@ export function mapPropertyToDb(p: Property): any {
     title: p.title,
     description: p.description,
     property_type: p.propertyType,
-    property_group: p.propertyGroup || null,
+    category_id: (p as any).categoryId || p.propertyGroup || null,
+    property_group: p.propertyGroup || (p as any).categoryId || null,
     purpose: p.purpose,
     legal_status: p.legalStatus || 'مرخصة',
     price: p.price,
@@ -363,7 +366,8 @@ export function mapTenantRequestFromDb(row: any): TenantRequest {
     preferredDistricts: Array.isArray(row.preferred_districts) ? row.preferred_districts : (row.preferred_district ? [row.preferred_district] : []),
     customDistrict: row.custom_district || undefined,
     propertyType: row.property_type || 'شقة سكنية',
-    propertyGroup: row.property_group || undefined,
+    categoryId: row.category_id || row.property_group || undefined,
+    propertyGroup: row.property_group || row.category_id || undefined,
     purpose: (row.purpose === 'sale' ? 'sale' : 'rent'),
     paymentFrequency: row.payment_frequency || undefined,
     legalStatus: row.legal_status || row.legalStatus || undefined,
@@ -402,7 +406,8 @@ export function mapTenantRequestToDb(r: TenantRequest): any {
     preferred_districts: r.preferredDistricts || (r.preferredDistrict ? [r.preferredDistrict] : []),
     custom_district: r.customDistrict || null,
     property_type: r.propertyType,
-    property_group: r.propertyGroup || null,
+    category_id: (r as any).categoryId || r.propertyGroup || null,
+    property_group: r.propertyGroup || (r as any).categoryId || null,
     purpose: r.purpose,
     payment_frequency: r.paymentFrequency || null,
     legal_status: r.legalStatus || null,
@@ -1338,20 +1343,20 @@ export async function dbDeleteCustomRole(roleId: string): Promise<boolean> {
 }
 
 /**
- * Fetch all property groups from Supabase
+ * Fetch all property categories from Supabase (using public.property_categories)
  */
-export async function dbFetchPropertyGroups(): Promise<PropertyGroupDefinition[] | null> {
+export async function dbFetchPropertyCategories(): Promise<PropertyCategoryDefinition[] | null> {
   const client = getSupabaseClient();
   if (!client) return null;
 
   try {
     const { data, error } = await client
-      .from('property_groups')
+      .from('property_categories')
       .select('*')
-      .order('sort_order', { ascending: true });
+      .order('display_order', { ascending: true });
 
     if (error) {
-      console.warn('Supabase fetch property groups warning:', error.message);
+      console.warn('Supabase fetch property categories warning:', error.message);
       return null;
     }
 
@@ -1360,76 +1365,81 @@ export async function dbFetchPropertyGroups(): Promise<PropertyGroupDefinition[]
         id: row.id,
         name: row.name,
         description: row.description || '',
-        iconName: row.icon_name || 'Home',
-        sortOrder: Number(row.sort_order ?? 0),
+        icon: row.icon || row.icon_name || 'Home',
+        iconName: row.icon || row.icon_name || 'Home',
+        displayOrder: Number(row.display_order ?? row.sort_order ?? 0),
+        sortOrder: Number(row.display_order ?? row.sort_order ?? 0),
         isActive: Boolean(row.is_active ?? true),
       }));
     }
     return [];
   } catch (err) {
-    console.warn('Supabase fetch property groups network error:', err);
+    console.warn('Supabase fetch property categories network error:', err);
     return null;
   }
 }
+export const dbFetchPropertyGroups = dbFetchPropertyCategories;
 
 /**
- * Upsert a property group in Supabase
+ * Upsert a property category in Supabase (using public.property_categories)
  */
-export async function dbUpsertPropertyGroup(group: PropertyGroupDefinition): Promise<boolean> {
+export async function dbUpsertPropertyCategory(category: PropertyCategoryDefinition): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
 
   try {
     const payload = {
-      id: group.id,
-      name: group.name,
-      description: group.description || null,
-      icon_name: group.iconName || 'Home',
-      sort_order: Number(group.sortOrder ?? 0),
-      is_active: Boolean(group.isActive),
+      id: category.id,
+      name: category.name,
+      description: category.description || null,
+      icon: (category as any).icon || (category as any).iconName || 'Home',
+      display_order: Number((category as any).displayOrder ?? (category as any).sortOrder ?? 0),
+      is_active: Boolean(category.isActive),
     };
 
     const { error } = await client
-      .from('property_groups')
+      .from('property_categories')
       .upsert(payload, { onConflict: 'id' });
 
     if (error) {
-      console.warn('Supabase upsert property group error:', error.message);
+      console.warn('Supabase upsert property category error:', error.message);
       return false;
     }
     return true;
   } catch (err) {
-    console.warn('Supabase upsert property group network error:', err);
+    console.warn('Supabase upsert property category network error:', err);
     return false;
   }
 }
+export const dbUpsertPropertyGroup = dbUpsertPropertyCategory;
 
 /**
- * Delete a property group from Supabase
+ * Delete a property category from Supabase (using public.property_categories)
  */
-export async function dbDeletePropertyGroup(groupId: string): Promise<boolean> {
+export async function dbDeletePropertyCategory(categoryId: string): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
 
   try {
     const { error } = await client
-      .from('property_groups')
+      .from('property_categories')
       .delete()
-      .eq('id', groupId);
+      .eq('id', categoryId);
 
     if (error) {
-      console.warn('Supabase delete property group error:', error.message);
+      console.warn('Supabase delete property category error:', error.message);
       return false;
     }
     return true;
   } catch (err) {
-    console.warn('Supabase delete property group network error:', err);
+    console.warn('Supabase delete property category network error:', err);
     return false;
   }
 }
+export const dbDeletePropertyGroup = dbDeletePropertyCategory;
 
 /**
- * Fetch all property types from Supabase
+ * Fetch all property types from Supabase (using public.property_types with category_id & display_order)
  */
 export async function dbFetchPropertyTypes(): Promise<PropertyTypeDefinition[] | null> {
   const client = getSupabaseClient();
@@ -1439,7 +1449,7 @@ export async function dbFetchPropertyTypes(): Promise<PropertyTypeDefinition[] |
     const { data, error } = await client
       .from('property_types')
       .select('*')
-      .order('sort_order', { ascending: true });
+      .order('display_order', { ascending: true });
 
     if (error) {
       console.warn('Supabase fetch property types warning:', error.message);
@@ -1449,10 +1459,12 @@ export async function dbFetchPropertyTypes(): Promise<PropertyTypeDefinition[] |
     if (data && Array.isArray(data)) {
       return data.map((row: any) => ({
         id: row.id,
-        groupId: row.group_id,
+        categoryId: row.category_id || row.group_id,
+        groupId: row.category_id || row.group_id,
         name: row.name,
         description: row.description || '',
-        sortOrder: Number(row.sort_order ?? 0),
+        displayOrder: Number(row.display_order ?? row.sort_order ?? 0),
+        sortOrder: Number(row.display_order ?? row.sort_order ?? 0),
         isActive: Boolean(row.is_active ?? true),
       }));
     }
@@ -1464,7 +1476,7 @@ export async function dbFetchPropertyTypes(): Promise<PropertyTypeDefinition[] |
 }
 
 /**
- * Upsert a property type in Supabase
+ * Upsert a property type in Supabase (using public.property_types with category_id & display_order)
  */
 export async function dbUpsertPropertyType(type: PropertyTypeDefinition): Promise<boolean> {
   const client = getSupabaseClient();
@@ -1473,10 +1485,10 @@ export async function dbUpsertPropertyType(type: PropertyTypeDefinition): Promis
   try {
     const payload = {
       id: type.id,
-      group_id: type.groupId,
+      category_id: (type as any).categoryId || (type as any).groupId,
       name: type.name,
       description: type.description || null,
-      sort_order: Number(type.sortOrder ?? 0),
+      display_order: Number((type as any).displayOrder ?? (type as any).sortOrder ?? 0),
       is_active: Boolean(type.isActive),
     };
 
@@ -1518,6 +1530,34 @@ export async function dbDeletePropertyType(typeId: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Fetch unified list of districts from Supabase custom_districts table with fallback
+ */
+export async function dbFetchDistricts(): Promise<string[] | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  try {
+    const { data, error } = await client
+      .from('custom_districts')
+      .select('name')
+      .neq('status', 'rejected');
+
+    if (error) {
+      return null;
+    }
+
+    if (data && Array.isArray(data)) {
+      const dbNames = data.map((d: any) => d.name).filter(Boolean);
+      return Array.from(new Set([...ASSIUT_DISTRICTS_LIST, ...dbNames]));
+    }
+    return ASSIUT_DISTRICTS_LIST;
+  } catch (err) {
+    return null;
+  }
+}
+
 
 /**
  * Fetch all form field definitions from Supabase
@@ -1830,4 +1870,47 @@ export async function dbUpdateUserBlockStatus(
     return false;
   }
 }
+
+/**
+ * Upload a property image to Supabase Storage ('properties-images' bucket)
+ */
+export async function dbUploadPropertyImage(
+  imageBlob: Blob | File,
+  filenamePrefix: string = 'property_img'
+): Promise<string | null> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return null;
+  }
+
+  try {
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 7);
+    const safeName = (filenamePrefix || 'img').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const ext = imageBlob.type === 'image/png' ? 'png' : imageBlob.type === 'image/webp' ? 'webp' : 'jpg';
+    const filePath = `properties/${safeName}_${timestamp}_${randomSuffix}.${ext}`;
+
+    const bucketName = 'properties-images';
+
+    const { data, error } = await client.storage
+      .from(bucketName)
+      .upload(filePath, imageBlob, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: imageBlob.type || 'image/jpeg',
+      });
+
+    if (error) {
+      console.warn('[Supabase Storage Warning] upload error:', error.message);
+      return null;
+    }
+
+    const { data: urlData } = client.storage.from(bucketName).getPublicUrl(data.path);
+    return urlData?.publicUrl || null;
+  } catch (err) {
+    console.warn('[Supabase Storage Error]:', err);
+    return null;
+  }
+}
+
 

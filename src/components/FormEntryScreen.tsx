@@ -39,7 +39,8 @@ import {
   Check,
   Tag,
   HelpCircle,
-  Layers
+  Layers,
+  SlidersHorizontal
 } from 'lucide-react';
 import { RealEstateAgent, Assignment, HourglassTopRounded } from './FlutterIcons';
 import { 
@@ -47,19 +48,22 @@ import {
   validateTenantRequestPayload, 
   dbUpsertProfile,
   dbFetchPropertyGroups,
-  dbFetchPropertyTypes
+  dbFetchPropertyTypes,
+  dbFetchFormFieldDefinitions,
+  dbFetchDistricts
 } from '../lib/supabase';
-import { safeStorageGetItem, safeSaveDraft, safeStorageRemoveItem } from '../utils/storageManager';
+import { safeStorageGetItem, safeSaveDraft, safeStorageRemoveItem, safeStorageSetItem } from '../utils/storageManager';
 import {
   INITIAL_PROPERTY_GROUPS,
   INITIAL_PROPERTY_TYPES,
+  INITIAL_FIELD_DEFINITIONS,
   FINISHING_OPTIONS,
   PAYMENT_FREQUENCIES,
   ASSIUT_DISTRICTS_LIST,
   UTILITIES_BY_GROUP,
   getGroupForPropertyType,
 } from '../data/formConfig';
-import { PropertyGroupId, PropertyGroupDefinition, PropertyTypeDefinition } from '../types/formConfig';
+import { PropertyGroupId, PropertyGroupDefinition, PropertyTypeDefinition, FormFieldDefinition } from '../types/formConfig';
 
 
 interface FormEntryScreenProps {
@@ -122,21 +126,46 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   const [activeDistricts, setActiveDistricts] = useState<string[]>(() => {
     return safeStorageGetItem<string[]>('ardaw_dynamic_districts', ASSIUT_DISTRICTS_LIST);
   });
+  const [activeFieldDefinitions, setActiveFieldDefinitions] = useState<FormFieldDefinition[]>(() => {
+    return safeStorageGetItem<FormFieldDefinition[]>('ardaw_dynamic_fields', INITIAL_FIELD_DEFINITIONS);
+  });
 
   useEffect(() => {
     const handler = () => {
       setActiveGroups(safeStorageGetItem<PropertyGroupDefinition[]>('ardaw_dynamic_groups', INITIAL_PROPERTY_GROUPS));
       setActiveTypes(safeStorageGetItem<PropertyTypeDefinition[]>('ardaw_dynamic_types', INITIAL_PROPERTY_TYPES));
       setActiveDistricts(safeStorageGetItem<string[]>('ardaw_dynamic_districts', ASSIUT_DISTRICTS_LIST));
+      setActiveFieldDefinitions(safeStorageGetItem<FormFieldDefinition[]>('ardaw_dynamic_fields', INITIAL_FIELD_DEFINITIONS));
     };
     window.addEventListener('ardaw_form_config_updated', handler);
 
     // Initial background sync from Supabase
     dbFetchPropertyGroups().then((res) => {
-      if (res && res.length > 0) setActiveGroups(res);
+      if (res && res.length > 0) {
+        setActiveGroups(res);
+        safeStorageSetItem('ardaw_dynamic_groups', res);
+      }
     }).catch(() => {});
+
     dbFetchPropertyTypes().then((res) => {
-      if (res && res.length > 0) setActiveTypes(res);
+      if (res && res.length > 0) {
+        setActiveTypes(res);
+        safeStorageSetItem('ardaw_dynamic_types', res);
+      }
+    }).catch(() => {});
+
+    dbFetchFormFieldDefinitions().then((res) => {
+      if (res && res.length > 0) {
+        setActiveFieldDefinitions(res);
+        safeStorageSetItem('ardaw_dynamic_fields', res);
+      }
+    }).catch(() => {});
+
+    dbFetchDistricts().then((res) => {
+      if (res && res.length > 0) {
+        setActiveDistricts(res);
+        safeStorageSetItem('ardaw_dynamic_districts', res);
+      }
     }).catch(() => {});
 
     return () => window.removeEventListener('ardaw_form_config_updated', handler);
@@ -147,7 +176,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
 
   // Property sub-types available for current group
   const availableSubTypes = useMemo(() => {
-    return activeTypes.filter((t) => t.groupId === selectedGroup && t.isActive);
+    return activeTypes.filter((t) => ((t as any).categoryId || t.groupId) === selectedGroup && t.isActive);
   }, [selectedGroup, activeTypes]);
 
   // Initial type
@@ -237,6 +266,67 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
     editingProperty?.suitableActivity || (editingTenantRequest?.suitableActivity || (initialDraft?.suitableActivity ?? ''))
   );
 
+  // Dynamic custom fields state
+  const [customFields, setCustomFields] = useState<Record<string, any>>(() => {
+    return (
+      (editingProperty as any)?.customFields ||
+      (editingProperty?.specifications as any)?.customFields ||
+      (editingTenantRequest as any)?.customFields ||
+      (editingTenantRequest?.specifications as any)?.customFields ||
+      initialDraft?.customFields ||
+      {}
+    );
+  });
+
+  const handleCustomFieldChange = (key: string, val: any) => {
+    setCustomFields((prev) => ({
+      ...prev,
+      [key]: val,
+    }));
+  };
+
+  const CORE_FORM_FIELDS = useMemo(() => new Set([
+    'purpose', 'propertyGroup', 'propertyType', 'district', 'price', 'area',
+    'legalStatus', 'bedrooms', 'bathrooms', 'floorLevel', 'totalFloors',
+    'finishingStatus', 'hasElevator', 'streetWidth', 'ceilingHeight',
+    'truckAccess', 'suitableActivity', 'images', 'description', 'notes',
+    'contactPhone', 'contactName', 'tenantPhone', 'tenantName', 'minPrice', 'maxPrice'
+  ]), []);
+
+  const applicableDynamicFields = useMemo(() => {
+    return activeFieldDefinitions
+      .filter((field) => {
+        if (field.isActive === false) return false;
+        if (CORE_FORM_FIELDS.has(field.fieldKey)) return false;
+
+        // 1. Form Scope: offer / request / both
+        if (isOffer && field.formScope === 'request_only') return false;
+        if (!isOffer && field.formScope === 'offer_only') return false;
+
+        // 2. Operation Scope: sale / rent / both
+        if (purpose === 'sale' && field.operationScope === 'rent_only') return false;
+        if (purpose === 'rent' && field.operationScope === 'sale_only') return false;
+
+        // 3. Category / Group Scope
+        const groups = (field.applicableCategories || field.applicableGroups || []);
+        if (groups.length > 0 && !groups.includes('all') && !groups.includes(selectedGroup)) {
+          return false;
+        }
+
+        // 4. Property Type Scope
+        if (field.applicableTypes && field.applicableTypes.length > 0 && !field.applicableTypes.includes(propertyType)) {
+          return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const orderA = isOffer ? (a.sortOrderOffer ?? 0) : (a.sortOrderRequest ?? 0);
+        const orderB = isOffer ? (b.sortOrderOffer ?? 0) : (b.sortOrderRequest ?? 0);
+        return orderA - orderB;
+      });
+  }, [activeFieldDefinitions, isOffer, purpose, selectedGroup, propertyType, CORE_FORM_FIELDS]);
+
   // Group utilities selection
   const [selectedGroupUtilities, setSelectedGroupUtilities] = useState<string[]>(() => {
     if (initialDraft?.selectedGroupUtilities) return initialDraft.selectedGroupUtilities;
@@ -312,7 +402,7 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
   // When group changes, ensure propertyType belongs to the group
   const handleGroupSelect = (newGroupId: PropertyGroupId) => {
     setSelectedGroup(newGroupId);
-    const groupTypes = activeTypes.filter((t) => t.groupId === newGroupId && t.isActive);
+    const groupTypes = activeTypes.filter((t) => ((t as any).categoryId || t.groupId) === newGroupId && t.isActive);
     if (!groupTypes.some((t) => t.name === propertyType)) {
       if (groupTypes.length > 0) {
         setPropertyType(groupTypes[0].name);
@@ -673,6 +763,18 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         return;
       }
 
+      // Dynamic required fields validation
+      for (const fld of applicableDynamicFields) {
+        if (fld.isRequired) {
+          const val = customFields[fld.fieldKey];
+          if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) {
+            setErrorMsg(`تنبيه: حقل "${fld.label}" حقل إلزامي مطلوب.`);
+            triggerValidationToast(`يرجى استيفاء الحقل الإلزامي: ${fld.label}`);
+            return;
+          }
+        }
+      }
+
       // Auto title
       const finalTitle = title.trim() || `${propertyType} ${purpose === 'rent' ? 'للإيجار' : 'للبيع'} ${area} م² في ${primaryDistrict}`;
 
@@ -685,7 +787,9 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         title: finalTitle,
         description: notes.trim() || `${propertyType} مميزة لل${purpose === 'rent' ? 'إيجار' : 'بيع'} في أسيوط - ${primaryDistrict} بمساحة ${area} م².`,
         propertyType,
+        categoryId: selectedGroup,
         propertyGroup: selectedGroup,
+        customFields,
         purpose,
         price: Number(price),
         isNegotiable,
@@ -712,6 +816,8 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         specifications: {
           groupUtilities: selectedGroupUtilities,
           selectedGroup,
+          categoryId: selectedGroup,
+          customFields,
         },
         utilities: {
           electricity: { available: selectedGroupUtilities.includes('electricity') || selectedGroupUtilities.includes('high_voltage'), type: 'متوفر' },
@@ -778,6 +884,18 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         return;
       }
 
+      // Dynamic required fields validation
+      for (const fld of applicableDynamicFields) {
+        if (fld.isRequired) {
+          const val = customFields[fld.fieldKey];
+          if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) {
+            setErrorMsg(`تنبيه: حقل "${fld.label}" حقل إلزامي مطلوب.`);
+            triggerValidationToast(`يرجى استيفاء الحقل الإلزامي: ${fld.label}`);
+            return;
+          }
+        }
+      }
+
       const activePreferredDistricts = preferredDistricts.length > 0
         ? preferredDistricts
         : [primaryDistrict];
@@ -791,7 +909,9 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         tenantName: contactName.trim() || 'مواطن باحث عن عقار',
         tenantPhone: cleanContactPhone,
         propertyType,
+        categoryId: selectedGroup,
         propertyGroup: selectedGroup,
+        customFields,
         purpose,
         preferredDistrict: activePreferredDistricts[0] || primaryDistrict,
         preferredDistricts: activePreferredDistricts,
@@ -811,7 +931,9 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
         specifications: {
           groupUtilities: selectedGroupUtilities,
           selectedGroup,
+          categoryId: selectedGroup,
           hasElevator,
+          customFields,
         },
         legalStatus: legalStatus.trim() || undefined,
         notes: notes.trim(),
@@ -1827,6 +1949,207 @@ export const FormEntryScreen: React.FC<FormEntryScreenProps> = ({
               </div>
             </div>
           </div>
+
+          {/* ============================================================== */}
+          {/* 4.5. المواصفات الإضافية المدارة ديناميكياً من لوحة التحكم */}
+          {/* ============================================================== */}
+          {applicableDynamicFields.length > 0 && (
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h3 className="text-sm font-bold text-[#124C46] flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-[#D6A84F]" />
+                  <span>مواصفات إضافية متخصصة (ديناميكية)</span>
+                </h3>
+                <span className="text-[10px] bg-teal-50 text-teal-700 font-bold px-2 py-0.5 rounded-full font-mono">
+                  {applicableDynamicFields.length} حقول
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {applicableDynamicFields.map((field) => {
+                  const value = customFields[field.fieldKey];
+
+                  // 1. Quick Chips / Multi Chips
+                  if (field.displayType === 'quick_chips' || field.displayType === 'multi_chips') {
+                    const isMulti = field.displayType === 'multi_chips' || field.fieldType === 'multi_select';
+                    const selectedList: string[] = Array.isArray(value) ? value : (value ? [String(value)] : []);
+
+                    return (
+                      <div key={field.id} className="sm:col-span-2 space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 flex items-center gap-1">
+                          <span>{field.label}</span>
+                          {field.isRequired && <span className="text-rose-500 font-bold">*</span>}
+                        </label>
+                        {field.helpText && <p className="text-[11px] text-slate-400">{field.helpText}</p>}
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {(field.options || []).map((opt) => {
+                            const isSelected = selectedList.includes(opt);
+                            return (
+                              <button
+                                type="button"
+                                key={opt}
+                                onClick={() => {
+                                  if (isMulti) {
+                                    const updated = isSelected
+                                      ? selectedList.filter((item) => item !== opt)
+                                      : [...selectedList, opt];
+                                    handleCustomFieldChange(field.fieldKey, updated);
+                                  } else {
+                                    handleCustomFieldChange(field.fieldKey, isSelected ? '' : opt);
+                                  }
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  isSelected
+                                    ? 'bg-[#124C46] text-[#D6A84F] border-[#124C46] shadow-2xs'
+                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3 h-3" />}
+                                <span>{opt}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // 2. Dropdown / Single Select
+                  if (field.displayType === 'dropdown' || field.fieldType === 'single_select') {
+                    return (
+                      <div key={field.id} className="space-y-1">
+                        <label className="block text-xs font-bold text-slate-700 flex items-center gap-1">
+                          <span>{field.label}</span>
+                          {field.isRequired && <span className="text-rose-500 font-bold">*</span>}
+                        </label>
+                        {field.helpText && <p className="text-[11px] text-slate-400">{field.helpText}</p>}
+                        <select
+                          value={value !== undefined && value !== null ? String(value) : ''}
+                          onChange={(e) => handleCustomFieldChange(field.fieldKey, e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:border-[#124C46] transition-all"
+                        >
+                          <option value="">-- اختر {field.label} --</option>
+                          {(field.options || []).map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  }
+
+                  // 3. Toggle / Boolean
+                  if (field.displayType === 'toggle' || field.fieldType === 'boolean') {
+                    const isTrue = Boolean(value);
+                    return (
+                      <div key={field.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 sm:col-span-2">
+                        <div>
+                          <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                            <span>{field.label}</span>
+                            {field.isRequired && <span className="text-rose-500 font-bold">*</span>}
+                          </span>
+                          {field.helpText && <p className="text-[11px] text-slate-400 mt-0.5">{field.helpText}</p>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleCustomFieldChange(field.fieldKey, true)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              isTrue ? 'bg-[#124C46] text-[#D6A84F]' : 'bg-white text-slate-600 border border-slate-200'
+                            }`}
+                          >
+                            نعم
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCustomFieldChange(field.fieldKey, false)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              !isTrue ? 'bg-[#124C46] text-[#D6A84F]' : 'bg-white text-slate-600 border border-slate-200'
+                            }`}
+                          >
+                            لا
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // 4. Number / Currency / Number Stepper
+                  if (field.fieldType === 'number' || field.fieldType === 'currency' || field.displayType === 'number_stepper') {
+                    return (
+                      <div key={field.id} className="space-y-1">
+                        <label className="block text-xs font-bold text-slate-700 flex items-center gap-1">
+                          <span>{field.label}</span>
+                          {field.isRequired && <span className="text-rose-500 font-bold">*</span>}
+                        </label>
+                        {field.helpText && <p className="text-[11px] text-slate-400">{field.helpText}</p>}
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={value !== undefined && value !== null ? value : ''}
+                            onChange={(e) => handleCustomFieldChange(field.fieldKey, e.target.value ? Number(e.target.value) : '')}
+                            placeholder={`أدخل ${field.label}`}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold focus:bg-white focus:outline-hidden focus:border-[#124C46] transition-all"
+                          />
+                          {field.fieldType === 'currency' && (
+                            <span className="absolute left-3 top-2 text-[11px] font-bold text-slate-400">ج.م</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // 5. Date
+                  if (field.fieldType === 'date') {
+                    return (
+                      <div key={field.id} className="space-y-1">
+                        <label className="block text-xs font-bold text-slate-700 flex items-center gap-1">
+                          <span>{field.label}</span>
+                          {field.isRequired && <span className="text-rose-500 font-bold">*</span>}
+                        </label>
+                        {field.helpText && <p className="text-[11px] text-slate-400">{field.helpText}</p>}
+                        <input
+                          type="date"
+                          value={value || ''}
+                          onChange={(e) => handleCustomFieldChange(field.fieldKey, e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:border-[#124C46] transition-all"
+                        />
+                      </div>
+                    );
+                  }
+
+                  // 6. Default: Short / Long Text Input
+                  return (
+                    <div key={field.id} className={field.fieldType === 'long_text' ? 'sm:col-span-2 space-y-1' : 'space-y-1'}>
+                      <label className="block text-xs font-bold text-slate-700 flex items-center gap-1">
+                        <span>{field.label}</span>
+                        {field.isRequired && <span className="text-rose-500 font-bold">*</span>}
+                      </label>
+                      {field.helpText && <p className="text-[11px] text-slate-400">{field.helpText}</p>}
+                      {field.fieldType === 'long_text' ? (
+                        <textarea
+                          rows={2}
+                          value={value || ''}
+                          onChange={(e) => handleCustomFieldChange(field.fieldKey, e.target.value)}
+                          placeholder={`أدخل ${field.label}`}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:border-[#124C46] transition-all"
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={value || ''}
+                          onChange={(e) => handleCustomFieldChange(field.fieldKey, e.target.value)}
+                          placeholder={`أدخل ${field.label}`}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:border-[#124C46] transition-all"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* ============================================================== */}
           {/* 5. الموقف القانوني للعقار (إلزامي للعرض) */}

@@ -1,20 +1,28 @@
-export type PropertyGroupId = 'residential' | 'commercial' | 'admin_medical' | 'lands' | 'industrial_storage';
+export type PropertyCategoryId = 'residential' | 'commercial' | 'admin_medical' | 'lands' | 'industrial_storage' | string;
+export type PropertyGroupId = PropertyCategoryId;
 
-export interface PropertyGroupDefinition {
-  id: PropertyGroupId;
+export interface PropertyCategoryDefinition {
+  id: PropertyCategoryId;
   name: string;
   description: string;
-  iconName: string;
-  sortOrder: number;
+  icon: string;
+  displayOrder: number;
   isActive: boolean;
+  // Aliases for backwards compatibility
+  iconName?: string;
+  sortOrder?: number;
 }
+export type PropertyGroupDefinition = PropertyCategoryDefinition;
 
 export interface PropertyTypeDefinition {
   id: string;
-  groupId: PropertyGroupId;
+  categoryId: PropertyCategoryId;
+  // Alias for backwards compatibility
+  groupId?: PropertyCategoryId;
   name: string;
   description?: string;
-  sortOrder: number;
+  displayOrder: number;
+  sortOrder?: number;
   isActive: boolean;
 }
 
@@ -48,7 +56,8 @@ export interface FormFieldDefinition {
   isRequired: boolean;
   formScope: 'offer_only' | 'request_only' | 'both';
   operationScope: 'sale_only' | 'rent_only' | 'both';
-  applicableGroups: ('all' | PropertyGroupId)[];
+  applicableGroups: ('all' | PropertyCategoryId)[];
+  applicableCategories?: ('all' | PropertyCategoryId)[];
   applicableTypes?: string[];
   options?: string[];
   sortOrderOffer: number;
@@ -57,7 +66,8 @@ export interface FormFieldDefinition {
 }
 
 export interface DynamicFormConfig {
-  groups: PropertyGroupDefinition[];
+  categories?: PropertyCategoryDefinition[];
+  groups: PropertyCategoryDefinition[];
   propertyTypes: PropertyTypeDefinition[];
   fieldDefinitions: FormFieldDefinition[];
   districts: string[];
@@ -65,3 +75,4 @@ export interface DynamicFormConfig {
   paymentFrequencies: { id: string; label: string }[];
   version: string;
 }
+
